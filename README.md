@@ -1,4 +1,4 @@
-# Build and Battle
+# Jackal Control
 
 ## Building
 
