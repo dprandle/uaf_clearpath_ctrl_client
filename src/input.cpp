@@ -14,7 +14,6 @@
 #include <Urho3D/Graphics/Renderer.h>
 #include <Urho3D/Input/Input.h>
 #include "input.h"
-#include "logging.h"
 
 itrigger_range input_find_triggers(input_keymap *kmap, const input_trigger_cond &cond)
 {
@@ -300,8 +299,6 @@ void input_free(input_context_stack *input)
 
 void input_init(input_context_stack *input)
 {
-    ASSERT(input);
-    ASSERT(input->event_handlers);
     input->event_handlers->ictxt = input;
     input->event_handlers->subscribe();
     input->event_handlers->GetSubsystem<urho::Input>()->SetMouseVisible(true);
@@ -309,8 +306,6 @@ void input_init(input_context_stack *input)
 
 void input_term(input_context_stack *input)
 {
-    ASSERT(input);
-    ASSERT(input->event_handlers);
     input->event_handlers->unsubscribe();
     input->active_triggers.clear();
     input->vp_stack.clear();

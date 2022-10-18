@@ -4,11 +4,11 @@
 #include <string>
 #include <vector>
 #include <memory>
-#include <cassert>
 #include <set>
 #include <map>
 
 #include "typedefs.h"
+#include "logging.h"
 
 struct ss_router;
 
@@ -95,7 +95,7 @@ void ss_call_slots(const ss_signal<Args...> &signal, u32 filter_key, Args&& ...a
     }
 }
 
-sizet ss_disconnect(ss_connection_base * connection, bool assert_on_none=true);
+sizet ss_disconnect(ss_connection_base * connection);
 
 template<class... Args>
 struct ss_signal
@@ -112,7 +112,6 @@ struct ss_signal
         while(connections.begin() != connections.end())
         {
             auto shptr = connections.back().lock();
-            ASSERT(shptr);
             ss_disconnect(shptr.get());
             shptr->connected_signal = nullptr;
             connections.pop_back();
@@ -155,7 +154,6 @@ struct ss_router
     ~ss_router();
     ss_router(const ss_router &copy);
     ss_router &operator=(const ss_router &rhs);
-    //std::map<void*,sptr_ss_conn_vector> slot_connections_;
     std::map<void*,sptr_ss_conn_vector> connections;
 };
 
@@ -248,18 +246,19 @@ ss_connection<Args...> *ss_connect(ss_router *router, ss_signal<Args...> &sig, u
 template<class T>
 void debug_log_connections(T *sig, const std::string &prefix="")
 {
-    dlog("{} signal addr:{}  connections:{}", prefix, (void*)sig, sig->connections.size());
+    const char *pf_str = prefix.c_str();
+    dlog("%s signal addr:%p  connections:%d", pf_str, (void*)sig, sig->connections.size());
     for (int i = 0; i < sig->connections.size(); ++i)
     {
         auto ptr = sig->connections[i].lock();
-        dlog("Slot connection addr:{} fkey:{}", (void*)(ptr.get()), ptr->filter_key);
+        dlog("%s slot connection addr:%p fkey:%d", pf_str, (void*)(ptr.get()), ptr->filter_key);
     }
 }
 
 void debug_log_connections(ss_router * router, const std::string &prefix="");
 
 template<class... Args>
-sizet ss_disconnect(ss_router *router, ss_signal<Args...> &sig, bool assert_on_none=true)
+sizet ss_disconnect(ss_router *router, ss_signal<Args...> &sig)
 {
     sizet erase_cnt = 0;
     void* casted_sig = (void*)(&sig);
@@ -269,16 +268,12 @@ sizet ss_disconnect(ss_router *router, ss_signal<Args...> &sig, bool assert_on_n
         erase_cnt = fiter->second.size();
         router->connections.erase(fiter);
     }
-    if (assert_on_none)
-    {
-        ASSERT(erase_cnt!=0);
-    }
     return erase_cnt;
 }
 
 
 template<class... Args>
-sizet ss_disconnect(ss_router *router, ss_signal<Args...> &sig, u32 filter_key, bool assert_on_none=true)
+sizet ss_disconnect(ss_router *router, ss_signal<Args...> &sig, u32 filter_key)
 {
     sizet erase_cnt = 0;
     void* casted_sig = (void*)(&sig);
@@ -303,11 +298,6 @@ sizet ss_disconnect(ss_router *router, ss_signal<Args...> &sig, u32 filter_key, 
         {
             router->connections.erase(fiter);
         }
-    }
-
-    if (assert_on_none)
-    {
-        ASSERT(erase_cnt!=0);
     }
     return erase_cnt;
 }

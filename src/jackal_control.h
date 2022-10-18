@@ -19,7 +19,6 @@ class Sprite;
 
 class Input_Map;
 struct Input_Context;
-struct logger_store;
 
 struct jctrl_uevent_handlers : urho::Object
 {
@@ -42,7 +41,6 @@ struct jackal_control_ctxt
     input_context_stack input_dispatch {};
     input_keymap input_map {};
 
-    logger_store * ls {};
     jctrl_uevent_handlers *event_handler;
     ss_router router;
 };

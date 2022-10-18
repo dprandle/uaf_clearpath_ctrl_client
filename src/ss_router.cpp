@@ -1,6 +1,5 @@
 #include <stdarg.h>
 #include "ss_router.h"
-#include "logging.h"
 
 ss_router::ss_router() : connections()
 {}
@@ -18,11 +17,8 @@ ss_router::~ss_router()
     ss_disconnect_all(this);
 }
 
-sizet ss_disconnect(ss_connection_base * connection, bool assert_on_none)
+sizet ss_disconnect(ss_connection_base * connection)
 {
-    ASSERT(connection);
-    ASSERT(connection->router);
-    
     void* casted_sig = connection->sig_addr();
     auto fiter = connection->router->connections.find(casted_sig);
     if (fiter != connection->router->connections.end())
@@ -45,20 +41,20 @@ sizet ss_disconnect(ss_connection_base * connection, bool assert_on_none)
             ++slot_iter;
         }
     }
-    ASSERT(assert_on_none);
     return 0;
 }
 
 void debug_log_connections(ss_router * router, const std::string &prefix)
 {
-    dlog("{} router addr:{}  signals connected:{}", prefix.c_str(), (void*)router, router->connections.size());
+    const char *pf_str = prefix.c_str();
+    dlog("%s router addr:%p  signals connected:%d", pf_str, (void*)router, router->connections.size());
     auto sig_iter = router->connections.begin();
     while (sig_iter != router->connections.end())
     {
-        dlog("{} signal addr:{}  connections:{}" , prefix, sig_iter->first, sig_iter->second.size());
+        dlog("%s signal addr:%p  connections:%d" , pf_str, sig_iter->first, sig_iter->second.size());
         for (sizet i = 0; i < sig_iter->second.size(); ++i)
         {
-            dlog("{} connection addr: {}", prefix, (void*)sig_iter->second[i].get());
+            dlog("%s connection addr: %p", pf_str, (void*)sig_iter->second[i].get());
         }
         ++sig_iter;
     }
