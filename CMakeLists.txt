@@ -16,6 +16,7 @@ endif ()
 
 # Set project name
 project (jackal_ctrl)
+set(CMAKE_CXX_STANDARD 20)
 
 # Set CMake modules search path
 set (CMAKE_MODULE_PATH ${URHO3D_HOME}/../../../cmake/Modules)
@@ -28,3 +29,11 @@ include_directories (${URHO3D_INCLUDE_DIRS})
 
 # Define target name
 add_subdirectory(src)
+
+set(OUTPUT_DIR ${CMAKE_SOURCE_DIR}/../jackal_control_server/src/emscripten)
+if (${EMSCRIPTEN})
+add_custom_target(deploy_html ALL
+  COMMAND cmake -E copy_directory ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} ${OUTPUT_DIR}
+  DEPENDS ${TARGET_NAME}
+  )
+endif()

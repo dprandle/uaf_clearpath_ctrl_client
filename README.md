@@ -3,7 +3,7 @@
 ## Building
 
 ### Linux
-First update urho submodule:
+Clone emscripten 
 
 ```bash
 git submodule init && git submodule update

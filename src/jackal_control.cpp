@@ -72,14 +72,15 @@ intern void create_visuals(jackal_control_ctxt *ctxt)
     
     // Get default style
     urho::ResourceCache *cache = uctxt->GetSubsystem<urho::ResourceCache>();
-    auto *xmlFile = cache->GetResource<urho::XMLFile>("UI/jacakal_style.xml");
+    auto *xmlFile = cache->GetResource<urho::XMLFile>("UI/jackal_style.xml");
     urho::UI *usi = uctxt->GetSubsystem<urho::UI>();
     urho::UIElement *root = usi->GetRoot();
 
     auto btn = new urho::Button(uctxt);
     root->AddChild(btn);
+    btn->SetStyleAuto(xmlFile);
     btn->SetEnableAnchor(true);
-    btn->SetMinAnchor(0.25, 0.25);
+    btn->SetMinAnchor(0.1, 0.25);
     btn->SetMaxAnchor(0.75, 0.75);
     
     ctxt->scene = new urho::Scene(uctxt);
