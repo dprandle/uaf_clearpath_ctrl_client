@@ -37,6 +37,7 @@
 // Code for supporting SDL_iPhoneSetAnimationCallback() and emscripten_set_main_loop_arg()
 #if defined(__EMSCRIPTEN__)
 #include <emscripten/emscripten.h>
+#include <emscripten/websocket.h>
 #endif
 void RunFrame(void* data)
 {
@@ -120,6 +121,34 @@ void jctrl_alloc(jackal_control_ctxt *ctxt, urho::Context *urho_ctxt)
     input_alloc(&ctxt->input_dispatch, urho_ctxt);
 }
 
+#include <unistd.h>
+#include <fcntl.h> 
+#include <arpa/inet.h>
+#include <sys/socket.h>
+
+int socket_connect()
+{
+    i32 socket_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (socket_fd == -1)
+    {
+        elog("Failed to create socket");
+        return 0;
+    }
+    fcntl(socket_fd, F_SETFL, O_NONBLOCK);
+
+    sockaddr_in server_addr;
+    memset(&server_addr, 0, sizeof(server_addr));
+
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(3000);
+    if (!inet_pton(AF_INET, "127.0.0.1", &server_addr.sin_addr.s_addr))
+    {
+        elog("Failed PTON");
+        return 0;
+    }
+    return connect(socket_fd, (struct sockaddr *)&server_addr, sizeof(server_addr));
+}
+
 void jctrl_free(jackal_control_ctxt *ctxt)
 {
     input_free(&ctxt->input_dispatch);
@@ -131,15 +160,17 @@ bool jctrl_init(jackal_control_ctxt *ctxt)
 {
     urho::VariantMap engine_params;
     
-    String log_loc = "/home/dprandle/projects/jackal_control/build/build_and_battle.log";
+    String log_loc = "build_and_battle.log";
 
     engine_params[urho::EP_FRAME_LIMITER] = false;
     engine_params[urho::EP_LOG_NAME] = log_loc;
     engine_params[urho::EP_FULL_SCREEN] = false;
     engine_params[urho::EP_WINDOW_WIDTH] = 1440;
     engine_params[urho::EP_WINDOW_HEIGHT] = 2960;
+#ifndef EMSCRIPTEN
     engine_params[urho::EP_HIGH_DPI] = true;
     engine_params[urho::EP_WINDOW_RESIZABLE] = true;
+#endif
     if (!ctxt->urho_engine->Initialize(engine_params))
         return false;
 
@@ -149,6 +180,8 @@ bool jctrl_init(jackal_control_ctxt *ctxt)
     setup_global_keys(ctxt);
     ctxt->input_dispatch.context_stack.push_back(&ctxt->input_map);
 
+    socket_connect();
+    
     ctxt->event_handler->subscribe();
     return true;
 }
