@@ -43,6 +43,7 @@ struct jackal_control_ctxt
 
     jctrl_uevent_handlers *event_handler;
     ss_router router;
+    int socket_fd {0};
 };
 
 void jctrl_alloc(jackal_control_ctxt * ctxt, urho::Context* urho_ctxt);
@@ -50,4 +51,5 @@ void jctrl_free(jackal_control_ctxt * ctxt);
 
 bool jctrl_init(jackal_control_ctxt * ctxt);
 void jctrl_terminate(jackal_control_ctxt * ctxt);
+void jctrl_run_frame(jackal_control_ctxt * ctxt);
 void jctrl_exec(jackal_control_ctxt * ctxt);

@@ -28,28 +28,31 @@
 #include "Urho3D/UI/Button.h"
 #include "Urho3D/UI/UIElement.h"
 
+#include <unistd.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <poll.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+
 #include "ss_router.h"
 #include "typedefs.h"
 #include "math_utils.h"
 #include "jackal_control.h"
 
-#if defined(IOS) || defined(TVOS) || defined(__EMSCRIPTEN__)
-// Code for supporting SDL_iPhoneSetAnimationCallback() and emscripten_set_main_loop_arg()
 #if defined(__EMSCRIPTEN__)
+const int SERVER_PORT = 8080;
 #include <emscripten/emscripten.h>
-#include <emscripten/websocket.h>
+#else
+const int SERVER_PORT = 3000;
 #endif
-void RunFrame(void* data)
-{
-    static_cast<urho::Engine*>(data)->RunFrame();
-}
-#endif
+const char *SERVER_IP = "127.0.0.1";
 
 int main(int argc, char **argv)
 {
     urho::ParseArguments(argc, argv);
-    urho::Context urho_ctxt {};
-    jackal_control_ctxt jctrl {};
+    urho::Context urho_ctxt{};
+    jackal_control_ctxt jctrl{};
 
     jctrl_alloc(&jctrl, &urho_ctxt);
     if (!jctrl_init(&jctrl))
@@ -57,6 +60,19 @@ int main(int argc, char **argv)
 
     jctrl_exec(&jctrl);
     jctrl_terminate(&jctrl);
+}
+
+jctrl_uevent_handlers::jctrl_uevent_handlers(urho::Context *ctxt) : urho::Object(ctxt)
+{
+}
+
+void jctrl_uevent_handlers::subscribe()
+{
+}
+
+void jctrl_uevent_handlers::unsubscribe()
+{
+    UnsubscribeFromAllEvents();
 }
 
 intern void setup_global_keys(jackal_control_ctxt *ictxt)
@@ -70,7 +86,7 @@ intern void create_visuals(jackal_control_ctxt *ctxt)
     auto ueng = ctxt->urho_engine;
     auto graphics = uctxt->GetSubsystem<urho::Graphics>();
     graphics->SetWindowTitle("Jackal Control");
-    
+
     // Get default style
     urho::ResourceCache *cache = uctxt->GetSubsystem<urho::ResourceCache>();
     auto *xmlFile = cache->GetResource<urho::XMLFile>("UI/jackal_style.xml");
@@ -83,9 +99,9 @@ intern void create_visuals(jackal_control_ctxt *ctxt)
     btn->SetEnableAnchor(true);
     btn->SetMinAnchor(0.1, 0.25);
     btn->SetMaxAnchor(0.75, 0.75);
-    
+
     ctxt->scene = new urho::Scene(uctxt);
-    
+
     ctxt->scene->CreateComponent<urho::DebugRenderer>();
     ctxt->scene->CreateComponent<urho::Octree>();
 
@@ -102,7 +118,7 @@ intern void create_visuals(jackal_control_ctxt *ctxt)
     rnd->SetViewport(0, vp);
     auto zn = rnd->GetDefaultZone();
     zn->SetFogColor({0.7, 0.7, 0.7, 1.0});
-    
+
     // Create a directional light
     urho::Node *light_node = ctxt->scene->CreateChild("dirlight");
     light_node->SetDirection(vec3(-0.0f, -0.5f, -1.0f));
@@ -121,32 +137,70 @@ void jctrl_alloc(jackal_control_ctxt *ctxt, urho::Context *urho_ctxt)
     input_alloc(&ctxt->input_dispatch, urho_ctxt);
 }
 
-#include <unistd.h>
-#include <fcntl.h> 
-#include <arpa/inet.h>
-#include <sys/socket.h>
-
 int socket_connect()
 {
-    i32 socket_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (socket_fd == -1)
+    struct pollfd sckt_fd;
+
+    sckt_fd.fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (sckt_fd.fd == -1)
     {
         elog("Failed to create socket");
         return 0;
     }
-    fcntl(socket_fd, F_SETFL, O_NONBLOCK);
+    fcntl(sckt_fd.fd, F_SETFL, O_NONBLOCK);
 
     sockaddr_in server_addr;
     memset(&server_addr, 0, sizeof(server_addr));
 
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(3000);
-    if (!inet_pton(AF_INET, "127.0.0.1", &server_addr.sin_addr.s_addr))
+    server_addr.sin_port = htons(SERVER_PORT);
+
+    if (!inet_pton(AF_INET, SERVER_IP, &server_addr.sin_addr.s_addr))
     {
         elog("Failed PTON");
-        return 0;
+        return -1;
     }
-    return connect(socket_fd, (struct sockaddr *)&server_addr, sizeof(server_addr));
+
+    if (connect(sckt_fd.fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) != 0 && errno != EINPROGRESS)
+    {
+        elog("Failed connecting to server at %s on port %d - resulting fd %d - error %s", SERVER_IP, SERVER_PORT, sckt_fd.fd, strerror(errno));
+        return -1;
+    }
+
+    #ifndef __EMSCRIPTEN__
+    int pret = poll(&sckt_fd, 1, 10000);
+    if (pret == 0)
+    {
+        elog("Poll timed out connecting to server %s on port %d", SERVER_IP, SERVER_PORT);
+        return -1;
+    }
+    else if (pret == -1)
+    {
+        elog("Failed poll on trying to connect to server at %s on port %d - resulting fd %d - error %s", SERVER_IP, SERVER_PORT, sckt_fd.fd, strerror(errno));
+        return -1;
+    }
+    else
+    {
+        if (test_flags(sckt_fd.revents, POLLERR))
+        {
+            elog("Failed connecting to server at %s on port %d - resulting fd %d - POLLERR", SERVER_IP, SERVER_PORT, sckt_fd.fd);
+            return -1;
+        }
+        else if (test_flags(sckt_fd.revents, POLLHUP))
+        {
+            elog("Failed connecting to server at %s on port %d - resulting fd %d - POLLHUP", SERVER_IP, SERVER_PORT, sckt_fd.fd);
+            return -1;
+        }
+        else if (test_flags(sckt_fd.revents, POLLNVAL))
+        {
+            elog("Failed connecting to server at %s on port %d - resulting fd %d - POLLNVAL", SERVER_IP, SERVER_PORT, sckt_fd.fd);
+            return -1;
+        }
+    }
+    #endif
+
+    ilog("Successfully connected to server at %s on port %d - resulting fd %d", SERVER_IP, SERVER_PORT, sckt_fd.fd);
+    return sckt_fd.fd;
 }
 
 void jctrl_free(jackal_control_ctxt *ctxt)
@@ -159,7 +213,7 @@ void jctrl_free(jackal_control_ctxt *ctxt)
 bool jctrl_init(jackal_control_ctxt *ctxt)
 {
     urho::VariantMap engine_params;
-    
+
     String log_loc = "build_and_battle.log";
 
     engine_params[urho::EP_FRAME_LIMITER] = false;
@@ -167,7 +221,7 @@ bool jctrl_init(jackal_control_ctxt *ctxt)
     engine_params[urho::EP_FULL_SCREEN] = false;
     engine_params[urho::EP_WINDOW_WIDTH] = 1440;
     engine_params[urho::EP_WINDOW_HEIGHT] = 2960;
-#ifndef EMSCRIPTEN
+#if !defined(__EMSCRIPTEN__)
     engine_params[urho::EP_HIGH_DPI] = true;
     engine_params[urho::EP_WINDOW_RESIZABLE] = true;
 #endif
@@ -180,32 +234,58 @@ bool jctrl_init(jackal_control_ctxt *ctxt)
     setup_global_keys(ctxt);
     ctxt->input_dispatch.context_stack.push_back(&ctxt->input_map);
 
-    socket_connect();
-    
+    ctxt->socket_fd = socket_connect();
+
     ctxt->event_handler->subscribe();
     return true;
 }
 
-void jctrl_exec(jackal_control_ctxt* ctxt)
+#if defined(IOS) || defined(TVOS) || defined(__EMSCRIPTEN__)
+intern void run_frame_proxy(void *data)
+{
+    auto ctxt = (jackal_control_ctxt *)data;
+    jctrl_run_frame(ctxt);
+}
+#endif
+
+void jctrl_exec(jackal_control_ctxt *ctxt)
 {
 #if !defined(IOS) && !defined(TVOS) && !defined(__EMSCRIPTEN__)
     while (!ctxt->urho_engine->IsExiting())
-        ctxt->urho_engine->RunFrame();
+    {
+        jctrl_run_frame(ctxt);
+    }
 #elif defined(__EMSCRIPTEN__)
-        emscripten_set_main_loop_arg(RunFrame, ctxt->urho_engine, 0, 1);
+    emscripten_set_main_loop_arg(run_frame_proxy, ctxt, -1, true);
 #endif
 }
 
 void jctrl_terminate(jackal_control_ctxt *ctxt)
-{}
-
-jctrl_uevent_handlers::jctrl_uevent_handlers(urho::Context *ctxt) : urho::Object(ctxt)
-{}
-
-void jctrl_uevent_handlers::subscribe()
-{}
-
-void jctrl_uevent_handlers::unsubscribe()
 {
-    UnsubscribeFromAllEvents();
+}
+
+void jctrl_run_frame(jackal_control_ctxt *ctxt)
+{
+    static constexpr int BUF_SIZE = 10 * MB_SIZE;
+    static u8 read_buf[BUF_SIZE];
+    // static int cur_ind = 0;
+
+    ctxt->urho_engine->RunFrame();
+
+    if (ctxt->socket_fd > 0)
+    {
+        int rd_cnt = read(ctxt->socket_fd, read_buf, BUF_SIZE);
+        if (rd_cnt >= 0)
+        {
+            ilog("Read %d bytes from socket", rd_cnt);
+            for (int i = 0; i < rd_cnt; ++i)
+            {
+                ilog("%x", read_buf[i]);
+            }
+        }
+        else if (rd_cnt != 0 && errno != EAGAIN && errno != EWOULDBLOCK)
+        {
+            elog("Got read error %d", strerror(errno));
+        }
+    }
 }
