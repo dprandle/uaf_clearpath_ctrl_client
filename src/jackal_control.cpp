@@ -23,10 +23,13 @@
 #include "Urho3D/IO/VectorBuffer.h"
 #include "Urho3D/Math/BoundingBox.h"
 #include "Urho3D/Math/Color.h"
+#include "Urho3D/Math/Rect.h"
 #include "Urho3D/Resource/JSONFile.h"
 #include "Urho3D/Resource/JSONValue.h"
+#include "Urho3D/Resource/ResourceCache.h"
 #include "Urho3D/UI/Button.h"
 #include "Urho3D/UI/UIElement.h"
+#include "Urho3D/UI/Sprite.h"
 
 #include <unistd.h>
 #include <errno.h>
@@ -93,12 +96,27 @@ intern void create_visuals(jackal_control_ctxt *ctxt)
     urho::UI *usi = uctxt->GetSubsystem<urho::UI>();
     urho::UIElement *root = usi->GetRoot();
 
-    auto btn = new urho::Button(uctxt);
-    root->AddChild(btn);
-    btn->SetStyleAuto(xmlFile);
-    btn->SetEnableAnchor(true);
-    btn->SetMinAnchor(0.1, 0.25);
-    btn->SetMaxAnchor(0.75, 0.75);
+    // auto btn = new urho::Button(uctxt);
+    // root->AddChild(btn);
+    // btn->SetStyleAuto(xmlFile);
+    // btn->SetEnableAnchor(true);
+    // btn->SetMinAnchor(0.1, 0.25);
+    // btn->SetMaxAnchor(0.75, 0.75);
+
+    auto joystick = new urho::Button(uctxt);
+    root->AddChild(joystick);
+    joystick->SetStyle("Joystick", xmlFile);
+    //joystick->SetPosition(vec2(500,500));
+    joystick->SetEnableAnchor(true);
+    int offset = 132;
+    joystick->SetMinOffset({0, 0});
+    joystick->SetMaxOffset({offset, offset});
+    joystick->SetMinAnchor(0.5f, 0.75f);
+    joystick->SetMaxAnchor(0.5f, 0.75f);
+    joystick->SetPivot(0.5f, 0.5f);
+    //joystick->SetSize(1000,1000);
+    //joystick->SetFullImageRect();
+
 
     ctxt->scene = new urho::Scene(uctxt);
 
