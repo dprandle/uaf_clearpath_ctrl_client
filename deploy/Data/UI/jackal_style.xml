@@ -1,19 +1,30 @@
 <elements>
     <element type="BorderImage">
-        <attribute name="Texture" value="Texture2D;Textures/UI.png" />
+        <attribute name="Texture" value="Texture2D;Textures/UI_items.png" />
         <attribute name="Blend Mode" value="alpha" />
     </element>
     <element type="Button" style="BorderImage">
-        <attribute name="Image Rect" value="16 0 32 16" />
-        <attribute name="Border" value="4 4 4 4" />
-        <attribute name="Pressed Image Offset" value="16 0" />
-        <attribute name="Hover Image Offset" value="0 16" />
+        <attribute name="Image Rect" value="415 18 427 30" />
+        <attribute name="Border" value="2 2 2 2" />
+        <attribute name="Pressed Image Offset" value="0 13" />
+        <attribute name="Hover Image Offset" value="0 26" />
         <attribute name="Pressed Child Offset" value="-1 1" />
         <attribute name="Focus Mode" value="NotFocusable" />
     </element>
+    <element type="Panel" style="BorderImage">
+        <attribute name="Image Rect" value="380 5 412 37" />
+        <attribute name="Border" value="10 10 10 10" />
+    </element>
     <element type="Joystick">
-        <attribute name="Texture" value="Texture2D;Textures/UI_items.png" />
+        <attribute name="Texture" value="Texture2D;Textures/joystick.png" />
         <attribute name="Blend Mode" value="alpha" />
-        <attribute name="Image Rect" value="5 5 137 137" />
+        <attribute name="Image Rect" value="0 0 400 400" />
+        <attribute name="Pressed Image Offset" value="400 0" />
+        <attribute name="Focus Mode" value="NotFocusable" />
+    </element>
+    <element type="JoystickBorder">
+        <attribute name="Texture" value="Texture2D;Textures/joystick.png" />
+        <attribute name="Blend Mode" value="alpha" />
+        <attribute name="Image Rect" value="0 400 600 1000" />
     </element>
 </elements>
