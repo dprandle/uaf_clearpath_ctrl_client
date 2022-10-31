@@ -1,3 +1,3 @@
 <renderpath>
-    <command type="clear" color="1 0 0 1" depth="1.0" stencil="0" />
+    <command type="clear" color="fog" depth="1.0" stencil="0" />
 </renderpath>

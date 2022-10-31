@@ -119,9 +119,7 @@ struct input_context_stack
     ss_signal<const itrigger_event&> trigger {};
 };
 
-void input_alloc(input_context_stack *input, urho::Context *uctxt);
-void input_free(input_context_stack * input);
-void input_init(input_context_stack * input);
+void input_init(input_context_stack * input, urho::Context * uctxt);
 void input_term(input_context_stack * input);
 
 itrigger_range input_find_triggers(input_keymap * kmap, const input_trigger_cond &cond);

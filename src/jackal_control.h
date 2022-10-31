@@ -12,6 +12,7 @@
 #include "typedefs.h"
 #include "network.h"
 #include "joystick.h"
+#include "mapping.h"
 
 namespace Urho3D
 {
@@ -36,11 +37,12 @@ struct jackal_control_ctxt
 {
     urho::Context* urho_ctxt {};
     urho::Engine * urho_engine {};
-    urho::Scene * scene {};    
-    urho::Node * cam_node {};
 
     ui_info ui_inf;
+
     joystick_panel js_panel;
+    map_panel mpanel;
+
     input_context_stack input_dispatch;
     input_keymap input_map;
     net_connection conn;
@@ -48,10 +50,8 @@ struct jackal_control_ctxt
     ss_router router;
 };
 
-void jctrl_alloc(jackal_control_ctxt * ctxt, urho::Context* urho_ctxt);
-void jctrl_free(jackal_control_ctxt * ctxt);
 bool jctrl_init(jackal_control_ctxt * ctxt);
-void jctrl_terminate(jackal_control_ctxt * ctxt);
+void jctrl_term(jackal_control_ctxt * ctxt);
 
 void jctrl_exec(jackal_control_ctxt * ctxt);
 void jctrl_run_frame(jackal_control_ctxt * ctxt);

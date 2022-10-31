@@ -45,22 +45,14 @@ intern void handle_joystick_move_end(joystick_panel *jsp)
     jsp->cached_mouse_pos = {};
 }
 
-void joystick_panel_alloc(joystick_panel *jsp, urho::Context *uctxt)
+void joystick_panel_init(joystick_panel *jsp, const ui_info &ui_inf, net_connection *conn)
 {
+    auto uctxt = ui_inf.ui_sys->GetContext();
+
     jsp->frame = new urho::BorderImage(uctxt);
     jsp->outer_ring = new urho::BorderImage(uctxt);
     jsp->js = new urho::Button(uctxt);
-}
 
-void joystick_panel_free(joystick_panel *jsp)
-{
-    delete jsp->js;
-    delete jsp->outer_ring;
-    delete jsp->frame;
-}
-
-void joystick_panel_init(joystick_panel *jsp, const ui_info &ui_inf, net_connection *conn)
-{
     ui_inf.ui_sys->GetRoot()->AddChild(jsp->frame);
     jsp->frame->SetColor({0.2f, 0.2f, 0.2f, 0.7f});
     jsp->frame->SetEnableAnchor(true);

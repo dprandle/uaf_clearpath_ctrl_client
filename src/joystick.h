@@ -25,8 +25,6 @@ struct joystick_panel
 };
 
 void joystick_panel_run_frame(joystick_panel*jspanel, net_connection * conn);
-void joystick_panel_alloc(joystick_panel*jspanel, urho::Context * uctxt);
-void joystick_panel_free(joystick_panel*jspanel);
 void joystick_panel_init(joystick_panel*jspanel, const ui_info & ui_inf, net_connection * conn);
 void joystick_panel_term(joystick_panel*jspanel);
 

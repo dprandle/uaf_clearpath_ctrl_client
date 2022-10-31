@@ -3,42 +3,16 @@
 #include <Urho3D/Graphics/Renderer.h>
 #include <Urho3D/Graphics/DebugRenderer.h>
 #include <Urho3D/Graphics/Camera.h>
-#include <Urho3D/Graphics/RenderPath.h>
 #include <Urho3D/Graphics/Zone.h>
 #include <Urho3D/UI/UI.h>
-#include <Urho3D/UI/Button.h>
 #include <Urho3D/Resource/ResourceCache.h>
 #include <Urho3D/Engine/EngineDefs.h>
 #include <Urho3D/Engine/DebugHud.h>
-#include <Urho3D/Engine/Console.h>
 #include <Urho3D/Scene/Scene.h>
-#include <Urho3D/IO/Log.h>
-#include <Urho3D/IO/Serializer.h>
-
-#include "Urho3D/Core/Context.h"
-#include "Urho3D/Engine/Engine.h"
-#include "Urho3D/Graphics/Viewport.h"
-#include "Urho3D/IO/File.h"
-#include "Urho3D/IO/MemoryBuffer.h"
-#include "Urho3D/IO/Serializer.h"
-#include "Urho3D/Resource/JSONFile.h"
-#include "Urho3D/IO/VectorBuffer.h"
-#include "Urho3D/Math/BoundingBox.h"
-#include "Urho3D/Math/Color.h"
-#include "Urho3D/Math/Rect.h"
-#include "Urho3D/Resource/JSONFile.h"
-#include "Urho3D/Resource/JSONValue.h"
-#include "Urho3D/Resource/ResourceCache.h"
-#include "Urho3D/UI/BorderImage.h"
-#include "Urho3D/UI/UIEvents.h"
-#include "Urho3D/UI/Button.h"
-#include "Urho3D/UI/UIElement.h"
-#include "Urho3D/UI/Sprite.h"
-
-#include <string>
 
 #include "input.h"
 #include "joystick.h"
+#include "mapping.h"
 #include "network.h"
 #include "ss_router.h"
 #include "typedefs.h"
@@ -54,14 +28,12 @@ int main(int argc, char **argv)
     //urho::ParseArguments(argc, argv);
     urho::Context urho_ctxt{};
     jackal_control_ctxt jctrl{};
+    jctrl.urho_ctxt = &urho_ctxt;
 
-    jctrl_alloc(&jctrl, &urho_ctxt);
     if (!jctrl_init(&jctrl))
         return 0;
-
     jctrl_exec(&jctrl);
-    jctrl_terminate(&jctrl);
-    jctrl_free(&jctrl);
+    jctrl_term(&jctrl);
 }
 
 intern bool init_urho_engine(urho::Engine * urho_engine)
@@ -97,53 +69,20 @@ intern void setup_visuals(jackal_control_ctxt *ctxt)
     auto graphics = ctxt->urho_ctxt->GetSubsystem<urho::Graphics>();
     graphics->SetWindowTitle("Jackal Control");
 
-    ctxt->scene->CreateComponent<urho::DebugRenderer>();
-    ctxt->scene->CreateComponent<urho::Octree>();
-
-    urho::Camera *editor_cam = ctxt->cam_node->CreateComponent<urho::Camera>();
-    ctxt->cam_node->SetPosition(vec3(8, -8, 5));
-    ctxt->cam_node->SetDirection(vec3(0, 0, -1));
-    ctxt->cam_node->Pitch(-90.0f);
-
+    auto cache = ctxt->urho_ctxt->GetSubsystem<urho::ResourceCache>();
+    auto rpath = cache->GetResource<urho::XMLFile>("RenderPaths/ToolkitMain.xml");
     urho::Renderer *rnd = ctxt->urho_ctxt->GetSubsystem<urho::Renderer>();
-    urho::Viewport *vp = new urho::Viewport(ctxt->urho_ctxt, ctxt->scene, editor_cam);
-    vp->SetDrawDebug(true);
+    urho::Viewport *vp = new urho::Viewport(ctxt->urho_ctxt, nullptr, nullptr);
+    vp->SetRenderPath(rpath);
     rnd->SetViewport(0, vp);
+
     auto zn = rnd->GetDefaultZone();
-    zn->SetFogColor({0.0, 0.0, 0.0, 1.0});
-
-    // Create a directional light
-    urho::Node *light_node = ctxt->scene->CreateChild("dirlight");
-    light_node->SetDirection(vec3(-0.0f, -0.5f, -1.0f));
-    urho::Light *light = light_node->CreateComponent<urho::Light>();
-    light->SetLightType(urho::LIGHT_DIRECTIONAL);
-    light->SetColor(Color(1.0f, 1.0f, 1.0f));
-    light->SetSpecularIntensity(5.0f);
-    light->SetBrightness(1.0f);
-}
-
-void jctrl_alloc(jackal_control_ctxt *ctxt, urho::Context *urho_ctxt)
-{
-    ctxt->urho_ctxt = urho_ctxt;
-    ctxt->urho_engine = new urho::Engine(ctxt->urho_ctxt);
-    ctxt->scene = new urho::Scene(ctxt->urho_ctxt);
-    ctxt->cam_node = new urho::Node(ctxt->urho_ctxt);
-
-    input_alloc(&ctxt->input_dispatch, urho_ctxt);
-    joystick_panel_alloc(&ctxt->js_panel, urho_ctxt);
-}
-
-void jctrl_free(jackal_control_ctxt *ctxt)
-{
-    joystick_panel_free(&ctxt->js_panel);
-    input_free(&ctxt->input_dispatch);
-    delete ctxt->scene;
-    delete ctxt->cam_node;
-    delete ctxt->urho_ctxt;
+    zn->SetFogColor({1.0, 0.0, 0.0, 1.0});
 }
 
 bool jctrl_init(jackal_control_ctxt *ctxt)
 {
+    ctxt->urho_engine = new urho::Engine(ctxt->urho_ctxt);
     if (!init_urho_engine(ctxt->urho_engine))
         return false;
     
@@ -151,21 +90,16 @@ bool jctrl_init(jackal_control_ctxt *ctxt)
 
     setup_visuals(ctxt);
 
-    input_init(&ctxt->input_dispatch);
+    input_init(&ctxt->input_dispatch, ctxt->urho_ctxt);
     ctxt->input_map.name = "global";
     ctxt->input_dispatch.context_stack.push_back(&ctxt->input_map);
 
     joystick_panel_init(&ctxt->js_panel, ctxt->ui_inf, &ctxt->conn);
 
+    map_panel_init(&ctxt->mpanel, ctxt->ui_inf, &ctxt->conn);
+
     net_connect(&ctxt->conn);
     ilog("Device pixel ratio inverse: %f", ctxt->ui_inf.dev_pixel_ratio_inv);
-
-    // temp
-    auto scan_func = [](const jackal_laser_scan_packet &){
-        ilog("Scan received!");
-    };
-    ss_connect(&ctxt->router, ctxt->conn.scan_received,scan_func);
-
     return true;
 }
 
@@ -189,10 +123,12 @@ void jctrl_exec(jackal_control_ctxt *ctxt)
 #endif
 }
 
-void jctrl_terminate(jackal_control_ctxt *ctxt)
+void jctrl_term(jackal_control_ctxt *ctxt)
 {
     net_disconnect(&ctxt->conn);
     input_term(&ctxt->input_dispatch);
+    joystick_panel_term(&ctxt->js_panel);
+    map_panel_term(&ctxt->mpanel);
 }
 
 void jctrl_run_frame(jackal_control_ctxt *ctxt)

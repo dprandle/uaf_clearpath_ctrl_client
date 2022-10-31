@@ -286,19 +286,9 @@ intern void on_mouse_up(input_uevent_handlers *uh, Urho3D::StringHash event_type
     }
 }
 
-void input_alloc(input_context_stack *input, urho::Context *uctxt)
+void input_init(input_context_stack *input, urho::Context *uctxt)
 {
     input->event_handlers = new input_uevent_handlers(uctxt);
-}
-
-void input_free(input_context_stack *input)
-{
-    delete input->event_handlers;
-    input->event_handlers = {};
-}
-
-void input_init(input_context_stack *input)
-{
     input->event_handlers->ictxt = input;
     input->event_handlers->subscribe();
     input->event_handlers->GetSubsystem<urho::Input>()->SetMouseVisible(true);
@@ -310,6 +300,9 @@ void input_term(input_context_stack *input)
     input->active_triggers.clear();
     input->vp_stack.clear();
     input->context_stack.clear();
+
+    delete input->event_handlers;
+    input->event_handlers = {};
 }
 
 input_uevent_handlers::input_uevent_handlers(urho::Context *uctxt) : urho::Object(uctxt)
