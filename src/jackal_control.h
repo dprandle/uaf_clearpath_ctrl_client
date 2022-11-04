@@ -33,6 +33,12 @@ struct ui_info
     float dev_pixel_ratio_inv {1.0};
 };
 
+struct input_data
+{
+    input_context_stack dispatch;
+    input_keymap map;
+};
+
 struct jackal_control_ctxt
 {
     urho::Context* urho_ctxt {};
@@ -42,9 +48,8 @@ struct jackal_control_ctxt
 
     joystick_panel js_panel;
     map_panel mpanel;
+    input_data inp;
 
-    input_context_stack input_dispatch;
-    input_keymap input_map;
     net_connection conn;
 
     ss_router router;

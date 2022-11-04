@@ -45,10 +45,36 @@ intern void handle_joystick_move_end(joystick_panel *jsp)
     jsp->cached_mouse_pos = {};
 }
 
-void joystick_panel_init(joystick_panel *jsp, const ui_info &ui_inf, net_connection *conn)
+intern void setup_event_handlers(joystick_panel *jsp, const ui_info &ui_inf, net_connection *conn)
 {
-    auto uctxt = ui_inf.ui_sys->GetContext();
+    jsp->js->SubscribeToEvent(urho::E_DRAGMOVE, [jsp, ui_inf, conn](urho::StringHash type, urho::VariantMap &ev_data) {
+        using namespace urho::DragMove;
+        auto elem = (urho::UIElement *)ev_data[P_ELEMENT].GetPtr();
+        if (elem == jsp->js)
+            handle_jostick_move({ev_data[P_X].GetInt(), ev_data[P_Y].GetInt()}, jsp, ui_inf.dev_pixel_ratio_inv);
+    });
 
+    jsp->js->SubscribeToEvent(urho::E_DRAGEND, [jsp](urho::StringHash type, urho::VariantMap &ev_data) {
+        using namespace urho::DragEnd;
+        auto elem = (urho::UIElement *)ev_data[P_ELEMENT].GetPtr();
+        if (elem == jsp->js)
+            handle_joystick_move_end(jsp);
+    });
+
+    jsp->js->SubscribeToEvent(urho::E_DRAGBEGIN, [jsp, ui_inf](urho::StringHash type, urho::VariantMap &ev_data) {
+        using namespace urho::DragBegin;
+        auto elem = (urho::UIElement *)ev_data[P_ELEMENT].GetPtr();
+        if (elem == jsp->js)
+            handle_joystick_move_begin(jsp, ui_inf);
+    });
+
+    jsp->js->SubscribeToEvent(urho::E_UPDATE, [jsp, conn](urho::StringHash type, urho::VariantMap &ev_data) {
+        joystick_panel_run_frame(jsp, conn);
+    });
+}
+
+intern void create_joystick_ui(joystick_panel *jsp,const ui_info &ui_inf, urho::Context * uctxt)
+{
     jsp->frame = new urho::BorderImage(uctxt);
     jsp->outer_ring = new urho::BorderImage(uctxt);
     jsp->js = new urho::Button(uctxt);
@@ -85,31 +111,14 @@ void joystick_panel_init(joystick_panel *jsp, const ui_info &ui_inf, net_connect
     jsp->js->SetMinAnchor(0.5f, 0.5f);
     jsp->js->SetMaxAnchor(0.5f, 0.5f);
     jsp->js->SetPivot(0.5f, 0.5f);
+}
 
-    jsp->js->SubscribeToEvent(urho::E_DRAGMOVE, [jsp, ui_inf, conn](urho::StringHash type, urho::VariantMap &ev_data) {
-        using namespace urho::DragMove;
-        auto elem = (urho::UIElement *)ev_data[P_ELEMENT].GetPtr();
-        if (elem == jsp->js)
-            handle_jostick_move({ev_data[P_X].GetInt(), ev_data[P_Y].GetInt()}, jsp, ui_inf.dev_pixel_ratio_inv);
-    });
+void joystick_panel_init(joystick_panel *jsp, const ui_info &ui_inf, net_connection *conn)
+{
+    auto uctxt = ui_inf.ui_sys->GetContext();
 
-    jsp->js->SubscribeToEvent(urho::E_DRAGEND, [jsp](urho::StringHash type, urho::VariantMap &ev_data) {
-        using namespace urho::DragEnd;
-        auto elem = (urho::UIElement *)ev_data[P_ELEMENT].GetPtr();
-        if (elem == jsp->js)
-            handle_joystick_move_end(jsp);
-    });
-
-    jsp->js->SubscribeToEvent(urho::E_DRAGBEGIN, [jsp, ui_inf](urho::StringHash type, urho::VariantMap &ev_data) {
-        using namespace urho::DragBegin;
-        auto elem = (urho::UIElement *)ev_data[P_ELEMENT].GetPtr();
-        if (elem == jsp->js)
-            handle_joystick_move_begin(jsp, ui_inf);
-    });
-
-    jsp->js->SubscribeToEvent(urho::E_UPDATE, [jsp, conn](urho::StringHash type, urho::VariantMap &ev_data) {
-        joystick_panel_run_frame(jsp, conn);
-    });
+    create_joystick_ui(jsp, ui_inf, uctxt);
+    setup_event_handlers(jsp, ui_inf, conn);
 }
 
 void joystick_panel_term(joystick_panel *jsp)

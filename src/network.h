@@ -11,6 +11,8 @@ inline const char *SERVER_IP = "192.168.1.103";
 
 inline const int PACKET_STR_ID_LEN = 16;
 
+inline const int SCAN_POINTS = 720;
+
 
 struct packet_header
 {
@@ -37,7 +39,7 @@ struct jackal_laser_scan_packet
     float angle_increment;
     float range_min;
     float range_max;
-    float scan[720];
+    float scan[SCAN_POINTS];
 };
 
 struct net_connection

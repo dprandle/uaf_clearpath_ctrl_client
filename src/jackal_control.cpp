@@ -64,20 +64,20 @@ intern void setup_ui_info(ui_info * ui_inf, urho::Context * uctxt)
     ui_inf->ui_sys = uctxt->GetSubsystem<urho::UI>();
 }
 
-intern void setup_visuals(jackal_control_ctxt *ctxt)
+intern void setup_main_renderer(jackal_control_ctxt *ctxt)
 {
     auto graphics = ctxt->urho_ctxt->GetSubsystem<urho::Graphics>();
     graphics->SetWindowTitle("Jackal Control");
 
     auto cache = ctxt->urho_ctxt->GetSubsystem<urho::ResourceCache>();
-    auto rpath = cache->GetResource<urho::XMLFile>("RenderPaths/ToolkitMain.xml");
+    auto rpath = cache->GetResource<urho::XMLFile>("RenderPaths/clear_only.xml");
     urho::Renderer *rnd = ctxt->urho_ctxt->GetSubsystem<urho::Renderer>();
     urho::Viewport *vp = new urho::Viewport(ctxt->urho_ctxt, nullptr, nullptr);
     vp->SetRenderPath(rpath);
     rnd->SetViewport(0, vp);
 
     auto zn = rnd->GetDefaultZone();
-    zn->SetFogColor({1.0, 0.0, 0.0, 1.0});
+    zn->SetFogColor({0.0, 0.0, 0.0, 1.0});
 }
 
 bool jctrl_init(jackal_control_ctxt *ctxt)
@@ -88,16 +88,16 @@ bool jctrl_init(jackal_control_ctxt *ctxt)
     
     setup_ui_info(&ctxt->ui_inf, ctxt->urho_ctxt);
 
-    setup_visuals(ctxt);
+    setup_main_renderer(ctxt);
 
-    input_init(&ctxt->input_dispatch, ctxt->urho_ctxt);
-    ctxt->input_map.name = "global";
-    ctxt->input_dispatch.context_stack.push_back(&ctxt->input_map);
+    input_init(&ctxt->inp.dispatch, ctxt->urho_ctxt);
+    ctxt->inp.map.name = "global";
+    ctxt->inp.dispatch.context_stack.push_back(&ctxt->inp.map);
 
     joystick_panel_init(&ctxt->js_panel, ctxt->ui_inf, &ctxt->conn);
 
-    map_panel_init(&ctxt->mpanel, ctxt->ui_inf, &ctxt->conn);
-
+    map_panel_init(&ctxt->mpanel, ctxt->ui_inf, &ctxt->conn, &ctxt->inp);
+    
     net_connect(&ctxt->conn);
     ilog("Device pixel ratio inverse: %f", ctxt->ui_inf.dev_pixel_ratio_inv);
     return true;
@@ -126,7 +126,7 @@ void jctrl_exec(jackal_control_ctxt *ctxt)
 void jctrl_term(jackal_control_ctxt *ctxt)
 {
     net_disconnect(&ctxt->conn);
-    input_term(&ctxt->input_dispatch);
+    input_term(&ctxt->inp.dispatch);
     joystick_panel_term(&ctxt->js_panel);
     map_panel_term(&ctxt->mpanel);
 }
