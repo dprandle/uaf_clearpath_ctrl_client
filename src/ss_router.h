@@ -118,7 +118,7 @@ struct ss_signal
         }
     }
 
-    void operator()(u32 sig_filter_key, Args... args)
+    void operator()(u32 sig_filter_key, Args&&... args)
     {
         ss_call_slots(*this, sig_filter_key, std::forward<Args>(args)...);
     }

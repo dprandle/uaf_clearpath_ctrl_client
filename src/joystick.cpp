@@ -22,7 +22,7 @@ intern void handle_jostick_move(const ivec2 &cur_mpos, joystick_panel *jspanel, 
 
 intern void handle_update(joystick_panel *jsp, net_connection *conn)
 {
-    command_velocity packet;
+    command_velocity packet{};
     packet.vinfo.angular = jsp->velocity.x_;
     packet.vinfo.linear = jsp->velocity.y_;
     net_tx(*conn, packet);
@@ -132,7 +132,7 @@ void joystick_panel_run_frame(joystick_panel*jspanel, net_connection * conn)
 {
     if (!jspanel->js->GetEnableAnchor())
     {
-        command_velocity pckt;
+        command_velocity pckt {};
         pckt.vinfo.linear = jspanel->velocity.y_;
         pckt.vinfo.angular = jspanel->velocity.x_;
         net_tx(*conn, pckt);

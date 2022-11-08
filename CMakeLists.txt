@@ -14,9 +14,16 @@ if (COMMAND cmake_policy)
     cmake_policy (SET CMP0063 OLD)
 endif ()
 
+
 # Set project name
 project (jackal_ctrl)
 set(CMAKE_CXX_STANDARD 20)
+
+if(${CMAKE_BUILD_TYPE} STREQUAL Debug)
+    add_definitions(-DDEBUG_VERSION)
+else()
+    add_definitions(-DRELEASE_VERSION)
+endif()
 
 # Set CMake modules search path
 set (CMAKE_MODULE_PATH ${URHO3D_HOME}/../../../cmake/Modules)

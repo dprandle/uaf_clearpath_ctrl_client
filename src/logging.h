@@ -8,3 +8,12 @@
 #define wlog URHO3D_LOGWARNINGF
 #define elog URHO3D_LOGERRORF
 #define rlog URHO3D_LOGRAWF
+
+namespace Urho3D
+{
+class Context;
+}
+
+void log_init(urho::Context* uctxt);
+void log_term();
+void log_set_level(int level);

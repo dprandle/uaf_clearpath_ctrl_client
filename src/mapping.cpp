@@ -125,14 +125,14 @@ intern void setup_scene(map_panel *mp, urho::ResourceCache * cache, urho::Scene 
     mp->scan_node = scene->CreateChild("scan");
     mp->scan_bb = mp->scan_node->CreateComponent<urho::BillboardSet>();
     mp->scan_bb->SetMaterial(scan_mat);
-    mp->scan_bb->SetNumBillboards(SCAN_POINTS);
+    mp->scan_bb->SetNumBillboards(jackal_laser_scan::SCAN_POINTS);
     mp->scan_bb->SetFixedScreenSize(true);
 }
 
-intern void update_scene_from_scan(map_panel *mp, const jackal_laser_scan_packet &packet)
+intern void update_scene_from_scan(map_panel *mp, const jackal_laser_scan &packet)
 {
     float cur_ang = packet.angle_min;
-    for (int i = 0; i < SCAN_POINTS; ++i)
+    for (int i = 0; i < jackal_laser_scan::SCAN_POINTS; ++i)
     {
         auto bb = mp->scan_bb->GetBillboard(i);
         if (packet.scan[i] < packet.range_max && packet.scan[i] > packet.range_min)
@@ -159,7 +159,7 @@ void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, 
     setup_scene(mp, cache, mp->view->GetScene());
     setup_camera_controls(mp, mp->view->GetCameraNode(), inp);
 
-    ss_connect(&mp->router, conn->scan_received, [mp](const jackal_laser_scan_packet &pckt) {
+    ss_connect(&mp->router, conn->scan_received, [mp](const jackal_laser_scan &pckt) {
         update_scene_from_scan(mp, pckt);
     });
 }

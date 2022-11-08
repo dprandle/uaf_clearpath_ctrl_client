@@ -3,6 +3,12 @@
 #include <stdint.h>
 #include <cstddef>
 
+#if defined(DEBUG_VERSION)
+#include <cassert>
+#else
+#define assert(param)
+#endif
+
 using i8 = int8_t;
 using u8 = uint8_t;
 using i16 = int16_t;

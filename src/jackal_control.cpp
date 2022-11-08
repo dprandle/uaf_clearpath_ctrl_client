@@ -12,6 +12,7 @@
 
 #include "input.h"
 #include "joystick.h"
+#include "logging.h"
 #include "mapping.h"
 #include "network.h"
 #include "ss_router.h"
@@ -86,6 +87,9 @@ bool jctrl_init(jackal_control_ctxt *ctxt)
     if (!init_urho_engine(ctxt->urho_engine))
         return false;
     
+    log_init(ctxt->urho_ctxt);
+    log_set_level(urho::LOG_DEBUG);
+    
     setup_ui_info(&ctxt->ui_inf, ctxt->urho_ctxt);
 
     setup_main_renderer(ctxt);
@@ -129,6 +133,7 @@ void jctrl_term(jackal_control_ctxt *ctxt)
     input_term(&ctxt->inp.dispatch);
     joystick_panel_term(&ctxt->js_panel);
     map_panel_term(&ctxt->mpanel);
+    log_term();
 }
 
 void jctrl_run_frame(jackal_control_ctxt *ctxt)
