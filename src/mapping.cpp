@@ -34,6 +34,7 @@
 #include "jackal_control.h"
 #include "mapping.h"
 #include "math_utils.h"
+#include "network.h"
 
 intern void setup_camera_controls(map_panel *mp, urho::Node * cam_node, input_data * inp)
 {
@@ -113,13 +114,11 @@ intern void create_3dview(map_panel *mp, urho::ResourceCache * cache, urho::UIEl
 
 intern void setup_scene(map_panel *mp, urho::ResourceCache * cache, urho::Scene * scene)
 {
-
     auto jackal_model = cache->GetResource<urho::Model>("Models/jackal_base.mdl");
     mp->jackal_node = scene->CreateChild("jackal");
     auto smodel = mp->jackal_node->CreateComponent<urho::StaticModel>();
     smodel->SetModel(jackal_model);
     mp->jackal_node->SetRotation(quat(-90.0f, {1.0f, 0.0f, 0.0f}));
-
 
     auto scan_mat = cache->GetResource<urho::Material>("Materials/scan_billboard.xml");
     mp->scan_node = scene->CreateChild("scan");
@@ -127,6 +126,62 @@ intern void setup_scene(map_panel *mp, urho::ResourceCache * cache, urho::Scene 
     mp->scan_bb->SetMaterial(scan_mat);
     mp->scan_bb->SetNumBillboards(jackal_laser_scan::SCAN_POINTS);
     mp->scan_bb->SetFixedScreenSize(true);
+
+    mp->occ_grid_node = scene->CreateChild("occ_grid");
+    mp->occ_grid_bb = mp->occ_grid_node->CreateComponent<urho::BillboardSet>();
+    mp->occ_grid_bb->SetFixedScreenSize(false);
+}
+
+intern ivec2 index_to_cell_coords(u32 index, u32 row_width)
+{
+    return {(int)(index % row_width), (int)(index / row_width)};
+}
+
+intern vec3 get_global_pos_from_grid_space(u32 index, const occupancy_grid_update &grid)
+{
+    ivec2 cell_coords = index_to_cell_coords(index, grid.meta.width);
+    vec3 map_origin =  vec3_from(grid.meta.origin_pos);
+    vec3 cell_to_world = {(float)cell_coords.x_, (float)cell_coords.y_, 0.0f};
+    return map_origin + cell_to_world*grid.meta.resolution;
+}
+
+intern apply_delta_to_occgrid(map_panel *mp, const occupancy_grid_update &grid)
+{
+    mp->occ_grid_map.cells.resize(grid.meta.width*grid.meta.height);
+    for (int i = 0; i < grid.meta.change_elem_count; ++i)
+    {
+        u32 map_ind = (grid.change_elems[i] >> 8);
+        u8 prob = (u8)grid.change_elems[i];
+        mp->occ_grid_map[map_ind].prob = (float)prob / 100.0f;
+    }
+}
+
+intern void update_scene_from_occ_grid(map_panel *mp, const occupancy_grid_update &grid)
+{
+    apply_delta_to_occgrid(mp, grid);
+
+    vec2 cell_size = {grid.meta.resolution, grid.meta.resolution};
+
+    mp->occ_grid_bb->SetNumBillboards(mp->);
+    for (int i = 0; i < grid.meta.change_elem_count; ++i)
+    {
+        u32 map_ind = (grid.change_elems[i] >> 8);
+        u8 prob = (u8)grid.change_elems[i];
+        auto bb = mp->scan_bb->GetBillboard(i);
+        if (prob > 0)
+        {
+            bb->position_ = get_global_pos_from_grid_space(map_ind, grid);
+            bb->size_ = cell_size;
+            bb->enabled_ = true;
+            float alpha = (float)prob / 100.0;
+            bb->color_ = {1.0f, 1.0f, 1.0f, alpha};
+        }
+        else
+        {
+            bb->enabled_ = false;
+        }
+    }
+    mp->scan_bb->Commit();
 }
 
 intern void update_scene_from_scan(map_panel *mp, const jackal_laser_scan &packet)

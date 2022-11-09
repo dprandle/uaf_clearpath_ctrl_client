@@ -27,9 +27,9 @@
 int main(int argc, char **argv)
 {
     //urho::ParseArguments(argc, argv);
-    urho::Context urho_ctxt{};
+    auto urho_ctxt = new urho::Context;
     jackal_control_ctxt jctrl{};
-    jctrl.urho_ctxt = &urho_ctxt;
+    jctrl.urho_ctxt = urho_ctxt;
 
     if (!jctrl_init(&jctrl))
         return 0;
