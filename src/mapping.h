@@ -18,15 +18,16 @@ struct ui_info;
 struct net_connection;
 struct input_data;
 
-struct occ_grid_cell
-{
-    float prob {0.0};
-};
+// struct occ_grid_cell
+// {
+//     float prob {0.0};
+//     bool enabled {false};
+// };
 
-struct occ_grid_map
-{
-    std::vector<occ_grid_cell> cells;
-};
+// struct occ_grid_map
+// {
+//     std::vector<occ_grid_cell> cells;
+// };
 
 struct map_panel
 {
@@ -37,7 +38,7 @@ struct map_panel
     
     urho::Node * occ_grid_node;
     urho::BillboardSet * occ_grid_bb;
-    occ_grid_map occ_grid_map;
+    //occ_grid_map occ_grid_map;
 
     urho::Node * jackal_node;
 

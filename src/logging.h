@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Urho3D/IO/Log.h>
+#include "typedefs.h"
 
 #define tlog URHO3D_LOGTRACEF
 #define dlog URHO3D_LOGDEBUGF

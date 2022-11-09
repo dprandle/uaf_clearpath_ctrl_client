@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <fcntl.h>
 
+#include "pack_unpack.h"
 #include "ss_router.h"
 #include "typedefs.h"
 #include "network.h"
@@ -13,14 +14,16 @@
 
 static constexpr int MAX_RX_PACKET_SIZE = 30 * MB_SIZE;
 
-#define SCAN_DEBUG
+//#define SCAN_DEBUG
+//#define OCC_DEBUG
+//#define PACKET_DEBUG
 
 #if defined(OCC_DEBUG)
 #define occ_dlog dlog
 #define OCC_PACK_LOG_ENABLE log_set_level(urho::LOG_TRACE);
 #define OCC_PACK_LOG_DISABLE log_set_level(urho::LOG_DEBUG);
 #else
-#define occ_dlog
+#define occ_dlog(...)
 #define OCC_PACK_LOG_ENABLE
 #define OCC_PACK_LOG_DISABLE
 #endif
@@ -30,9 +33,15 @@ static constexpr int MAX_RX_PACKET_SIZE = 30 * MB_SIZE;
 #define SCAN_PACK_LOG_ENABLE log_set_level(urho::LOG_TRACE);
 #define SCAN_PACK_LOG_DISABLE log_set_level(urho::LOG_DEBUG);
 #else
-#define scan_dlog
+#define scan_dlog(...)
 #define SCAN_PACK_LOG_ENABLE
 #define SCAN_PACK_LOG_DISABLE
+#endif
+
+#if defined(PACKET_DEBUG)
+#define packet_dlog dlog
+#else
+#define packet_dlog(...)
 #endif
 
 void net_connect(net_connection *conn, int max_timeout_ms)
@@ -140,42 +149,42 @@ intern sizet dispatch_received_packet(binary_fixed_buffer_archive<MAX_RX_PACKET_
         SCAN_PACK_LOG_ENABLE
         static jackal_laser_scan scan{};
         pack_unpack(read_buf, scan, {});
-        scan_dlog("Got scan packet - %d available bytes and %d packet size - new offset is %d",
-             available,
-             read_buf.cur_offset - cached_offset,
-             read_buf.cur_offset);
+        scan_dlog("Got scan packet - %d available bytes and %d packet size - new offset is %d", available, read_buf.cur_offset - cached_offset, read_buf.cur_offset);
         conn->scan_received(0, scan);
         SCAN_PACK_LOG_DISABLE
     }
     else if (matches_packet_id(OC_GRID_PCKT_ID, read_buf.data + read_buf.cur_offset))
     {
         static occupancy_grid_update gu{};
-        
-        OCC_PACK_LOG_ENABLE
-        
+
         pack_unpack(read_buf, gu.header, {"header"});
         pack_unpack(read_buf, gu.meta, {"meta"});
 
         sizet meta_and_header_size = read_buf.cur_offset - cached_offset;
         sizet total_packet_size = gu.meta.change_elem_count * sizeof(u32) + meta_and_header_size;
-        
-        occ_dlog("Got occ grid packet header/meta - %d available bytes and %d calculated packet size (%d header/meta)",
-             available,
-             total_packet_size,
-             meta_and_header_size);
 
         if (available >= total_packet_size)
-        {
-            occ_dlog("Received complete occgrid packet");
+        {            
             pack_unpack(read_buf, gu.change_elems, {"change_elems", {pack_va_flags::FIXED_ARRAY_CUSTOM_SIZE, &gu.meta.change_elem_count}});
+
+            occ_dlog("Got occ grid packet - %d available bytes and %d calculated packet size (%d header/meta), new offset is %d",
+                     available,
+                     total_packet_size,
+                     meta_and_header_size,
+                     read_buf.cur_offset);
+
+            static u8 buf[100];
+            binary_buffer_archive ba{buf, PACK_DIR_OUT};
+            OCC_PACK_LOG_ENABLE
+            pack_unpack(ba, gu.meta, {"meta"});
+            OCC_PACK_LOG_DISABLE
             conn->occ_grid_update_received(0, gu);
         }
         else
         {
-            occ_dlog("Not enough available bytes - restoring offset %d to cached offset %d", read_buf.cur_offset, cached_offset);
+            //occ_dlog("Not enough available bytes - restoring offset %d to cached offset %d", read_buf.cur_offset, cached_offset);
             read_buf.cur_offset = cached_offset;
         }
-        OCC_PACK_LOG_DISABLE
     }
     return read_buf.cur_offset - cached_offset;
 }
@@ -195,7 +204,7 @@ void net_rx(net_connection *conn)
     if (rd_cnt > 0)
     {
         available += rd_cnt;
-        dlog("Got %d more bytes total available %d (current packet size: %d)", rd_cnt, available, current_packet_size);
+        packet_dlog("Added %d bytes to available - result:%d", rd_cnt, available);
     }
     else if (rd_cnt < 0 && errno != EAGAIN && errno != EWOULDBLOCK)
     {
@@ -213,7 +222,7 @@ void net_rx(net_connection *conn)
         }
         else
         {
-            dlog("Found packet header for packet size %d (available:%d  Readbuf offset:%d)", current_packet_size, available, read_buf.cur_offset);
+            packet_dlog("Found packet header for packet size %d (available:%d  Readbuf offset:%d)", current_packet_size, available, read_buf.cur_offset);
         }
     }
 
@@ -223,11 +232,18 @@ void net_rx(net_connection *conn)
         if (bytes_processed > 0)
         {
             available -= bytes_processed;
-            dlog("Read entire packet of %d bytes starting at offset %d (packet size before was %d) - there are %d remaining available bytes to be read",
-                 bytes_processed,
-                 read_buf.cur_offset,
-                 current_packet_size,
-                 available);
+            packet_dlog("Read entire packet of %d bytes - ended at offset %d (packet size before was %d) - there are %d remaining available bytes to be read",
+                        bytes_processed,
+                        read_buf.cur_offset,
+                        current_packet_size,
+                        available);
+
+            // Copy any remaining available bytes to the beginning of the buffer - otherwise if available is greater than the packet header size
+            // not only will we lose those bytes, but we will also mistakenly reconsider the first "available" count of bytes as if they just came
+            // in - ie we would see whatever we just processed packet header again and wait until all the bytes came through... This gets ugly
+            // if we have info in the packet to determine how many bytes we should later expect
+            memcpy(read_buf.data, read_buf.data + read_buf.cur_offset, available);
+
             current_packet_size = 0;
             read_buf.cur_offset = 0;
         }

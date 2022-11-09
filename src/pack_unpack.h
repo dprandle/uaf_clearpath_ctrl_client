@@ -27,9 +27,9 @@ struct is_binary_archive
 
 struct binary_buffer_archive
 {
+    u8 *data;
     int dir;
     sizet cur_offset {0};
-    u8 *data;
 };
 
 // Enable type trait
