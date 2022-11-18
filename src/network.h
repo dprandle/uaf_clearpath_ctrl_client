@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Urho3D/Math/Quaternion.h"
 #include "ss_router.h"
 #include "math_utils.h"
 #include "pack_unpack.h"
@@ -13,7 +14,7 @@ inline const char *SERVER_IP = "192.168.1.103";
 
 inline const char *SCAN_PACKET_ID = "SCAN_PCKT_ID";
 inline const char *OC_GRID_PCKT_ID = "OC_GRID_PCKT_ID";
-
+inline const char *TFORM_PCKT_ID = "TFORM_PCKT_ID";
 
 struct dvec3
 {
@@ -49,12 +50,12 @@ pup_func(dquat)
 
 inline vec3 vec3_from(const dvec3 &vec)
 {
-    return {(float)vec.x, (float)vec.y, (float)vec.z};
+    return {(float)vec.x, (float)vec.y, -(float)vec.z};
 }
 
 inline quat quat_from(const dquat &q)
 {
-    return {(float)q.x, (float)q.y, (float)q.z, (float)q.w};
+    return {(float)q.w, (float)q.x, (float)q.y, (float)q.z};
 }
 
 struct packet_header
@@ -92,27 +93,60 @@ pup_func(command_velocity)
     pup_member(vinfo);
 }
 
-struct jackal_laser_scan
+struct sicklms_laser_scan_meta
 {
-    static constexpr int SCAN_POINTS = 720;
-    packet_header header{"SCAN_PCKT_ID"};
     float angle_min;
     float angle_max;
     float angle_increment;
     float range_min;
     float range_max;
-    float scan[SCAN_POINTS];
 };
 
-pup_func(jackal_laser_scan)
+inline sizet sicklms_get_range_count(const sicklms_laser_scan_meta & meta) {
+    return (sizet)((meta.angle_max - meta.angle_min)/meta.angle_increment) + 1;
+}
+
+pup_func(sicklms_laser_scan_meta)
 {
-    pup_member(header);
     pup_member(angle_min);
     pup_member(angle_max);
     pup_member(angle_increment);
     pup_member(range_min);
     pup_member(range_max);
-    pup_member(scan);
+}
+
+struct sicklms_laser_scan
+{
+    static constexpr int MAX_SCAN_POINTS = 1000;
+    packet_header header{"SCAN_PCKT_ID"};
+    sicklms_laser_scan_meta meta;
+    float ranges[MAX_SCAN_POINTS];
+};
+
+pup_func(sicklms_laser_scan)
+{
+    pup_member(header);
+    pup_member(meta);
+    pup_member(ranges);
+}
+
+struct node_transform
+{
+    static constexpr int NODE_NAME_SIZE = 32;
+    packet_header header{"TFORM_PCKT_ID"};
+    char parent_name[NODE_NAME_SIZE];
+    char name[NODE_NAME_SIZE];
+    dvec3 pos;
+    dquat orientation;
+};
+
+pup_func(node_transform)
+{
+    pup_member(header);
+    pup_member(parent_name);
+    pup_member(name);
+    pup_member(pos);
+    pup_member(orientation);
 }
 
 struct occ_grid_meta
@@ -154,16 +188,18 @@ pup_func(occupancy_grid_update)
 
 struct net_connection
 {
-    int socket_fd{0};
-    ss_signal<const jackal_laser_scan &> scan_received;
+    int socket_handle{0};
+
+    ss_signal<const sicklms_laser_scan &> scan_received;
     ss_signal<const occupancy_grid_update &> occ_grid_update_received;
+    ss_signal<const node_transform &> transform_updated;
 };
 
 void net_connect(net_connection *conn, int max_timeout_ms = -1);
 
 inline bool net_connected(const net_connection &conn)
 {
-    return conn.socket_fd > 0;
+    return conn.socket_handle > 0;
 }
 
 void net_rx(net_connection *conn);

@@ -5,8 +5,6 @@
 
 #if defined(DEBUG_VERSION)
 #include <cassert>
-#else
-#define assert(param)
 #endif
 
 using i8 = int8_t;

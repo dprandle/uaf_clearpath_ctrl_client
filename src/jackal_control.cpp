@@ -10,6 +10,7 @@
 #include <Urho3D/Engine/DebugHud.h>
 #include <Urho3D/Scene/Scene.h>
 
+#include "Urho3D/IO/Log.h"
 #include "input.h"
 #include "joystick.h"
 #include "logging.h"
@@ -88,8 +89,13 @@ bool jctrl_init(jackal_control_ctxt *ctxt)
         return false;
     
     log_init(ctxt->urho_ctxt);
+
+#if defined(DEBUG_VERSION)
     log_set_level(urho::LOG_DEBUG);
-    
+#else
+    log_set_level(urho::LOG_DEBUG);
+#endif   
+
     setup_ui_info(&ctxt->ui_inf, ctxt->urho_ctxt);
 
     setup_main_renderer(ctxt);
