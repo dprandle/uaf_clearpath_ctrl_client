@@ -43,6 +43,7 @@ struct map_panel
     urho::BillboardSet * occ_grid_bb {};
 
     urho::Node * base_link {};
+    urho::Node * odom {};
     ss_router router;
 
     std::unordered_map<std::string, urho::Node*> node_lut;

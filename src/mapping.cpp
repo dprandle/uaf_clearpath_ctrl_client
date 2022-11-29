@@ -168,7 +168,7 @@ intern void create_3dview(map_panel *mp, urho::ResourceCache *cache, urho::UIEle
     mp->view->SetView(scene, cam, true);
     mp->view->GetViewport()->SetRenderPath(rpath);
 
-    cam_node->SetPosition({0, 2.5, -10});
+    cam_node->SetPosition({0, 0, -10});
     cam_node->SetRotation(quat(-1.0, {1,0,0}));
     cam_node->SetRotation(quat(0.0, {1,0,0}));
 
@@ -216,15 +216,25 @@ intern void create_jackal(map_panel *mp, urho::ResourceCache *cache)
     smodel = fl_wheel_node->CreateComponent<urho::StaticModel>();
     smodel->SetModel(jackal_wheel_model);
     smodel->SetMaterial(jackal_base_mat);
-    fl_wheel_node->Rotate({90, {1, 0, 0}});
-    fl_wheel_node->Translate({0.0f,0.0f,-0.25f}, urho::TransformSpace::World);
+    fl_wheel_node->Rotate({90, {-1, 0, 0}});
 
     auto fr_wheel_node = mp->node_lut[FRONT_RIGHT_WHEEL_LINK]->CreateChild("fr_wheel_model");
     smodel = fr_wheel_node->CreateComponent<urho::StaticModel>();
     smodel->SetModel(jackal_wheel_model);
     smodel->SetMaterial(jackal_base_mat);
-    fr_wheel_node->Rotate({90, {1, 0, 0}});
-    fr_wheel_node->Translate({0.0f,0.0f,-0.25f}, urho::TransformSpace::World);
+    fr_wheel_node->Rotate({90, {-1, 0, 0}});
+
+    auto rl_wheel_node = mp->node_lut[REAR_LEFT_WHEEL_LINK]->CreateChild("rl_wheel_model");
+    smodel = rl_wheel_node->CreateComponent<urho::StaticModel>();
+    smodel->SetModel(jackal_wheel_model);
+    smodel->SetMaterial(jackal_base_mat);
+    rl_wheel_node->Rotate({90, {-1, 0, 0}});
+
+    auto rr_wheel_node = mp->node_lut[REAR_RIGHT_WHEEL_LINK]->CreateChild("rr_wheel_model");
+    smodel = rr_wheel_node->CreateComponent<urho::StaticModel>();
+    smodel->SetModel(jackal_wheel_model);
+    smodel->SetMaterial(jackal_base_mat);
+    rr_wheel_node->Rotate({90, {-1, 0, 0}});
 }
 
 intern void setup_scene(map_panel *mp, urho::ResourceCache *cache, urho::Scene *scene)
@@ -236,10 +246,7 @@ intern void setup_scene(map_panel *mp, urho::ResourceCache *cache, urho::Scene *
     mp->map_text = new urho::Texture2D(mp->view->GetContext());
     mp->map_image = new urho::Image(mp->view->GetContext());
 
-    quat rot{};
-    rot.FromAngleAxis(180.0, {1, 0, 0});
     auto root = scene->CreateChild("root");
-    //root->SetRotation(rot);
 
     // Main localization node - all nodes child of this node..
     // TODO: This should likely be created only upon first receiving a scan?
@@ -267,11 +274,11 @@ intern void setup_scene(map_panel *mp, urho::ResourceCache *cache, urho::Scene *
     mp->node_lut[MAP] = mp->map;
 
     // Odom frame is smoothly moving while map may experience discreet jumps
-    auto odom = mp->map->CreateChild(ODOM.c_str());
-    mp->node_lut[ODOM] = odom;
+    mp->odom = mp->map->CreateChild(ODOM.c_str());
+    mp->node_lut[ODOM] = mp->odom;
 
     // Base link is main node tied to the jackal base
-    mp->base_link = odom->CreateChild(BASE_LINK.c_str());
+    mp->base_link = mp->odom->CreateChild(BASE_LINK.c_str());
     mp->node_lut[BASE_LINK] = mp->base_link;
 
     // Follow camera for the jackal
@@ -283,15 +290,18 @@ intern void setup_scene(map_panel *mp, urho::ResourceCache *cache, urho::Scene *
     auto chassis_link = mp->base_link->CreateChild(CHASSIS_LINK.c_str());
     mp->node_lut[CHASSIS_LINK] = chassis_link;
 
+    auto offset_link = chassis_link->CreateChild("offset_link");
+    offset_link->Translate({0.0f, 0.0f, -0.065f});
+
     // Children of chassis linkg
     mp->node_lut[FRONT_FENDER_LINK] = chassis_link->CreateChild(FRONT_FENDER_LINK.c_str());
-    mp->node_lut[FRONT_LEFT_WHEEL_LINK] = chassis_link->CreateChild(FRONT_LEFT_WHEEL_LINK.c_str());
-    mp->node_lut[FRONT_RIGHT_WHEEL_LINK] = chassis_link->CreateChild(FRONT_RIGHT_WHEEL_LINK.c_str());
+    mp->node_lut[FRONT_LEFT_WHEEL_LINK] = offset_link->CreateChild(FRONT_LEFT_WHEEL_LINK.c_str());
+    mp->node_lut[FRONT_RIGHT_WHEEL_LINK] = offset_link->CreateChild(FRONT_RIGHT_WHEEL_LINK.c_str());
     mp->node_lut[IMU_LINK] = chassis_link->CreateChild(IMU_LINK.c_str());
     mp->node_lut[NAVSAT_LINK] = chassis_link->CreateChild(NAVSAT_LINK.c_str());
     mp->node_lut[REAR_FENDER_LINK] = chassis_link->CreateChild(REAR_FENDER_LINK.c_str());
-    mp->node_lut[REAR_LEFT_WHEEL_LINK] = chassis_link->CreateChild(REAR_LEFT_WHEEL_LINK.c_str());
-    mp->node_lut[REAR_RIGHT_WHEEL_LINK] = chassis_link->CreateChild(REAR_RIGHT_WHEEL_LINK.c_str());
+    mp->node_lut[REAR_LEFT_WHEEL_LINK] = offset_link->CreateChild(REAR_LEFT_WHEEL_LINK.c_str());
+    mp->node_lut[REAR_RIGHT_WHEEL_LINK] = offset_link->CreateChild(REAR_RIGHT_WHEEL_LINK.c_str());
     auto mid_mount = chassis_link->CreateChild(MID_MOUNT.c_str());
     mp->node_lut[MID_MOUNT] = mid_mount;
 
@@ -312,7 +322,6 @@ intern void setup_scene(map_panel *mp, urho::ResourceCache *cache, urho::Scene *
     mp->node_lut[FRONT_LASER] = mp->front_laser;
 
     create_jackal(mp, cache);
-
 }
 
 intern ivec2 index_to_texture_coords(u32 index, u32 row_width, u32 height)
@@ -415,24 +424,29 @@ intern void update_node_transform(map_panel *mp, const node_transform &tform)
     if (node_parent_fiter != mp->node_lut.end())
         parent = node_parent_fiter->second;
 
-    if (node->GetParent() != parent)
+    auto node_parent = node->GetParent();
+    urho::Node* node_parent_parent = nullptr;
+    if (node_parent)
+        node_parent_parent = node_parent->GetParent();
+    
+    if (node_parent != parent && node_parent_parent != parent)
     {
         wlog("Received update for node %s with different parent than received in packet (%s)", tform.name, tform.parent_name);
     }
 
-    node->SetPosition(vec3_from(tform.pos));
-    node->SetRotation(quat_from(tform.orientation));
+    node->SetPositionSilent(vec3_from(tform.pos));
+    node->SetRotationSilent(quat_from(tform.orientation));
 }
 
 intern void map_panel_run_frame(map_panel *mp, float dt)
 {
-    // auto deb_r = mp->view->GetScene()->GetComponent<urho::DebugRenderer>();
-    // deb_r->AddLine(vec3{orig.x_,orig.y_,-0.2}, {0,0,-0.2}, {1,0,0});
-    // deb_r->AddLine(orig, orig + vec3{(float)mp->map_image->GetWidth(), 0.0f, 0} * res, {0,0,1});
-    // //deb_r->AddLine(orig, orig + vec3{(float)mp->map_image->GetWidth(), 0.0f, 0} * res, {0,0,1});
-
-    // auto render = mp->view->GetContext()->GetSubsystem<urho::Renderer>();
-    // render->DrawDebugGeometry(true);
+    static float counter = 0.0f;
+    counter += dt;
+    if (counter >= 0.030f)
+    {
+        mp->odom->MarkDirty();
+        counter = 0.0f;
+    }
 }
 
 void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, input_data *inp)

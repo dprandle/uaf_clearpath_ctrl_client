@@ -48,7 +48,7 @@ inline vec3 vec3_from(const dvec3 &vec)
 
 inline quat quat_from(const dquat &q)
 {
-    return {(float)q.w, (float)q.x, (float)q.y, (float)q.z};
+    return {(float)q.w, (float)q.x, (float)-q.y, (float)q.z};
 }
 
 struct packet_header
