@@ -45,7 +45,7 @@ int input_remove_triggers(input_keymap *kmap, const input_trigger_cond &cond)
     return kmap->tmap.erase(cond.lookup_key);
 }
 
-intern viewport_info viewport_with_mouse(const std::vector<viewport_element> &vp_stack, const ivec2 &screen_size, const vec2 &norm_mpos, const vec2 &norm_mdelta)
+intern viewport_info viewport_with_mouse(const std::vector<viewport_element> &vp_stack, const ivec2 &screen_size, const vec2 &norm_mpos, const vec2 &norm_mdelta, double inv_pixel_ratio)
 {
     viewport_info ret{};
 
@@ -68,8 +68,8 @@ intern viewport_info viewport_with_mouse(const std::vector<viewport_element> &vp
 
         vec2 ll(min.x_, min.y_);
         vec2 ur(max.x_, max.y_);
-        vec2 mpos = norm_mpos * sz_f;
-        vec2 mdelta = norm_mdelta * sz_f;
+        vec2 mpos = norm_mpos * sz_f * inv_pixel_ratio;
+        vec2 mdelta = norm_mdelta * sz_f * inv_pixel_ratio;
 
         if (scrn == irect())
             ur = sz_f;
@@ -141,7 +141,7 @@ intern void on_key_down(input_uevent_handlers *uh, Urho3D::StringHash event_type
                                       uh->ictxt->current_norm_mpos,
                                       {},
                                       {},
-                                      viewport_with_mouse(uh->ictxt->vp_stack, screen_size, uh->ictxt->current_norm_mpos, {})};
+                                      viewport_with_mouse(uh->ictxt->vp_stack, screen_size, uh->ictxt->current_norm_mpos, {}, uh->ictxt->inv_pixel_ratio)};
                     uh->ictxt->trigger(trig.name, ev);
                 }
                 uh->ictxt->active_triggers.push_back(trig);
@@ -173,7 +173,7 @@ intern void on_key_up(input_uevent_handlers *uh, urho::StringHash event_type, ur
             if ((curt.tstate & T_END) == T_END)
             {
                 itrigger_event ev{
-                    curt.name, T_END, uh->ictxt->current_norm_mpos, {}, {}, viewport_with_mouse(uh->ictxt->vp_stack, screen_size, uh->ictxt->current_norm_mpos, {})};
+                    curt.name, T_END, uh->ictxt->current_norm_mpos, {}, {}, viewport_with_mouse(uh->ictxt->vp_stack, screen_size, uh->ictxt->current_norm_mpos, {}, uh->ictxt->inv_pixel_ratio)};
                 uh->ictxt->trigger(curt.name, ev);
             }
             iter = uh->ictxt->active_triggers.erase(iter);
@@ -242,7 +242,7 @@ intern void on_mouse_down(input_uevent_handlers *uh, urho::StringHash event_type
                                       uh->ictxt->current_norm_mpos,
                                       norm_mdelta,
                                       wheel,
-                                      viewport_with_mouse(uh->ictxt->vp_stack, screen_size, uh->ictxt->current_norm_mpos, norm_mdelta)};
+                                      viewport_with_mouse(uh->ictxt->vp_stack, screen_size, uh->ictxt->current_norm_mpos, norm_mdelta, uh->ictxt->inv_pixel_ratio)};
                     uh->ictxt->trigger(trig.name, ev);
                 }
 
@@ -274,7 +274,7 @@ intern void on_mouse_up(input_uevent_handlers *uh, Urho3D::StringHash event_type
             if (((curt.tstate & T_END) == T_END))
             {
                 itrigger_event ev{
-                    curt.name, T_END, uh->ictxt->current_norm_mpos, {}, {}, viewport_with_mouse(uh->ictxt->vp_stack, screen_size, uh->ictxt->current_norm_mpos, {})};
+                    curt.name, T_END, uh->ictxt->current_norm_mpos, {}, {}, viewport_with_mouse(uh->ictxt->vp_stack, screen_size, uh->ictxt->current_norm_mpos, {}, uh->ictxt->inv_pixel_ratio)};
                 uh->ictxt->trigger(curt.name, ev);
             }
             iter = uh->ictxt->active_triggers.erase(iter);

@@ -5,13 +5,6 @@
 #include "math_utils.h"
 #include "pack_unpack.h"
 
-#if defined(__EMSCRIPTEN__)
-inline const int SERVER_PORT = 8080;
-#else
-inline const int SERVER_PORT = 4000;
-#endif
-inline const char *SERVER_IP = "192.168.1.103";
-
 inline const char *SCAN_PACKET_ID = "SCAN_PCKT_ID";
 inline const char *OC_GRID_PCKT_ID = "OC_GRID_PCKT_ID";
 inline const char *TFORM_PCKT_ID = "TFORM_PCKT_ID";
@@ -195,7 +188,7 @@ struct net_connection
     ss_signal<const node_transform &> transform_updated;
 };
 
-void net_connect(net_connection *conn, int max_timeout_ms = -1);
+void net_connect(net_connection *conn, const char *ip, int port, int max_timeout_ms = -1);
 
 inline bool net_connected(const net_connection &conn)
 {

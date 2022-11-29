@@ -65,7 +65,15 @@ intern net_rx_buffer rx_buf;
 
 #if defined(__EMSCRIPTEN__)
 #include <emscripten/websocket.h>
-inline const char *SERVER_URL = "ws://192.168.1.103:8080";
+
+EM_JS(const char*, get_browser_url, (), {
+    let host = window.location.host;
+    let length = lengthBytesUTF8(host) + 1;
+    let str = _malloc(length);
+    stringToUTF8(host, str, length);
+    console.log(`Should be returning  ${length} bytes for ${host}`);
+    return str;
+});
 
 /*
 #define EMSCRIPTEN_RESULT_NOT_SUPPORTED       -1
@@ -167,11 +175,18 @@ intern void em_net_write(const net_connection &conn, const u8 *data, sizet data_
 
 intern void em_net_connect(net_connection *conn)
 {
+    char SERVER_URL[64] = "ws://";
+
     if (!emscripten_websocket_is_supported())
     {
         elog("Websockets not supported in this browser");
         return;
     }
+
+    const char *url = get_browser_url();
+    strncat(SERVER_URL, url, 64);
+
+    ilog("URL: %s", SERVER_URL);
 
     EmscriptenWebSocketCreateAttributes attribs{};
     attribs.url = SERVER_URL;
@@ -193,7 +208,7 @@ intern void em_net_connect(net_connection *conn)
 }
 #endif
 
-void net_connect(net_connection *conn, int max_timeout_ms)
+void net_connect(net_connection *conn, const char *ip, int port, int max_timeout_ms)
 {
 #if defined(__EMSCRIPTEN__)
     em_net_connect(conn);
@@ -218,52 +233,52 @@ void net_connect(net_connection *conn, int max_timeout_ms)
     memset(&server_addr, 0, sizeof(server_addr));
 
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(SERVER_PORT);
+    server_addr.sin_port = htons(port);
 
-    if (!inet_pton(AF_INET, SERVER_IP, &server_addr.sin_addr.s_addr))
+    if (!inet_pton(AF_INET, ip, &server_addr.sin_addr.s_addr))
     {
         elog("Failed PTON");
         goto cleanup;
     }
 
-    ilog("Connecting to server at %s on port %d", SERVER_IP, SERVER_PORT);
+    ilog("Connecting to server at %s on port %d", ip, port);
     if (connect(sckt_fd[0].fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) != 0 && errno != EINPROGRESS)
     {
-        elog("Failed connecting to server at %s on port %d - resulting fd %d - error %s", SERVER_IP, SERVER_PORT, sckt_fd[0].fd, strerror(errno));
+        elog("Failed connecting to server at %s on port %d - resulting fd %d - error %s", ip, port, sckt_fd[0].fd, strerror(errno));
         goto cleanup;
     }
 
     pret = poll(sckt_fd, 1, max_timeout_ms);
     if (pret == 0)
     {
-        elog("Poll timed out connecting to server %s on port %d for fd %d", SERVER_IP, SERVER_PORT, sckt_fd[0].fd);
+        elog("Poll timed out connecting to server %s on port %d for fd %d", ip, port, sckt_fd[0].fd);
         goto cleanup;
     }
     else if (pret == -1)
     {
-        elog("Failed poll on trying to connect to server at %s on port %d - resulting fd %d - error %s", SERVER_IP, SERVER_PORT, sckt_fd[0].fd, strerror(errno));
+        elog("Failed poll on trying to connect to server at %s on port %d - resulting fd %d - error %s", ip, port, sckt_fd[0].fd, strerror(errno));
         goto cleanup;
     }
     else
     {
         if (test_flags(sckt_fd[0].revents, POLLERR))
         {
-            elog("Failed connecting to server at %s on port %d - resulting fd %d - POLLERR", SERVER_IP, SERVER_PORT, sckt_fd[0].fd);
+            elog("Failed connecting to server at %s on port %d - resulting fd %d - POLLERR", ip, port, sckt_fd[0].fd);
             goto cleanup;
         }
         else if (test_flags(sckt_fd[0].revents, POLLHUP))
         {
-            elog("Failed connecting to server at %s on port %d - resulting fd %d - POLLHUP", SERVER_IP, SERVER_PORT, sckt_fd[0].fd);
+            elog("Failed connecting to server at %s on port %d - resulting fd %d - POLLHUP", ip, port, sckt_fd[0].fd);
             goto cleanup;
         }
         else if (test_flags(sckt_fd[0].revents, POLLNVAL))
         {
-            elog("Failed connecting to server at %s on port %d - resulting fd %d - POLLNVAL", SERVER_IP, SERVER_PORT, sckt_fd[0].fd);
+            elog("Failed connecting to server at %s on port %d - resulting fd %d - POLLNVAL", ip, port, sckt_fd[0].fd);
             goto cleanup;
         }
     }
     conn->socket_handle = sckt_fd[0].fd;
-    ilog("Successfully connected to server at %s on port %d - resulting fd %d", SERVER_IP, SERVER_PORT, sckt_fd[0].fd);
+    ilog("Successfully connected to server at %s on port %d - resulting fd %d", ip, port, sckt_fd[0].fd);
     return;
 
 cleanup:

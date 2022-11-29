@@ -55,7 +55,7 @@ struct jackal_control_ctxt
     ss_router router;
 };
 
-bool jctrl_init(jackal_control_ctxt * ctxt);
+bool jctrl_init(jackal_control_ctxt * ctxt, const urho::StringVector & args);
 void jctrl_term(jackal_control_ctxt * ctxt);
 
 void jctrl_exec(jackal_control_ctxt * ctxt);

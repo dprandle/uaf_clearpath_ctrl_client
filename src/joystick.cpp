@@ -30,6 +30,7 @@ intern void handle_update(joystick_panel *jsp, net_connection *conn)
 
 intern void handle_joystick_move_begin(joystick_panel *jsp, const ui_info &ui_inf)
 {
+    jsp->in_use(0, true);
     ivec2 pos = jsp->js->GetPosition();
     jsp->cached_js_pos = pos;
     ivec2 cmp;
@@ -43,6 +44,7 @@ intern void handle_joystick_move_end(joystick_panel *jsp)
     jsp->js->SetEnableAnchor(true);
     jsp->cached_js_pos = {};
     jsp->cached_mouse_pos = {};
+    jsp->in_use(0, false);
 }
 
 intern void setup_event_handlers(joystick_panel *jsp, const ui_info &ui_inf, net_connection *conn)
@@ -80,7 +82,8 @@ intern void create_joystick_ui(joystick_panel *jsp,const ui_info &ui_inf, urho::
     jsp->js = new urho::Button(uctxt);
 
     ui_inf.ui_sys->GetRoot()->AddChild(jsp->frame);
-    jsp->frame->SetColor({0.2f, 0.2f, 0.2f, 0.7f});
+    jsp->frame->SetPriority(1);
+    jsp->frame->SetColor({0.0f, 0.0f, 0.0f, 0.0f});
     jsp->frame->SetEnableAnchor(true);
     jsp->frame->SetMinAnchor(0.0f, 0.7f);
     jsp->frame->SetMaxAnchor(1.0f, 1.0f);

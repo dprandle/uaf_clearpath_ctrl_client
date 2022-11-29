@@ -21,17 +21,6 @@ struct ui_info;
 struct net_connection;
 struct input_data;
 
-// struct occ_grid_cell
-// {
-//     float prob {0.0};
-//     bool enabled {false};
-// };
-
-// struct occ_grid_map
-// {
-//     std::vector<occ_grid_cell> cells;
-// };
-
 struct updated_tform
 {
     vec3 pos;
@@ -42,21 +31,21 @@ struct updated_tform
 
 struct map_panel
 {
-    urho::View3D *view{};
+    bool js_enabled {false};
+    urho::View3D *view {};
 
-    urho::Node * front_laser;
-    urho::BillboardSet * scan_bb;
+    urho::Node * front_laser {};
+    urho::BillboardSet * scan_bb {};
     
-    urho::Node * map;
-    urho::Texture2D * map_text;
-    urho::Image * map_image;
-    urho::BillboardSet * occ_grid_bb;
+    urho::Node * map {};
+    urho::Texture2D * map_text {};
+    urho::Image * map_image {};
+    urho::BillboardSet * occ_grid_bb {};
 
-    urho::Node * base_link;
+    urho::Node * base_link {};
     ss_router router;
 
     std::unordered_map<std::string, urho::Node*> node_lut;
-    std::unordered_map<urho::Node*, updated_tform> node_updates;
 };
 
 void map_panel_init(map_panel *jspanel, const ui_info &ui_inf, net_connection *conn, input_data * inp);

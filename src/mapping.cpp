@@ -62,10 +62,13 @@ intern const Color NO_GRID_COLOR = {0,0.7,0.7,1.0};
 
 intern void setup_camera_controls(map_panel *mp, urho::Node *cam_node, input_data *inp)
 {
-    auto on_mouse_move = [cam_node](const itrigger_event &tevent) {
-        auto world_dir = cam_node->GetWorldDirection();
+    auto on_mouse_move = [cam_node, mp](const itrigger_event &tevent) {
+        if (mp->js_enabled)
+            return;
         auto world_right = cam_node->GetWorldRight();
-        if (std::abs(world_dir.Angle({0, 0, 1}) - 90.0f) < 20)
+        auto world_up = cam_node->GetWorldUp();
+        float angle = std::abs(world_up.Angle({0, 0, 1}) - 90.0f);
+        if (std::abs(angle) > 70)
         {
             auto loc_trans = vec3(tevent.vp.vp_norm_mdelta.x_, {}, {}) * -20.0f;
             auto world_trans = vec3({}, {}, tevent.vp.vp_norm_mdelta.y_) * -20.0f;
@@ -74,14 +77,16 @@ intern void setup_camera_controls(map_panel *mp, urho::Node *cam_node, input_dat
         }
         else
         {
-            auto world_dir_no_z_norm = vec3(world_dir.x_, world_dir.y_, 0.0);
-            world_dir_no_z_norm.Normalize();
-            auto trans = world_right * -tevent.vp.vp_norm_mdelta.x_ + world_dir_no_z_norm * tevent.vp.vp_norm_mdelta.y_;
+            auto world_up_no_z_norm = vec3(world_up.x_, world_up.y_, 0.0);
+            world_up_no_z_norm.Normalize();
+            auto trans = world_right * -tevent.vp.vp_norm_mdelta.x_ + world_up_no_z_norm * tevent.vp.vp_norm_mdelta.y_;
             cam_node->Translate(trans * 20.0f, Urho3D::TransformSpace::World);
         }
     };
 
-    auto on_mouse_tilt = [cam_node](const itrigger_event &tevent) {
+    auto on_mouse_tilt = [cam_node, mp](const itrigger_event &tevent) {
+        if (mp->js_enabled)
+            return;
         auto rot_node = cam_node;
         auto parent = cam_node->GetParent();
         if (parent)
@@ -90,10 +95,12 @@ intern void setup_camera_controls(map_panel *mp, urho::Node *cam_node, input_dat
         rot_node->Rotate(quat(tevent.vp.vp_norm_mdelta.x_ * 100.0f, {0, 0, -1}), urho::TransformSpace::World);
     };
 
-    auto on_mouse_zoom = [cam_node](const itrigger_event &tevent) { 
+    auto on_mouse_zoom = [cam_node, mp](const itrigger_event &tevent) { 
+        if (mp->js_enabled)
+            return;
         float amount = tevent.wheel;
         #if defined(__EMSCRIPTEN__)
-        amount *= 0.1f;
+        amount *= 0.01f;
         #endif        
         cam_node->Translate(vec3{0, 0, amount}); 
         };
@@ -152,7 +159,7 @@ intern void create_3dview(map_panel *mp, urho::ResourceCache *cache, urho::UIEle
     root->AddChild(mp->view);
     mp->view->SetEnableAnchor(true);
     mp->view->SetMinAnchor({0.0f, 0.0f});
-    mp->view->SetMaxAnchor({1.0f, 0.7f});
+    mp->view->SetMaxAnchor({1.0f, 1.0f});
 
     scene->CreateComponent<urho::DebugRenderer>();
     scene->CreateComponent<urho::Octree>();
@@ -162,6 +169,8 @@ intern void create_3dview(map_panel *mp, urho::ResourceCache *cache, urho::UIEle
     mp->view->GetViewport()->SetRenderPath(rpath);
 
     cam_node->SetPosition({0, 2.5, -10});
+    cam_node->SetRotation(quat(-1.0, {1,0,0}));
+    cam_node->SetRotation(quat(0.0, {1,0,0}));
 
     auto zone_node = scene->CreateChild("Zone");
     auto zone = zone_node->CreateComponent<urho::Zone>();
@@ -180,12 +189,50 @@ intern void create_3dview(map_panel *mp, urho::ResourceCache *cache, urho::UIEle
     light->SetBrightness(0.7f);
 }
 
+intern void create_jackal(map_panel *mp, urho::ResourceCache *cache)
+{
+    auto jackal_base_model = cache->GetResource<urho::Model>("Models/jackal-base.mdl");
+    auto jackal_base_mat = cache->GetResource<urho::Material>("Materials/jackal_base.xml");
+    
+    auto jackal_fenders_model = cache->GetResource<urho::Model>("Models/jackal-fenders.mdl");
+    auto jackal_fender_mat = cache->GetResource<urho::Material>("Materials/jackal_fender.xml");
+
+    auto jackal_wheel_model = cache->GetResource<urho::Model>("Models/jackal-wheel.mdl");
+
+    // Create node for jackel model stuff
+    auto jackal_base_model_node = mp->base_link->CreateChild("jackal_base_model");
+    auto smodel = jackal_base_model_node->CreateComponent<urho::StaticModel>();
+    smodel->SetModel(jackal_base_model);
+    smodel->SetMaterial(jackal_base_mat);
+    jackal_base_model_node->Rotate({90, {0, 0, -1}});
+    jackal_base_model_node->Rotate({90, {-1, 0, 0}});
+
+    auto jackal_fender_node = jackal_base_model_node->CreateChild("jackal_fender");
+    smodel = jackal_fender_node->CreateComponent<urho::StaticModel>();
+    smodel->SetModel(jackal_fenders_model);
+    smodel->SetMaterial(jackal_fender_mat);
+
+    auto fl_wheel_node = mp->node_lut[FRONT_LEFT_WHEEL_LINK]->CreateChild("fl_wheel_model");
+    smodel = fl_wheel_node->CreateComponent<urho::StaticModel>();
+    smodel->SetModel(jackal_wheel_model);
+    smodel->SetMaterial(jackal_base_mat);
+    fl_wheel_node->Rotate({90, {1, 0, 0}});
+    fl_wheel_node->Translate({0.0f,0.0f,-0.25f}, urho::TransformSpace::World);
+
+    auto fr_wheel_node = mp->node_lut[FRONT_RIGHT_WHEEL_LINK]->CreateChild("fr_wheel_model");
+    smodel = fr_wheel_node->CreateComponent<urho::StaticModel>();
+    smodel->SetModel(jackal_wheel_model);
+    smodel->SetMaterial(jackal_base_mat);
+    fr_wheel_node->Rotate({90, {1, 0, 0}});
+    fr_wheel_node->Translate({0.0f,0.0f,-0.25f}, urho::TransformSpace::World);
+}
+
 intern void setup_scene(map_panel *mp, urho::ResourceCache *cache, urho::Scene *scene)
 {
     // Grab all resources needed
-    auto jackal_base = cache->GetResource<urho::Model>("Models/jackal-base.mdl");
     auto scan_mat = cache->GetResource<urho::Material>("Materials/scan_billboard.xml");
     auto occ_mat = cache->GetResource<urho::Material>("Materials/occ_billboard.xml");
+
     mp->map_text = new urho::Texture2D(mp->view->GetContext());
     mp->map_image = new urho::Image(mp->view->GetContext());
 
@@ -204,7 +251,7 @@ intern void setup_scene(map_panel *mp, urho::ResourceCache *cache, urho::Scene *
     mp->occ_grid_bb->SetFixedScreenSize(false);
     mp->occ_grid_bb->SetMaterial(occ_mat);
     mp->occ_grid_bb->SetFaceCameraMode(urho::FC_NONE);
-    mp->map_image->SetSize(1024,1024,4);
+    mp->map_image->SetSize(1024, 1024, 4);
     for (int y = 0; y < mp->map_image->GetHeight(); ++y)
     {
         for (int x = 0; x < mp->map_image->GetWidth(); ++x)
@@ -227,13 +274,7 @@ intern void setup_scene(map_panel *mp, urho::ResourceCache *cache, urho::Scene *
     mp->base_link = odom->CreateChild(BASE_LINK.c_str());
     mp->node_lut[BASE_LINK] = mp->base_link;
 
-    // Create node for jackel model stuff
-    auto jackal_model = mp->base_link->CreateChild("jackal_model");
-    auto smodel = jackal_model->CreateComponent<urho::StaticModel>();
-    smodel->SetModel(jackal_base);
-    jackal_model->Rotate({90, {0, 0, -1}});
-    jackal_model->Rotate({90, {-1, 0, 0}});
-
+    // Follow camera for the jackal
     auto jackal_follow_cam = mp->base_link->CreateChild("jackal_follow_cam");
     mp->view->GetCameraNode()->SetParent(jackal_follow_cam);
     jackal_follow_cam->Rotate({90, {0, 0, -1}});
@@ -270,12 +311,8 @@ intern void setup_scene(map_panel *mp, urho::ResourceCache *cache, urho::Scene *
     mp->scan_bb->SetFixedScreenSize(true);
     mp->node_lut[FRONT_LASER] = mp->front_laser;
 
-    auto niter = mp->node_lut.begin();
-    while (niter != mp->node_lut.end())
-    {
-        mp->node_updates[niter->second] = {};
-        ++niter;
-    }
+    create_jackal(mp, cache);
+
 }
 
 intern ivec2 index_to_texture_coords(u32 index, u32 row_width, u32 height)

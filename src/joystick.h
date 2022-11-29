@@ -22,6 +22,8 @@ struct joystick_panel
     ivec2 cached_js_pos;
     vec2 cached_mouse_pos;
     vec2 velocity;
+
+    ss_signal<bool> in_use;
 };
 
 void joystick_panel_run_frame(joystick_panel*jspanel, net_connection * conn);

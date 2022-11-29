@@ -27,13 +27,14 @@
 
 int main(int argc, char **argv)
 {
-    //urho::ParseArguments(argc, argv);
+    auto args = urho::ParseArguments(argc, argv);
     auto urho_ctxt = new urho::Context;
     jackal_control_ctxt jctrl{};
     jctrl.urho_ctxt = urho_ctxt;
 
-    if (!jctrl_init(&jctrl))
+    if (!jctrl_init(&jctrl, args))
         return 0;
+
     jctrl_exec(&jctrl);
     jctrl_term(&jctrl);
 }
@@ -82,7 +83,31 @@ intern void setup_main_renderer(jackal_control_ctxt *ctxt)
     zn->SetFogColor({0.0, 0.0, 0.0, 1.0});
 }
 
-bool jctrl_init(jackal_control_ctxt *ctxt)
+intern urho::String parse_ip_command_line_args(int *port, const urho::StringVector & args)
+{
+    urho::String ip("192.168.1.11");
+    if (port)
+        *port = 4000;
+    
+    for (const auto &arg : args)
+    {
+        auto split = arg.Split('=');
+        if (split.Size() == 2)
+        {
+            if (split[0] == "-ip")
+            {
+                ip = split[1];
+            }
+            else if (split[0] == "-port" && port)
+            {
+                *port = strtol(split[1].CString(), nullptr, 10);
+            }
+        }
+    }
+    return ip;
+}
+
+bool jctrl_init(jackal_control_ctxt *ctxt, const urho::StringVector & args)
 {
     ctxt->urho_engine = new urho::Engine(ctxt->urho_ctxt);
     if (!init_urho_engine(ctxt->urho_engine))
@@ -102,13 +127,21 @@ bool jctrl_init(jackal_control_ctxt *ctxt)
 
     input_init(&ctxt->inp.dispatch, ctxt->urho_ctxt);
     ctxt->inp.map.name = "global";
+    ctxt->inp.dispatch.inv_pixel_ratio = ctxt->ui_inf.dev_pixel_ratio_inv;
     ctxt->inp.dispatch.context_stack.push_back(&ctxt->inp.map);
 
     joystick_panel_init(&ctxt->js_panel, ctxt->ui_inf, &ctxt->conn);
-
-    map_panel_init(&ctxt->mpanel, ctxt->ui_inf, &ctxt->conn, &ctxt->inp);
     
-    net_connect(&ctxt->conn);
+    map_panel_init(&ctxt->mpanel, ctxt->ui_inf, &ctxt->conn, &ctxt->inp);
+
+    ss_connect(&ctxt->router, ctxt->js_panel.in_use, [ctxt](bool in_use) {
+        ctxt->mpanel.js_enabled = in_use;
+    });
+    
+    int port;
+    auto ip = parse_ip_command_line_args(&port, args);
+    net_connect(&ctxt->conn, ip.CString(), port);
+
     ilog("Device pixel ratio inverse: %f", ctxt->ui_inf.dev_pixel_ratio_inv);
     return true;
 }

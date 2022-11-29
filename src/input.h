@@ -113,7 +113,7 @@ struct input_context_stack
     std::vector<input_keymap*> context_stack;
     std::vector<input_action_trigger> active_triggers;
     std::vector<viewport_element> vp_stack;
-    
+    double inv_pixel_ratio {0.0};
     vec2 current_norm_mpos;
     input_uevent_handlers * event_handlers {};
     ss_signal<const itrigger_event&> trigger {};
