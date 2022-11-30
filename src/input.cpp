@@ -60,16 +60,31 @@ intern viewport_info viewport_with_mouse(const std::vector<viewport_element> &vp
         ivec2 min = scrn.Min();
         ivec2 max = scrn.Max();
 
+        vec2 mpos = norm_mpos * sz_f * inv_pixel_ratio;
+        vec2 mdelta = norm_mdelta * sz_f * inv_pixel_ratio;
+
+        ilog("mpos {%f %f} norm_mpos {%f %f}", mpos.x_, mpos.y_, norm_mpos.x_, norm_mpos.y_);
+
         if (vp_desc.view_element)
         {
             min = vp_desc.view_element->GetScreenPosition();
             max = max + min;
+
+            urho::Vector<urho::UIElement*> children;
+            ret.element_under_mouse = vp_desc.view_element->GetRoot();
+            ret.element_under_mouse->GetChildren(children, true);
+            for (int i = 0; i < children.Size(); ++i)
+            {
+                if (children[i]->IsInside({(int)mpos.x_, (int)mpos.y_}, true) && (!ret.element_under_mouse || children[i]->GetPriority() > ret.element_under_mouse->GetPriority()))
+                {
+                    ret.element_under_mouse = children[i];
+                    ilog("Got Element %s", ret.element_under_mouse->GetName().CString());
+                }
+            }
         }
 
         vec2 ll(min.x_, min.y_);
         vec2 ur(max.x_, max.y_);
-        vec2 mpos = norm_mpos * sz_f * inv_pixel_ratio;
-        vec2 mdelta = norm_mdelta * sz_f * inv_pixel_ratio;
 
         if (scrn == irect())
             ur = sz_f;

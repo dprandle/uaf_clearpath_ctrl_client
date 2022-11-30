@@ -63,7 +63,7 @@ intern const Color NO_GRID_COLOR = {0,0.7,0.7,1.0};
 intern void setup_camera_controls(map_panel *mp, urho::Node *cam_node, input_data *inp)
 {
     auto on_mouse_move = [cam_node, mp](const itrigger_event &tevent) {
-        if (mp->js_enabled)
+        if (mp->js_enabled || mp->view != tevent.vp.element_under_mouse && tevent.vp.element_under_mouse && tevent.vp.element_under_mouse->GetPriority() > 2)
             return;
         auto world_right = cam_node->GetWorldRight();
         auto world_up = cam_node->GetWorldUp();
@@ -85,7 +85,7 @@ intern void setup_camera_controls(map_panel *mp, urho::Node *cam_node, input_dat
     };
 
     auto on_mouse_tilt = [cam_node, mp](const itrigger_event &tevent) {
-        if (mp->js_enabled)
+        if (mp->js_enabled || mp->view != tevent.vp.element_under_mouse && tevent.vp.element_under_mouse && tevent.vp.element_under_mouse->GetPriority() > 2)
             return;
         auto rot_node = cam_node;
         auto parent = cam_node->GetParent();
@@ -96,7 +96,7 @@ intern void setup_camera_controls(map_panel *mp, urho::Node *cam_node, input_dat
     };
 
     auto on_mouse_zoom = [cam_node, mp](const itrigger_event &tevent) { 
-        if (mp->js_enabled)
+        if (mp->js_enabled || mp->view != tevent.vp.element_under_mouse && tevent.vp.element_under_mouse && tevent.vp.element_under_mouse->GetPriority() > 2)
             return;
         float amount = tevent.wheel;
         #if defined(__EMSCRIPTEN__)
@@ -249,7 +249,6 @@ intern void setup_scene(map_panel *mp, urho::ResourceCache *cache, urho::Scene *
     auto root = scene->CreateChild("root");
 
     // Main localization node - all nodes child of this node..
-    // TODO: This should likely be created only upon first receiving a scan?
     mp->map = root->CreateChild(MAP.c_str());
 
     mp->map_text->SetNumLevels(1);

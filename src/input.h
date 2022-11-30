@@ -73,6 +73,7 @@ struct viewport_element
 struct viewport_info
 {
     viewport_element vp_desc;
+    Urho3D::UIElement *element_under_mouse{};
     vec2 vp_norm_mpos;
     vec2 vp_norm_mdelta;
 };

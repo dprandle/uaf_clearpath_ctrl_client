@@ -41,10 +41,10 @@ intern void handle_joystick_move_begin(joystick_panel *jsp, const ui_info &ui_in
 
 intern void handle_joystick_move_end(joystick_panel *jsp)
 {
+    jsp->in_use(0, false);
     jsp->js->SetEnableAnchor(true);
     jsp->cached_js_pos = {};
     jsp->cached_mouse_pos = {};
-    jsp->in_use(0, false);
 }
 
 intern void setup_event_handlers(joystick_panel *jsp, const ui_info &ui_inf, net_connection *conn)
@@ -82,6 +82,7 @@ intern void create_joystick_ui(joystick_panel *jsp,const ui_info &ui_inf, urho::
     jsp->js = new urho::Button(uctxt);
 
     ui_inf.ui_sys->GetRoot()->AddChild(jsp->frame);
+    jsp->frame->SetName("JSFrame");
     jsp->frame->SetPriority(1);
     jsp->frame->SetColor({0.0f, 0.0f, 0.0f, 0.0f});
     jsp->frame->SetEnableAnchor(true);
@@ -89,6 +90,8 @@ intern void create_joystick_ui(joystick_panel *jsp,const ui_info &ui_inf, urho::
     jsp->frame->SetMaxAnchor(1.0f, 1.0f);
 
     jsp->frame->AddChild(jsp->outer_ring);
+    jsp->outer_ring->SetPriority(2);
+    jsp->outer_ring->SetName("OuterRing");
     jsp->outer_ring->SetStyle("JoystickBorder", ui_inf.style);
     jsp->outer_ring->SetEnableAnchor(true);
     jsp->outer_ring->SetMinAnchor(0.5f, 0.5f);
@@ -102,6 +105,8 @@ intern void create_joystick_ui(joystick_panel *jsp,const ui_info &ui_inf, urho::
     jsp->outer_ring->SetPivot(0.5f, 0.5f);
 
     jsp->outer_ring->AddChild(jsp->js);
+    jsp->js->SetPriority(3);
+    jsp->js->SetName("Joystick");
     jsp->js->SetStyle("Joystick", ui_inf.style);
     jsp->js->SetEnableAnchor(true);
     jsp->js->SetMinOffset({0, 0});
