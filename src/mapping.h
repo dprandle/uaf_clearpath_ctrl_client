@@ -29,10 +29,21 @@ struct updated_tform
     float wait_timer {0.0f};
 };
 
+struct camera_move_control_widget
+{
+    urho::UIElement * widget;
+    urho::Button *forward;
+    urho::Button *back;
+    urho::Button *left;
+    urho::Button *right;
+    vec3 current_translation {};
+};
+
 struct map_panel
 {
     bool js_enabled {false};
     urho::View3D *view {};
+    camera_move_control_widget cam_move_widget;
 
     urho::Node * front_laser {};
     urho::BillboardSet * scan_bb {};

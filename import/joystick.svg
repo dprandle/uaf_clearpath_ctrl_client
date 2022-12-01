@@ -7,7 +7,7 @@
    viewBox="0 0 1024 1024"
    version="1.1"
    id="svg5"
-   inkscape:version="1.2 (1:1.2.1+202207142221+cd75a1ee6d)"
+   inkscape:version="1.2.1 (1:1.2.1+202210291244+9c6d41e410)"
    sodipodi:docname="joystick.svg"
    inkscape:export-filename="../deploy/Data/Textures/joystick.png"
    inkscape:export-xdpi="96"
@@ -31,12 +31,12 @@
      shape-rendering="auto"
      inkscape:lockguides="false"
      inkscape:zoom="0.70710678"
-     inkscape:cx="326.68334"
-     inkscape:cy="337.99704"
+     inkscape:cx="326.68333"
+     inkscape:cy="565.68543"
      inkscape:window-width="1915"
      inkscape:window-height="1419"
-     inkscape:window-x="929"
-     inkscape:window-y="113"
+     inkscape:window-x="946"
+     inkscape:window-y="112"
      inkscape:window-maximized="0"
      inkscape:current-layer="layer3">
     <inkscape:grid
@@ -57,7 +57,7 @@
      inkscape:groupmode="layer"
      id="layer1">
     <path
-       style="fill:#c8c8c8;fill-opacity:1;stroke:#dbdbdb;stroke-width:2.00001;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       style="fill:#c8c8c8;fill-opacity:1;stroke:#555555;stroke-width:2.00001;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
        id="path6122"
        sodipodi:type="arc"
        sodipodi:cx="200.00169"
@@ -88,7 +88,7 @@
        sodipodi:arc-type="chord"
        d="M 346.40693,227.56392 A 148.9781,148.9769 0 0 1 173.51853,346.603 148.9781,148.9769 0 0 1 53.204147,174.60038 148.9781,148.9769 0 0 1 224.31439,53.019216 148.9781,148.9769 0 0 1 347.15766,223.22495 Z" />
     <path
-       style="fill:#7f7f7f;fill-opacity:1;stroke:#e0e0e0;stroke-width:2.00001;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       style="fill:#7f7f7f;fill-opacity:1;stroke:#000000;stroke-width:2.00001;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
        id="path6122-2"
        sodipodi:type="arc"
        sodipodi:cx="600.00171"
@@ -114,7 +114,7 @@
        sodipodi:arc-type="chord"
        d="M 746.40691,227.56389 A 148.9781,148.97688 0 0 1 573.51851,346.60296 148.9781,148.97688 0 0 1 453.20413,174.60035 148.9781,148.97688 0 0 1 624.31437,53.0192 148.9781,148.97688 0 0 1 747.15764,223.22492 Z" />
     <path
-       style="fill:#7f7f7f;fill-opacity:0;stroke:#e0e0e0;stroke-width:3.99999;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:12;stroke-dashoffset:0;stroke-opacity:1;paint-order:normal"
+       style="fill:#636363;fill-opacity:0;stroke:#161616;stroke-width:3.99999;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:12;stroke-dashoffset:0;stroke-opacity:1;paint-order:normal"
        id="path15578"
        sodipodi:type="arc"
        sodipodi:cx="300.00424"

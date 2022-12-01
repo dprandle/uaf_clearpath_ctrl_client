@@ -82,43 +82,21 @@ intern void create_joystick_ui(joystick_panel *jsp,const ui_info &ui_inf, urho::
     jsp->js = new urho::Button(uctxt);
 
     ui_inf.ui_sys->GetRoot()->AddChild(jsp->frame);
-    jsp->frame->SetName("JSFrame");
-    jsp->frame->SetPriority(1);
-    jsp->frame->SetColor({0.0f, 0.0f, 0.0f, 0.0f});
-    jsp->frame->SetEnableAnchor(true);
-    jsp->frame->SetMinAnchor(0.0f, 0.7f);
-    jsp->frame->SetMaxAnchor(1.0f, 1.0f);
+    jsp->frame->SetStyle("JoystickFrame", ui_inf.style);
 
     jsp->frame->AddChild(jsp->outer_ring);
-    jsp->outer_ring->SetPriority(2);
-    jsp->outer_ring->SetName("OuterRing");
     jsp->outer_ring->SetStyle("JoystickBorder", ui_inf.style);
-    jsp->outer_ring->SetEnableAnchor(true);
-    jsp->outer_ring->SetMinAnchor(0.5f, 0.5f);
-    jsp->outer_ring->SetMaxAnchor(0.5f, 0.5f);
-
     ivec2 offset = jsp->outer_ring->GetImageRect().Size();
     offset.x_ *= ui_inf.dev_pixel_ratio_inv;
     offset.y_ *= ui_inf.dev_pixel_ratio_inv;
-
     jsp->outer_ring->SetMaxOffset(offset);
-    jsp->outer_ring->SetPivot(0.5f, 0.5f);
 
     jsp->outer_ring->AddChild(jsp->js);
-    jsp->js->SetPriority(3);
-    jsp->js->SetName("Joystick");
     jsp->js->SetStyle("Joystick", ui_inf.style);
-    jsp->js->SetEnableAnchor(true);
-    jsp->js->SetMinOffset({0, 0});
-
     offset = jsp->js->GetImageRect().Size();
     offset.x_ *= ui_inf.dev_pixel_ratio_inv;
     offset.y_ *= ui_inf.dev_pixel_ratio_inv;
-
     jsp->js->SetMaxOffset(offset);
-    jsp->js->SetMinAnchor(0.5f, 0.5f);
-    jsp->js->SetMaxAnchor(0.5f, 0.5f);
-    jsp->js->SetPivot(0.5f, 0.5f);
 }
 
 void joystick_panel_init(joystick_panel *jsp, const ui_info &ui_inf, net_connection *conn)

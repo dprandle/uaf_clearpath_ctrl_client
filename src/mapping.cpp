@@ -91,6 +91,8 @@ intern void setup_camera_controls(map_panel *mp, urho::Node *cam_node, input_dat
         auto parent = cam_node->GetParent();
         if (parent)
             rot_node = parent;
+        if (tevent.vp.vp_norm_mdelta.x_ > 0.1 || tevent.vp.vp_norm_mdelta.y_ > 0.1)
+            return;
         rot_node->Rotate(quat(tevent.vp.vp_norm_mdelta.y_ * 100.0f, {1, 0, 0}));
         rot_node->Rotate(quat(tevent.vp.vp_norm_mdelta.x_ * 100.0f, {0, 0, -1}), urho::TransformSpace::World);
     };
@@ -109,24 +111,24 @@ intern void setup_camera_controls(map_panel *mp, urho::Node *cam_node, input_dat
 
     input_action_trigger it{};
     it.cond.mbutton = MOUSEB_MOVE;
-    it.name = urho::StringHash("CamMoveAction").ToHash();
+    it.name = urho::StringHash("CamTiltAction").ToHash();
     it.tstate = T_BEGIN;
     it.mb_req = urho::MOUSEB_LEFT;
     it.mb_allowed = 0;
     it.qual_req = 0;
     it.qual_allowed = urho::QUAL_ANY;
     input_add_trigger(&inp->map, it);
-    ss_connect(&mp->router, inp->dispatch.trigger, it.name, on_mouse_move);
+    ss_connect(&mp->router, inp->dispatch.trigger, it.name, on_mouse_tilt);
 
     it.cond.mbutton = MOUSEB_MOVE;
-    it.name = urho::StringHash("CamTiltAction").ToHash();
+    it.name = urho::StringHash("CamMoveAction").ToHash();
     it.tstate = T_BEGIN;
     it.mb_req = urho::MOUSEB_MIDDLE;
     it.mb_allowed = 0;
     it.qual_req = 0;
     it.qual_allowed = urho::QUAL_ANY;
     input_add_trigger(&inp->map, it);
-    ss_connect(&mp->router, inp->dispatch.trigger, it.name, on_mouse_tilt);
+    ss_connect(&mp->router, inp->dispatch.trigger, it.name, on_mouse_move);
 
     it.cond.mbutton = MOUSEB_WHEEL;
     it.name = urho::StringHash("Zoom").ToHash();
@@ -446,6 +448,63 @@ intern void map_panel_run_frame(map_panel *mp, float dt)
         mp->odom->MarkDirty();
         counter = 0.0f;
     }
+
+    if (mp->cam_move_widget.current_translation != vec3::ZERO)
+    {
+        mp->view->GetCameraNode()->Translate(mp->cam_move_widget.current_translation*dt*10);
+    }
+}
+
+intern void setup_cam_move_widget(map_panel *mp, const ui_info &ui_inf)
+{
+    auto uctxt = ui_inf.ui_sys->GetContext();
+    auto cache = uctxt->GetSubsystem<urho::ResourceCache>();
+
+    mp->cam_move_widget.widget = new urho::BorderImage(uctxt);
+    ui_inf.ui_sys->GetRoot()->AddChild(mp->cam_move_widget.widget);
+    mp->cam_move_widget.widget->SetStyle("ArrowButtonGroup", ui_inf.style);
+    
+    mp->cam_move_widget.forward = new urho::Button(uctxt);
+    mp->cam_move_widget.widget->AddChild(mp->cam_move_widget.forward);
+    mp->cam_move_widget.forward->SetStyle("ArrowButtonForward", ui_inf.style);
+    mp->cam_move_widget.forward->SetVar("md", 1);
+
+    auto offset = mp->cam_move_widget.forward->GetImageRect().Size();
+    offset.x_ *= ui_inf.dev_pixel_ratio_inv*0.75;
+    offset.y_ *= ui_inf.dev_pixel_ratio_inv*0.75;
+    mp->cam_move_widget.widget->SetMaxOffset(offset*3);
+    mp->cam_move_widget.forward->SetMaxOffset(offset);
+
+    mp->cam_move_widget.back = new urho::Button(uctxt);
+    mp->cam_move_widget.widget->AddChild(mp->cam_move_widget.back);
+    mp->cam_move_widget.back->SetStyle("ArrowButtonBack", ui_inf.style);
+    mp->cam_move_widget.back->SetMaxOffset(offset);
+    mp->cam_move_widget.back->SetVar("md", -1);
+
+    mp->cam_move_widget.left = new urho::Button(uctxt);
+    mp->cam_move_widget.widget->AddChild(mp->cam_move_widget.left);
+    mp->cam_move_widget.left->SetStyle("ArrowButtonLeft", ui_inf.style);
+    mp->cam_move_widget.left->SetMaxOffset(offset);
+    mp->cam_move_widget.left->SetVar("md", -2);
+
+    mp->cam_move_widget.right = new urho::Button(uctxt);
+    mp->cam_move_widget.widget->AddChild(mp->cam_move_widget.right);
+    mp->cam_move_widget.right->SetStyle("ArrowButtonRight", ui_inf.style);
+    mp->cam_move_widget.right->SetMaxOffset(offset);
+    mp->cam_move_widget.right->SetVar("md", 2);
+
+    mp->cam_move_widget.widget->SubscribeToEvent(urho::E_PRESSED, [mp](urho::StringHash type, urho::VariantMap &ev_data) {
+        auto elem = (urho::UIElement *)ev_data[urho::ClickEnd::P_ELEMENT].GetPtr();
+        auto trans = elem->GetVar("md").GetInt();
+        if (std::abs(trans) == 1)
+            mp->cam_move_widget.current_translation = mp->view->GetCameraNode()->GetDirection()*trans;
+        else if (std::abs(trans) == 2)
+            mp->cam_move_widget.current_translation = mp->view->GetCameraNode()->GetRight()*trans/2;
+    });
+
+    mp->cam_move_widget.widget->SubscribeToEvent(urho::E_CLICKEND, [mp](urho::StringHash type, urho::VariantMap &ev_data) {
+            mp->cam_move_widget.current_translation = {};
+    });
 }
 
 void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, input_data *inp)
@@ -456,6 +515,7 @@ void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, 
     create_3dview(mp, cache, ui_inf.ui_sys->GetRoot(), uctxt);
     setup_scene(mp, cache, mp->view->GetScene());
     setup_camera_controls(mp, mp->view->GetCameraNode(), inp);
+    setup_cam_move_widget(mp, ui_inf);
 
     ss_connect(&mp->router, conn->scan_received, [mp](const sicklms_laser_scan &pckt) { update_scene_from_scan(mp, pckt); });
 
