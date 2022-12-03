@@ -259,7 +259,7 @@ void net_connect(net_connection *conn, const char *ip, int port, int max_timeout
 
     if (!inet_pton(AF_INET, ip, &server_addr.sin_addr.s_addr))
     {
-        elog("Failed PTON");
+        elog("Failed PTON for %s and port %d", ip, port);
         goto cleanup;
     }
 
