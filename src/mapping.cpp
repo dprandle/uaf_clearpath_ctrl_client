@@ -57,33 +57,10 @@ const std::string FRONT_MOUNT{"front_mount"};
 const std::string FRONT_LASER_MOUNT{"front_laser_mount"};
 const std::string FRONT_LASER{"front_laser"};
 
-intern const Color NO_GRID_COLOR = {0,0.7,0.7,1.0};
-
+intern const Color NO_GRID_COLOR = {0, 0.7, 0.7, 1.0};
 
 intern void setup_camera_controls(map_panel *mp, urho::Node *cam_node, input_data *inp)
 {
-    auto on_mouse_move = [cam_node, mp](const itrigger_event &tevent) {
-        if (mp->js_enabled || mp->view != tevent.vp.element_under_mouse && tevent.vp.element_under_mouse && tevent.vp.element_under_mouse->GetPriority() > 2)
-            return;
-        auto world_right = cam_node->GetWorldRight();
-        auto world_up = cam_node->GetWorldUp();
-        float angle = std::abs(world_up.Angle({0, 0, 1}) - 90.0f);
-        if (std::abs(angle) > 70)
-        {
-            auto loc_trans = vec3(tevent.vp.vp_norm_mdelta.x_, {}, {}) * -20.0f;
-            auto world_trans = vec3({}, {}, tevent.vp.vp_norm_mdelta.y_) * -20.0f;
-            cam_node->Translate(loc_trans, Urho3D::TransformSpace::Local);
-            cam_node->Translate(world_trans, Urho3D::TransformSpace::World);
-        }
-        else
-        {
-            auto world_up_no_z_norm = vec3(world_up.x_, world_up.y_, 0.0);
-            world_up_no_z_norm.Normalize();
-            auto trans = world_right * -tevent.vp.vp_norm_mdelta.x_ + world_up_no_z_norm * tevent.vp.vp_norm_mdelta.y_;
-            cam_node->Translate(trans * 20.0f, Urho3D::TransformSpace::World);
-        }
-    };
-
     auto on_mouse_tilt = [cam_node, mp](const itrigger_event &tevent) {
         if (mp->js_enabled || mp->view != tevent.vp.element_under_mouse && tevent.vp.element_under_mouse && tevent.vp.element_under_mouse->GetPriority() > 2)
             return;
@@ -97,15 +74,15 @@ intern void setup_camera_controls(map_panel *mp, urho::Node *cam_node, input_dat
         rot_node->Rotate(quat(tevent.vp.vp_norm_mdelta.x_ * 100.0f, {0, 0, -1}), urho::TransformSpace::World);
     };
 
-    auto on_mouse_zoom = [cam_node, mp](const itrigger_event &tevent) { 
+    auto on_mouse_zoom = [cam_node, mp](const itrigger_event &tevent) {
         if (mp->js_enabled || mp->view != tevent.vp.element_under_mouse && tevent.vp.element_under_mouse && tevent.vp.element_under_mouse->GetPriority() > 2)
             return;
         float amount = tevent.wheel;
-        #if defined(__EMSCRIPTEN__)
+#if defined(__EMSCRIPTEN__)
         amount *= 0.01f;
-        #endif        
-        cam_node->Translate(vec3{0, 0, amount}); 
-        };
+#endif
+        cam_node->Translate(vec3{0, 0, amount});
+    };
 
     auto on_debug_key = [mp](const itrigger_event &tevent) { ilog("Debug Key"); };
 
@@ -119,26 +96,6 @@ intern void setup_camera_controls(map_panel *mp, urho::Node *cam_node, input_dat
     it.qual_allowed = urho::QUAL_ANY;
     input_add_trigger(&inp->map, it);
     ss_connect(&mp->router, inp->dispatch.trigger, it.name, on_mouse_tilt);
-
-    it.cond.mbutton = MOUSEB_MOVE;
-    it.name = urho::StringHash("CamMoveAction").ToHash();
-    it.tstate = T_BEGIN;
-    it.mb_req = urho::MOUSEB_MIDDLE;
-    it.mb_allowed = 0;
-    it.qual_req = 0;
-    it.qual_allowed = urho::QUAL_ANY;
-    input_add_trigger(&inp->map, it);
-    ss_connect(&mp->router, inp->dispatch.trigger, it.name, on_mouse_move);
-
-    it.cond.mbutton = MOUSEB_WHEEL;
-    it.name = urho::StringHash("Zoom").ToHash();
-    it.tstate = T_BEGIN;
-    it.mb_req = 0;
-    it.mb_allowed = 0;
-    it.qual_req = 0;
-    it.qual_allowed = 0;
-    input_add_trigger(&inp->map, it);
-    ss_connect(&mp->router, inp->dispatch.trigger, it.name, on_mouse_zoom);
 
     it.cond = {};
     it.cond.key = urho::KEY_D;
@@ -171,8 +128,8 @@ intern void create_3dview(map_panel *mp, urho::ResourceCache *cache, urho::UIEle
     mp->view->GetViewport()->SetRenderPath(rpath);
 
     cam_node->SetPosition({0, 0, -10});
-    cam_node->SetRotation(quat(-1.0, {1,0,0}));
-    cam_node->SetRotation(quat(0.0, {1,0,0}));
+    cam_node->SetRotation(quat(-1.0, {1, 0, 0}));
+    cam_node->SetRotation(quat(0.0, {1, 0, 0}));
 
     auto zone_node = scene->CreateChild("Zone");
     auto zone = zone_node->CreateComponent<urho::Zone>();
@@ -195,7 +152,7 @@ intern void create_jackal(map_panel *mp, urho::ResourceCache *cache)
 {
     auto jackal_base_model = cache->GetResource<urho::Model>("Models/jackal-base.mdl");
     auto jackal_base_mat = cache->GetResource<urho::Material>("Materials/jackal_base.xml");
-    
+
     auto jackal_fenders_model = cache->GetResource<urho::Model>("Models/jackal-fenders.mdl");
     auto jackal_fender_mat = cache->GetResource<urho::Material>("Materials/jackal_fender.xml");
 
@@ -263,10 +220,11 @@ intern void setup_scene(map_panel *mp, urho::ResourceCache *cache, urho::Scene *
     for (int y = 0; y < mp->map_image->GetHeight(); ++y)
     {
         for (int x = 0; x < mp->map_image->GetWidth(); ++x)
-            mp->map_image->SetPixel(x,y, NO_GRID_COLOR);
+            mp->map_image->SetPixel(x, y, NO_GRID_COLOR);
     }
 
     mp->map_text->SetData(mp->map_image);
+    mp->map_text->SetFilterMode(Urho3D::TextureFilterMode::FILTER_NEAREST);
     mp->occ_grid_bb->SetNumBillboards(1);
     auto bb = mp->occ_grid_bb->GetBillboard(0);
     bb->enabled_ = true;
@@ -330,25 +288,28 @@ intern ivec2 index_to_texture_coords(u32 index, u32 row_width, u32 height)
     return {(int)(index % row_width), (int)height - (int)(index / row_width)};
 }
 
-intern void update_scene_from_occ_grid(map_panel *mp, const occupancy_grid_update &grid)
+intern void update_scene_from_occ_grid(map_panel *mp, const occ_grid_update &grid)
 {
     ilog("Got %d changes this frame for map size %dx%d", grid.meta.change_elem_count, grid.meta.width, grid.meta.height);
 
-    bool resized = false;
-    while (mp->map_image->GetWidth() < grid.meta.width || mp->map_image->GetHeight() < grid.meta.height)
+    ivec2 resized{mp->map_image->GetWidth(), mp->map_image->GetHeight()};
+    while (resized.x_ < grid.meta.width)
+        resized.x_ *= 2;
+    while (resized.x_/2 > grid.meta.width)
+        resized.x_ /= 2;
+    while (resized.y_ < grid.meta.height)
+        resized.y_ *= 2;
+    while (resized.y_/2 > grid.meta.height)
+        resized.y_ /= 2;
+
+    if (resized != ivec2{mp->map_image->GetWidth(), mp->map_image->GetHeight()})
     {
-        ilog("Image size is %d %d",mp->map_image->GetWidth(), mp->map_image->GetHeight());
-        mp->map_image->SetSize(mp->map_image->GetWidth()*2, mp->map_image->GetHeight()*2, 3);
-        ilog("Image size is now %d %d",mp->map_image->GetWidth(), mp->map_image->GetHeight());
-        resized = true;
-    }
-    if (resized)
-    {
-        ilog("Map resized texture to %d by %d (actual map size %d %d)", mp->map_image->GetWidth(), mp->map_image->GetHeight(), grid.meta.width, grid.meta.height);
-        for (int y = 0; y < mp->map_image->GetHeight(); ++y)
+        ilog("Map resized texture to %d by %d (actual map size %d %d)", resized.x_, resized.y_, grid.meta.width, grid.meta.height);
+        mp->map_image->Resize(resized.x_, resized.y_);
+        for (int y = 0; y < resized.y_; ++y)
         {
-            for (int x = 0; x < mp->map_image->GetWidth(); ++x)
-                mp->map_image->SetPixel(x,y, NO_GRID_COLOR);
+            for (int x = 0; x < resized.x_; ++x)
+                mp->map_image->SetPixel(x, y, NO_GRID_COLOR);
         }
     }
 
@@ -426,10 +387,10 @@ intern void update_node_transform(map_panel *mp, const node_transform &tform)
         parent = node_parent_fiter->second;
 
     auto node_parent = node->GetParent();
-    urho::Node* node_parent_parent = nullptr;
+    urho::Node *node_parent_parent = nullptr;
     if (node_parent)
         node_parent_parent = node_parent->GetParent();
-    
+
     if (node_parent != parent && node_parent_parent != parent)
     {
         wlog("Received update for node %s with different parent than received in packet (%s)", tform.name, tform.parent_name);
@@ -449,10 +410,52 @@ intern void map_panel_run_frame(map_panel *mp, float dt)
         counter = 0.0f;
     }
 
-    if (mp->cam_move_widget.current_translation != vec3::ZERO)
+    if (mp->cam_move_widget.world_trans != vec3::ZERO)
     {
-        mp->view->GetCameraNode()->Translate(mp->cam_move_widget.current_translation*dt*10);
+        mp->view->GetCameraNode()->Translate(mp->cam_move_widget.world_trans * dt * 10, Urho3D::TransformSpace::World);
     }
+
+    if (mp->cam_zoom_widget.loc_trans != vec3::ZERO)
+    {
+        mp->view->GetCameraNode()->Translate(mp->cam_zoom_widget.loc_trans * dt * 20);
+    }
+}
+
+intern void setup_cam_zoom_widget(map_panel *mp, const ui_info &ui_inf)
+{
+    auto uctxt = ui_inf.ui_sys->GetContext();
+    auto cache = uctxt->GetSubsystem<urho::ResourceCache>();
+
+    mp->cam_zoom_widget.widget = new urho::BorderImage(uctxt);
+    ui_inf.ui_sys->GetRoot()->AddChild(mp->cam_zoom_widget.widget);
+    mp->cam_zoom_widget.widget->SetStyle("ZoomButtonGroup", ui_inf.style);
+
+    mp->cam_zoom_widget.zoom_in = new urho::Button(uctxt);
+    mp->cam_zoom_widget.widget->AddChild(mp->cam_zoom_widget.zoom_in);
+    mp->cam_zoom_widget.zoom_in->SetStyle("ZoomInButton", ui_inf.style);
+
+    auto offset = mp->cam_zoom_widget.zoom_in->GetImageRect().Size();
+    offset.x_ *= ui_inf.dev_pixel_ratio_inv * 0.75;
+    offset.y_ *= ui_inf.dev_pixel_ratio_inv * 0.75;
+    auto parent_offset = offset;
+    parent_offset.y_ = offset.y_ * 2 + 10;
+    mp->cam_zoom_widget.widget->SetMaxOffset(parent_offset);
+    mp->cam_zoom_widget.zoom_in->SetMaxOffset(offset);
+
+    mp->cam_zoom_widget.zoom_out = new urho::Button(uctxt);
+    mp->cam_zoom_widget.widget->AddChild(mp->cam_zoom_widget.zoom_out);
+    mp->cam_zoom_widget.zoom_out->SetStyle("ZoomOutButton", ui_inf.style);
+    mp->cam_zoom_widget.zoom_out->SetMaxOffset(offset);
+
+    mp->cam_zoom_widget.widget->SubscribeToEvent(urho::E_PRESSED, [mp](urho::StringHash type, urho::VariantMap &ev_data) {
+        auto elem = (urho::UIElement *)ev_data[urho::ClickEnd::P_ELEMENT].GetPtr();
+        if (elem == mp->cam_zoom_widget.zoom_in)
+            mp->cam_zoom_widget.loc_trans = mp->view->GetCameraNode()->GetDirection();
+        else if (elem == mp->cam_zoom_widget.zoom_out)
+            mp->cam_zoom_widget.loc_trans = mp->view->GetCameraNode()->GetDirection() * -1;
+    });
+
+    mp->cam_zoom_widget.widget->SubscribeToEvent(urho::E_CLICKEND, [mp](urho::StringHash type, urho::VariantMap &ev_data) { mp->cam_zoom_widget.loc_trans = {}; });
 }
 
 intern void setup_cam_move_widget(map_panel *mp, const ui_info &ui_inf)
@@ -463,16 +466,19 @@ intern void setup_cam_move_widget(map_panel *mp, const ui_info &ui_inf)
     mp->cam_move_widget.widget = new urho::BorderImage(uctxt);
     ui_inf.ui_sys->GetRoot()->AddChild(mp->cam_move_widget.widget);
     mp->cam_move_widget.widget->SetStyle("ArrowButtonGroup", ui_inf.style);
-    
+
     mp->cam_move_widget.forward = new urho::Button(uctxt);
     mp->cam_move_widget.widget->AddChild(mp->cam_move_widget.forward);
     mp->cam_move_widget.forward->SetStyle("ArrowButtonForward", ui_inf.style);
     mp->cam_move_widget.forward->SetVar("md", 1);
 
     auto offset = mp->cam_move_widget.forward->GetImageRect().Size();
-    offset.x_ *= ui_inf.dev_pixel_ratio_inv*0.75;
-    offset.y_ *= ui_inf.dev_pixel_ratio_inv*0.75;
-    mp->cam_move_widget.widget->SetMaxOffset(offset*3);
+    offset.x_ *= ui_inf.dev_pixel_ratio_inv * 0.75;
+    offset.y_ *= ui_inf.dev_pixel_ratio_inv * 0.75;
+    auto parent_offset = offset;
+    parent_offset.x_ = offset.x_ * 3 + 20;
+    parent_offset.y_ = offset.y_ * 2 + 10;
+    mp->cam_move_widget.widget->SetMaxOffset(parent_offset);
     mp->cam_move_widget.forward->SetMaxOffset(offset);
 
     mp->cam_move_widget.back = new urho::Button(uctxt);
@@ -496,15 +502,28 @@ intern void setup_cam_move_widget(map_panel *mp, const ui_info &ui_inf)
     mp->cam_move_widget.widget->SubscribeToEvent(urho::E_PRESSED, [mp](urho::StringHash type, urho::VariantMap &ev_data) {
         auto elem = (urho::UIElement *)ev_data[urho::ClickEnd::P_ELEMENT].GetPtr();
         auto trans = elem->GetVar("md").GetInt();
-        if (std::abs(trans) == 1)
-            mp->cam_move_widget.current_translation = mp->view->GetCameraNode()->GetDirection()*trans;
-        else if (std::abs(trans) == 2)
-            mp->cam_move_widget.current_translation = mp->view->GetCameraNode()->GetRight()*trans/2;
+        if (trans == 0)
+            return;
+
+        auto cam_node = mp->view->GetCameraNode();
+        auto world_right = cam_node->GetWorldRight().Normalized();
+        auto world_up = cam_node->GetWorldUp().Normalized();
+        float angle = std::abs(world_up.Angle({0, 0, 1}) - 90.0f);
+        if (std::abs(angle) > 70)
+        {
+            mp->cam_move_widget.world_trans = vec3(0, 0, -trans);
+            if (std::abs(trans) == 2)
+                mp->cam_move_widget.world_trans = world_right * trans / 2;
+        }
+        else
+        {
+            mp->cam_move_widget.world_trans = vec3(world_up.x_, world_up.y_, 0.0) * trans;
+            if (std::abs(trans) == 2)
+                mp->cam_move_widget.world_trans = world_right * trans / 2;
+        }
     });
 
-    mp->cam_move_widget.widget->SubscribeToEvent(urho::E_CLICKEND, [mp](urho::StringHash type, urho::VariantMap &ev_data) {
-            mp->cam_move_widget.current_translation = {};
-    });
+    mp->cam_move_widget.widget->SubscribeToEvent(urho::E_CLICKEND, [mp](urho::StringHash type, urho::VariantMap &ev_data) { mp->cam_move_widget.world_trans = {}; });
 }
 
 void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, input_data *inp)
@@ -516,10 +535,11 @@ void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, 
     setup_scene(mp, cache, mp->view->GetScene());
     setup_camera_controls(mp, mp->view->GetCameraNode(), inp);
     setup_cam_move_widget(mp, ui_inf);
+    setup_cam_zoom_widget(mp, ui_inf);
 
     ss_connect(&mp->router, conn->scan_received, [mp](const sicklms_laser_scan &pckt) { update_scene_from_scan(mp, pckt); });
 
-    ss_connect(&mp->router, conn->occ_grid_update_received, [mp](const occupancy_grid_update &pckt) { update_scene_from_occ_grid(mp, pckt); });
+    ss_connect(&mp->router, conn->map_update_received, [mp](const occ_grid_update &pckt) { update_scene_from_occ_grid(mp, pckt); });
 
     ss_connect(&mp->router, conn->transform_updated, [mp](const node_transform &pckt) { update_node_transform(mp, pckt); });
 

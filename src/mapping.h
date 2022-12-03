@@ -36,7 +36,15 @@ struct camera_move_control_widget
     urho::Button *back;
     urho::Button *left;
     urho::Button *right;
-    vec3 current_translation {};
+    vec3 world_trans {};
+};
+
+struct camera_move_zoom_widget
+{
+    urho::UIElement * widget;
+    urho::Button *zoom_in;
+    urho::Button *zoom_out;
+    vec3 loc_trans {};
 };
 
 struct map_panel
@@ -44,6 +52,7 @@ struct map_panel
     bool js_enabled {false};
     urho::View3D *view {};
     camera_move_control_widget cam_move_widget;
+    camera_move_zoom_widget cam_zoom_widget;
 
     urho::Node * front_laser {};
     urho::BillboardSet * scan_bb {};

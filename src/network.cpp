@@ -12,22 +12,12 @@
 #include "logging.h"
 #include <poll.h>
 
-static constexpr int MAX_RX_PACKET_SIZE = 10 * MB_SIZE;
-
-struct net_rx_buffer
-{
-    binary_fixed_buffer_archive<MAX_RX_PACKET_SIZE> read_buf{PACK_DIR_IN};
-    sizet available;
-};
-
-intern net_rx_buffer rx_buf;
-
 // #define SCAN_DEBUG
-// #define OCC_DEBUG
-// #define TFROM_DEBUG
+// #define MAP_DEBUG
+// #define TFORM_DEBUG
 // #define PACKET_DEBUG
 
-#if defined(TFROM_DEBUG)
+#if defined(TFORM_DEBUG)
 #define tform_dlog dlog
 #define TFORM_PACK_LOG_ENABLE log_set_level(urho::LOG_TRACE);
 #define TFORM_PACK_LOG_DISABLE log_set_level(urho::LOG_DEBUG);
@@ -37,14 +27,24 @@ intern net_rx_buffer rx_buf;
 #define TFORM_PACK_LOG_DISABLE
 #endif
 
-#if defined(OCC_DEBUG)
-#define occ_dlog dlog
-#define OCC_PACK_LOG_ENABLE log_set_level(urho::LOG_TRACE);
-#define OCC_PACK_LOG_DISABLE log_set_level(urho::LOG_DEBUG);
+#if defined(GLOB_CM_DEBUG)
+#define glob_cm_dlog dlog
+#define GLOB_CM_PACK_LOG_ENABLE log_set_level(urho::LOG_TRACE);
+#define GLOB_CM_PACK_LOG_DISABLE log_set_level(urho::LOG_DEBUG);
 #else
-#define occ_dlog(...)
-#define OCC_PACK_LOG_ENABLE
-#define OCC_PACK_LOG_DISABLE
+#define glob_cm_dlog(...)
+#define GLOB_CM_PACK_LOG_ENABLE
+#define GLOB_CM_PACK_LOG_DISABLE
+#endif
+
+#if defined(MAP_DEBUG)
+#define map_dlog dlog
+#define MAP_PACK_LOG_ENABLE log_set_level(urho::LOG_TRACE);
+#define MAP_PACK_LOG_DISABLE log_set_level(urho::LOG_DEBUG);
+#else
+#define map_dlog(...)
+#define MAP_PACK_LOG_ENABLE
+#define MAP_PACK_LOG_DISABLE
 #endif
 
 #if defined(SCAN_DEBUG)
@@ -133,13 +133,13 @@ intern EM_BOOL em_ws_on_error(int event_type, const EmscriptenWebSocketErrorEven
 intern EM_BOOL em_ws_on_message(int event_type, const EmscriptenWebSocketMessageEvent *ws_event, void *user_data)
 {
     auto conn = (net_connection *)user_data;
-    assert((MAX_RX_PACKET_SIZE - rx_buf.read_buf.cur_offset - rx_buf.available) > ws_event->numBytes);
+    assert((net_rx_buffer::MAX_PACKET_SIZE - conn->rx_buf->read_buf.cur_offset - conn->rx_buf->available) > ws_event->numBytes);
 
-    memcpy(rx_buf.read_buf.data + rx_buf.read_buf.cur_offset + rx_buf.available, ws_event->data, ws_event->numBytes);
-    rx_buf.available += ws_event->numBytes;
+    memcpy(conn->rx_buf->read_buf.data + conn->rx_buf->read_buf.cur_offset + conn->rx_buf->available, ws_event->data, ws_event->numBytes);
+    conn->rx_buf->available += ws_event->numBytes;
     if (ws_event->numBytes > 0)
     {
-        packet_dlog("Added %d bytes to available - result:%d", ws_event->numBytes, rx_buf.available);
+        packet_dlog("Added %d bytes to available - result:%d", ws_event->numBytes, conn->rx_buf->available);
     }
     else
     {
@@ -208,8 +208,30 @@ intern void em_net_connect(net_connection *conn)
 }
 #endif
 
+intern void alloc_connection(net_connection *conn)
+{
+    conn->rx_buf = (net_rx_buffer*)malloc(sizeof(net_rx_buffer));
+    conn->pckts.scan = (sicklms_laser_scan*)malloc(sizeof(sicklms_laser_scan));
+    conn->pckts.ntf = (node_transform*)malloc(sizeof(node_transform));
+    conn->pckts.gu = (occ_grid_update *)malloc(sizeof(occ_grid_update));
+
+    memset(conn->rx_buf, 0, sizeof(net_rx_buffer));
+    memset(conn->pckts.scan, 0, sizeof(sicklms_laser_scan));
+    memset(conn->pckts.ntf, 0, sizeof(node_transform));
+    memset(conn->pckts.gu, 0, sizeof(occ_grid_update));
+}
+
+intern void free_connection(net_connection *conn)
+{
+    free(conn->rx_buf);
+    free(conn->pckts.scan);
+    free(conn->pckts.ntf);
+    free(conn->pckts.gu);
+}
+
 void net_connect(net_connection *conn, const char *ip, int port, int max_timeout_ms)
 {
+    alloc_connection(conn);
 #if defined(__EMSCRIPTEN__)
     em_net_connect(conn);
 #else
@@ -287,20 +309,18 @@ cleanup:
 #endif
 }
 
-intern void handle_scan_packet(binary_fixed_buffer_archive<MAX_RX_PACKET_SIZE> &read_buf, sizet available, sizet cached_offset, net_connection *conn)
+intern void handle_scan_packet(binary_fixed_buffer_archive<net_rx_buffer::MAX_PACKET_SIZE> &read_buf, sizet available, sizet cached_offset, net_connection *conn)
 {
-    static sicklms_laser_scan scan{};
-
-    pack_unpack(read_buf, scan.header, {"header"});
-    pack_unpack(read_buf, scan.meta, {"meta"});
+    pack_unpack(read_buf, conn->pckts.scan->header, {"header"});
+    pack_unpack(read_buf, conn->pckts.scan->meta, {"meta"});
 
     sizet meta_and_header_size = read_buf.cur_offset - cached_offset;
-    sizet range_count = (sizet)((scan.meta.angle_max - scan.meta.angle_min) / scan.meta.angle_increment) + 1;
+    sizet range_count = (sizet)((conn->pckts.scan->meta.angle_max - conn->pckts.scan->meta.angle_min) / conn->pckts.scan->meta.angle_increment) + 1;
     sizet total_packet_size = range_count * sizeof(float) + meta_and_header_size;
 
     if (available >= total_packet_size)
     {
-        pack_unpack(read_buf, scan.ranges, {"change_elems", {pack_va_flags::FIXED_ARRAY_CUSTOM_SIZE, &range_count}});
+        pack_unpack(read_buf, conn->pckts.scan->ranges, {"change_elems", {pack_va_flags::FIXED_ARRAY_CUSTOM_SIZE, &range_count}});
 
 #if defined(SCAN_DEBUG)
         scan_dlog("Got scan packet - %d available bytes and %d packet size (%d ranges) - new offset is %d",
@@ -311,11 +331,11 @@ intern void handle_scan_packet(binary_fixed_buffer_archive<MAX_RX_PACKET_SIZE> &
         SCAN_PACK_LOG_ENABLE
         static u8 buf[100];
         binary_buffer_archive ba{buf, PACK_DIR_OUT};
-        pack_unpack(ba, scan.meta, {"meta"});
+        pack_unpack(ba, conn->pckts.scan->meta, {"meta"});
         SCAN_PACK_LOG_DISABLE
 #endif
 
-        conn->scan_received(0, scan);
+        conn->scan_received(0, *conn->pckts.scan);
     }
     else
     {
@@ -324,34 +344,18 @@ intern void handle_scan_packet(binary_fixed_buffer_archive<MAX_RX_PACKET_SIZE> &
     }
 }
 
-intern void handle_occ_grid_packet(binary_fixed_buffer_archive<MAX_RX_PACKET_SIZE> &read_buf, sizet available, sizet cached_offset, net_connection *conn)
+intern void handle_occ_grid_pckt(binary_fixed_buffer_archive<net_rx_buffer::MAX_PACKET_SIZE> &read_buf, sizet available, sizet cached_offset, occ_grid_update * gu, ss_signal<const occ_grid_update&> &sig)
 {
-    static occupancy_grid_update gu{};
-
-    pack_unpack(read_buf, gu.header, {"header"});
-    pack_unpack(read_buf, gu.meta, {"meta"});
+    pack_unpack(read_buf, gu->header, {"header"});
+    pack_unpack(read_buf, gu->meta, {"meta"});
 
     sizet meta_and_header_size = read_buf.cur_offset - cached_offset;
-    sizet total_packet_size = gu.meta.change_elem_count * sizeof(u32) + meta_and_header_size;
+    sizet total_packet_size = gu->meta.change_elem_count * sizeof(u32) + meta_and_header_size;
 
     if (available >= total_packet_size)
     {
-        pack_unpack(read_buf, gu.change_elems, {"change_elems", {pack_va_flags::FIXED_ARRAY_CUSTOM_SIZE, &gu.meta.change_elem_count}});
-
-#if defined(OCC_DEBUG)
-        occ_dlog("Got occ grid packet - %d available bytes and %d calculated packet size (%d header/meta), new offset is %d",
-                 available,
-                 total_packet_size,
-                 meta_and_header_size,
-                 read_buf.cur_offset);
-        OCC_PACK_LOG_ENABLE
-        static u8 buf[100];
-        binary_buffer_archive ba{buf, PACK_DIR_OUT};
-        pack_unpack(ba, gu.meta, {"meta"});
-        OCC_PACK_LOG_DISABLE
-#endif
-
-        conn->occ_grid_update_received(0, gu);
+        pack_unpack(read_buf, gu->change_elems, {"change_elems", {pack_va_flags::FIXED_ARRAY_CUSTOM_SIZE, &gu->meta.change_elem_count}});
+        sig(0, *gu);
     }
     else
     {
@@ -360,15 +364,14 @@ intern void handle_occ_grid_packet(binary_fixed_buffer_archive<MAX_RX_PACKET_SIZ
     }
 }
 
-intern void handle_tform_packet(binary_fixed_buffer_archive<MAX_RX_PACKET_SIZE> &read_buf, sizet available, sizet cached_offset, net_connection *conn)
+intern void handle_tform_packet(binary_fixed_buffer_archive<net_rx_buffer::MAX_PACKET_SIZE> &read_buf, sizet available, sizet cached_offset, net_connection *conn)
 {
     TFORM_PACK_LOG_ENABLE
-    static node_transform tform{};
-    pack_unpack(read_buf, tform, {});
-#if defined(TFROM_DEBUG)
+    pack_unpack(read_buf, *conn->pckts.ntf, {});
+#if defined(TFORM_DEBUG)
     tform_dlog("Got tform packet - %d available bytes and %d packet size - new offset is %d", available, read_buf.cur_offset - cached_offset, read_buf.cur_offset);
 #endif
-    conn->transform_updated(0, tform);
+    conn->transform_updated(0, *conn->pckts.ntf);
     TFORM_PACK_LOG_DISABLE
 }
 
@@ -389,7 +392,7 @@ intern sizet matching_packet_size(u8 *data)
     {
         return scan_size;
     }
-    else if (matches_packet_id(OC_GRID_PCKT_ID, data))
+    else if (matches_packet_id(MAP_PCKT_ID, data))
     {
         return occ_meta;
     }
@@ -400,20 +403,24 @@ intern sizet matching_packet_size(u8 *data)
     return 0;
 }
 
-intern sizet dispatch_received_packet(binary_fixed_buffer_archive<MAX_RX_PACKET_SIZE> &read_buf, sizet available, net_connection *conn)
+intern sizet dispatch_received_packet(binary_fixed_buffer_archive<net_rx_buffer::MAX_PACKET_SIZE> &read_buf, sizet available, net_connection *conn)
 {
     sizet cached_offset = read_buf.cur_offset;
     if (matches_packet_id(SCAN_PACKET_ID, read_buf.data + read_buf.cur_offset))
     {
         handle_scan_packet(read_buf, available, cached_offset, conn);
     }
-    else if (matches_packet_id(OC_GRID_PCKT_ID, read_buf.data + read_buf.cur_offset))
-    {
-        handle_occ_grid_packet(read_buf, available, cached_offset, conn);
-    }
     else if (matches_packet_id(TFORM_PCKT_ID, read_buf.data + read_buf.cur_offset))
     {
         handle_tform_packet(read_buf, available, cached_offset, conn);
+    }
+    else if (matches_packet_id(GLOB_CM_PCKT_ID, read_buf.data + read_buf.cur_offset))
+    {
+        handle_occ_grid_pckt(read_buf, available, cached_offset, conn->pckts.gu, conn->glob_cm_update_received);
+    }
+    else if (matches_packet_id(MAP_PCKT_ID, read_buf.data + read_buf.cur_offset))
+    {
+        handle_occ_grid_pckt(read_buf, available, cached_offset, conn->pckts.gu, conn->map_update_received);
     }
     return read_buf.cur_offset - cached_offset;
 }
@@ -421,12 +428,12 @@ intern sizet dispatch_received_packet(binary_fixed_buffer_archive<MAX_RX_PACKET_
 intern bool net_socket_read(net_connection *conn)
 {
     int rd_cnt = read(conn->socket_handle,
-                      rx_buf.read_buf.data + rx_buf.read_buf.cur_offset + rx_buf.available,
-                      MAX_RX_PACKET_SIZE - rx_buf.read_buf.cur_offset - rx_buf.available);
+                      conn->rx_buf->read_buf.data + conn->rx_buf->read_buf.cur_offset + conn->rx_buf->available,
+                      net_rx_buffer::MAX_PACKET_SIZE - conn->rx_buf->read_buf.cur_offset - conn->rx_buf->available);
     if (rd_cnt > 0)
     {
-        rx_buf.available += rd_cnt;
-        packet_dlog("Added %d bytes to available - result:%d", rd_cnt, rx_buf.available);
+        conn->rx_buf->available += rd_cnt;
+        packet_dlog("Added %d bytes to available - result:%d", rd_cnt, conn->rx_buf->available);
     }
     else if (rd_cnt < 0 && errno != EAGAIN && errno != EWOULDBLOCK)
     {
@@ -443,7 +450,7 @@ void net_rx(net_connection *conn)
     if (conn->socket_handle <= 0)
         return;
 
-    assert(MAX_RX_PACKET_SIZE - rx_buf.available > 0 && "Read buffer size is too small - can't receive complete packet");
+    assert(net_rx_buffer::MAX_PACKET_SIZE - conn->rx_buf->available > 0 && "Read buffer size is too small - can't receive complete packet");
 
 #if !defined(__EMSCRIPTEN__)
     if (!net_socket_read(conn))
@@ -451,54 +458,45 @@ void net_rx(net_connection *conn)
 #endif
 
     bool need_more_data = false;
-    while (rx_buf.available >= packet_header::size && !need_more_data)
+    while (conn->rx_buf->available >= packet_header::size && !need_more_data)
     {
         if (current_packet_size == 0)
         {
-            current_packet_size = matching_packet_size(rx_buf.read_buf.data + rx_buf.read_buf.cur_offset);
+            current_packet_size = matching_packet_size(conn->rx_buf->read_buf.data + conn->rx_buf->read_buf.cur_offset);
             if (current_packet_size == 0)
             {
-                --rx_buf.available;
-                ++rx_buf.read_buf.cur_offset;
+                --conn->rx_buf->available;
+                ++conn->rx_buf->read_buf.cur_offset;
             }
             else
             {
-                packet_dlog("Found packet header for packet size %d (rx_buf.available:%d  Readbuf offset:%d)",
+                packet_dlog("Found packet header for packet size %d (conn->rx_buf->available:%d  Readbuf offset:%d)",
                             current_packet_size,
-                            rx_buf.available,
-                            rx_buf.read_buf.cur_offset);
+                            conn->rx_buf->available,
+                            conn->rx_buf->read_buf.cur_offset);
             }
         }
-        else if (rx_buf.available >= current_packet_size)
+        else if (conn->rx_buf->available >= current_packet_size)
         {
-            sizet bytes_processed = dispatch_received_packet(rx_buf.read_buf, rx_buf.available, conn);
+            sizet bytes_processed = dispatch_received_packet(conn->rx_buf->read_buf, conn->rx_buf->available, conn);
             if (bytes_processed > 0)
             {
-                rx_buf.available -= bytes_processed;
+                conn->rx_buf->available -= bytes_processed;
                 packet_dlog(
-                    "Read entire packet of %d bytes - ended at offset %d (packet size before was %d) - there are %d remaining rx_buf.available bytes to be read",
+                    "Read entire packet of %d bytes - ended at offset %d (packet size before was %d) - there are %d remaining conn->rx_buf->available bytes to be read",
                     bytes_processed,
-                    rx_buf.read_buf.cur_offset,
+                    conn->rx_buf->read_buf.cur_offset,
                     current_packet_size,
-                    rx_buf.available);
-
-                // Copy any remaining rx_buf.available bytes to the beginning of the buffer - otherwise if rx_buf.available is greater than the packet header size
-                // not only will we lose those bytes, but we will also mistakenly reconsider the first "rx_buf.available" count of bytes as if they just came
-                // in - ie we would see whatever we just processed packet header again and wait until all the bytes came through... This gets ugly
-                // if we have info in the packet to determine how many bytes we should later expect
-
-                // memcpy(rx_buf.read_buf.data, rx_buf.read_buf.data + rx_buf.read_buf.cur_offset, rx_buf.available);
-                // ilog("Copying %d available", rx_buf.available);
+                    conn->rx_buf->available);
 
                 current_packet_size = 0;
-                // rx_buf.read_buf.cur_offset = 0;
             }
             else
             {
                 packet_dlog("Waiting on more data for packet header size %d - cur available %d and cur offset %d",
                             current_packet_size,
-                            rx_buf.available,
-                            rx_buf.read_buf.cur_offset);
+                            conn->rx_buf->available,
+                            conn->rx_buf->read_buf.cur_offset);
                 need_more_data = true;
             }
         }
@@ -506,15 +504,15 @@ void net_rx(net_connection *conn)
         {
             packet_dlog("Waiting on more data for packet header size %d - cur available %d and cur offset %d",
                         current_packet_size,
-                        rx_buf.available,
-                        rx_buf.read_buf.cur_offset);
+                        conn->rx_buf->available,
+                        conn->rx_buf->read_buf.cur_offset);
             need_more_data = true;
         }
     }
 
-    if (rx_buf.available == 0)
+    if (conn->rx_buf->available == 0)
     {
-        rx_buf.read_buf.cur_offset = 0;
+        conn->rx_buf->read_buf.cur_offset = 0;
         packet_dlog("Read all available data on channel - moving pointer to buffer start");
     }
 }
@@ -549,4 +547,5 @@ void net_disconnect(net_connection *conn)
         close(conn->socket_handle);
 #endif
     conn->socket_handle = 0;
+    free_connection(conn);
 }

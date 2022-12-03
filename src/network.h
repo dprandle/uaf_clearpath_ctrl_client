@@ -6,8 +6,11 @@
 #include "pack_unpack.h"
 
 inline const char *SCAN_PACKET_ID = "SCAN_PCKT_ID";
-inline const char *OC_GRID_PCKT_ID = "OC_GRID_PCKT_ID";
+inline const char *MAP_PCKT_ID = "MAP_PCKT_ID";
+inline const char *GLOB_CM_PCKT_ID = "GLOB_CM_PCKT_ID";
 inline const char *TFORM_PCKT_ID = "TFORM_PCKT_ID";
+
+static constexpr int MAX_MAP_SIZE = 4000;
 
 struct dvec3
 {
@@ -163,28 +166,46 @@ pup_func(occ_grid_meta)
     pup_member(change_elem_count);
 }
 
-struct occupancy_grid_update
+struct occ_grid_update
 {
-    static constexpr int MAX_CHANGE_ELEMS = 10000000;
+    static constexpr int MAX_CHANGE_ELEMS = MAX_MAP_SIZE*MAX_MAP_SIZE;
     static constexpr int size = packet_header::size + occ_grid_meta::size + MAX_CHANGE_ELEMS;
     packet_header header{};
     occ_grid_meta meta;
     u32 change_elems[MAX_CHANGE_ELEMS];
 };
 
-pup_func(occupancy_grid_update)
+pup_func(occ_grid_update)
 {
     pup_member(header);
     pup_member(meta);
     pup_member_meta(change_elems, pack_va_flags::FIXED_ARRAY_CUSTOM_SIZE, &val.meta.change_elem_count);
 }
 
+/// Only malloc these once and reuse on every time a packet comes in
+struct reusable_packets
+{
+    occ_grid_update * gu;
+    sicklms_laser_scan * scan;
+    node_transform * ntf;
+};
+
+struct net_rx_buffer
+{
+    static constexpr int MAX_PACKET_SIZE = occ_grid_update::size + 1000;
+    binary_fixed_buffer_archive<MAX_PACKET_SIZE> read_buf{PACK_DIR_IN};
+    sizet available;
+};
+
 struct net_connection
 {
     int socket_handle{0};
-
+    net_rx_buffer *rx_buf {};
+    reusable_packets pckts {};
+    
     ss_signal<const sicklms_laser_scan &> scan_received;
-    ss_signal<const occupancy_grid_update &> occ_grid_update_received;
+    ss_signal<const occ_grid_update &> map_update_received;
+    ss_signal<const occ_grid_update &> glob_cm_update_received;
     ss_signal<const node_transform &> transform_updated;
 };
 

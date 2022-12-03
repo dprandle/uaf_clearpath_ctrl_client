@@ -87,15 +87,15 @@ intern void create_joystick_ui(joystick_panel *jsp,const ui_info &ui_inf, urho::
     jsp->frame->AddChild(jsp->outer_ring);
     jsp->outer_ring->SetStyle("JoystickBorder", ui_inf.style);
     ivec2 offset = jsp->outer_ring->GetImageRect().Size();
-    offset.x_ *= ui_inf.dev_pixel_ratio_inv;
-    offset.y_ *= ui_inf.dev_pixel_ratio_inv;
+    offset.x_ *= ui_inf.dev_pixel_ratio_inv*0.75;
+    offset.y_ *= ui_inf.dev_pixel_ratio_inv*0.75;
     jsp->outer_ring->SetMaxOffset(offset);
 
     jsp->outer_ring->AddChild(jsp->js);
     jsp->js->SetStyle("Joystick", ui_inf.style);
     offset = jsp->js->GetImageRect().Size();
-    offset.x_ *= ui_inf.dev_pixel_ratio_inv;
-    offset.y_ *= ui_inf.dev_pixel_ratio_inv;
+    offset.x_ *= ui_inf.dev_pixel_ratio_inv*0.75;
+    offset.y_ *= ui_inf.dev_pixel_ratio_inv*0.75;
     jsp->js->SetMaxOffset(offset);
 }
 
