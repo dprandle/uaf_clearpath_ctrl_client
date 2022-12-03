@@ -47,6 +47,29 @@ struct camera_move_zoom_widget
     vec3 loc_trans {};
 };
 
+enum occ_grid_type
+{
+    OCC_GRID_TYPE_MAP,
+    OCC_GRID_TYPE_COSTMAP
+};
+
+struct occ_grid_map
+{
+    urho::Node * node {};
+    urho::Texture2D * rend_texture {};
+    urho::Image * image {};
+    urho::BillboardSet * bb_set {};
+
+    urho::Color undiscovered {0, 0.7, 0.7, 1};
+    urho::Color lethal{1,0,1,0.7};
+    urho::Color inscribed{0,1,1,0.7};
+    urho::Color possibly_circumscribed {1,0,0,0.7};
+    urho::Color no_collision {0,1,0,0.7};
+    urho::Color free_space{0,0,0,0};
+
+    int map_type {OCC_GRID_TYPE_MAP};
+};
+
 struct map_panel
 {
     bool js_enabled {false};
@@ -57,10 +80,8 @@ struct map_panel
     urho::Node * front_laser {};
     urho::BillboardSet * scan_bb {};
     
-    urho::Node * map {};
-    urho::Texture2D * map_text {};
-    urho::Image * map_image {};
-    urho::BillboardSet * occ_grid_bb {};
+    occ_grid_map map {};
+    occ_grid_map glob_cmap {};
 
     urho::Node * base_link {};
     urho::Node * odom {};

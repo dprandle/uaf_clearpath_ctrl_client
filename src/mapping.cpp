@@ -1,38 +1,27 @@
-#include <Urho3D/UI/UI.h>
-#include <Urho3D/UI/BorderImage.h>
-#include <Urho3D/UI/Button.h>
-#include <Urho3D/UI/UIEvents.h>
 #include <Urho3D/Core/CoreEvents.h>
 
-#include "Urho3D/Scene/Scene.h"
-#include "Urho3D/Graphics/Model.h"
-#include "Urho3D/Graphics/BillboardSet.h"
-#include "Urho3D/Input/InputConstants.h"
-#include "Urho3D/Math/Color.h"
-#include "Urho3D/Math/StringHash.h"
-#include "Urho3D/Resource/XMLFile.h"
-
 #include <Urho3D/GraphicsAPI/Texture2D.h>
-#include <Urho3D/Graphics/Geometry.h>
+#include "Urho3D/Graphics/Model.h"
+#include <Urho3D/Graphics/StaticModel.h>
 #include <Urho3D/Graphics/Octree.h>
 #include <Urho3D/Graphics/Renderer.h>
 #include <Urho3D/Graphics/DebugRenderer.h>
 #include <Urho3D/Graphics/Camera.h>
 #include <Urho3D/Graphics/Zone.h>
-#include <Urho3D/Graphics/Skybox.h>
-#include <Urho3D/Graphics/Model.h>
-#include <Urho3D/Graphics/Technique.h>
-#include <Urho3D/Graphics/Zone.h>
 #include <Urho3D/Graphics/BillboardSet.h>
 
 #include <Urho3D/UI/UI.h>
-#include <Urho3D/Resource/ResourceCache.h>
-#include <Urho3D/Engine/EngineDefs.h>
-#include <Urho3D/Engine/DebugHud.h>
-#include <Urho3D/Scene/Scene.h>
+#include <Urho3D/UI/BorderImage.h>
+#include <Urho3D/UI/Button.h>
+#include <Urho3D/UI/UIEvents.h>
 #include <Urho3D/UI/View3D.h>
 
+#include <Urho3D/Resource/ResourceCache.h>
+#include "Urho3D/Resource/XMLFile.h"
+
+#include <Urho3D/Scene/Scene.h>
 #include "Urho3D/Scene/Node.h"
+
 #include "input.h"
 #include "jackal_control.h"
 #include "mapping.h"
@@ -56,8 +45,6 @@ const std::string REAR_MOUNT{"rear_mount"};
 const std::string FRONT_MOUNT{"front_mount"};
 const std::string FRONT_LASER_MOUNT{"front_laser_mount"};
 const std::string FRONT_LASER{"front_laser"};
-
-intern const Color NO_GRID_COLOR = {0, 0.7, 0.7, 1.0};
 
 intern void setup_camera_controls(map_panel *mp, urho::Node *cam_node, input_data *inp)
 {
@@ -196,44 +183,56 @@ intern void create_jackal(map_panel *mp, urho::ResourceCache *cache)
     rr_wheel_node->Rotate({90, {-1, 0, 0}});
 }
 
-intern void setup_scene(map_panel *mp, urho::ResourceCache *cache, urho::Scene *scene)
+intern void setup_occ_grid_map(occ_grid_map * map, const char *node_name, urho::ResourceCache *cache, urho::Scene *scene, urho::Context *uctxt)
+{
+    auto occ_mat = cache->GetResource<urho::Material>("Materials/" + urho::String(node_name) + "_billboard.xml");
+
+    map->rend_texture = new urho::Texture2D(uctxt);
+    map->image = new urho::Image(uctxt);
+
+    // Main localization node - all nodes child of this node..
+    map->node = scene->CreateChild(node_name);
+
+    map->rend_texture->SetNumLevels(1);
+    occ_mat->SetTexture(urho::TU_DIFFUSE, map->rend_texture);
+
+    map->bb_set = map->node->CreateComponent<urho::BillboardSet>();
+    map->bb_set->SetFixedScreenSize(false);
+    map->bb_set->SetMaterial(occ_mat);
+    map->bb_set->SetFaceCameraMode(urho::FC_NONE);
+    
+    map->image->SetSize(512, 512, 4);
+    for (int y = 0; y < map->image->GetHeight(); ++y)
+    {
+        for (int x = 0; x < map->image->GetWidth(); ++x)
+            map->image->SetPixel(x, y, map->undiscovered);
+    }
+
+    map->rend_texture->SetData(map->image);
+    map->rend_texture->SetFilterMode(Urho3D::TextureFilterMode::FILTER_NEAREST);
+    map->bb_set->SetNumBillboards(1);
+
+    auto bb = map->bb_set->GetBillboard(0);
+    bb->enabled_ = true;
+    bb->size_ = {25.6f, 25.6f};
+    map->bb_set->Commit();
+}
+
+intern void setup_scene(map_panel *mp, urho::ResourceCache *cache, urho::Scene *scene, urho::Context *uctxt)
 {
     // Grab all resources needed
     auto scan_mat = cache->GetResource<urho::Material>("Materials/scan_billboard.xml");
-    auto occ_mat = cache->GetResource<urho::Material>("Materials/occ_billboard.xml");
 
-    mp->map_text = new urho::Texture2D(mp->view->GetContext());
-    mp->map_image = new urho::Image(mp->view->GetContext());
+    setup_occ_grid_map(&mp->map, MAP.c_str(), cache, scene, uctxt);
+    mp->node_lut[MAP] = mp->map.node;
 
-    auto root = scene->CreateChild("root");
-
-    // Main localization node - all nodes child of this node..
-    mp->map = root->CreateChild(MAP.c_str());
-
-    mp->map_text->SetNumLevels(1);
-    occ_mat->SetTexture(urho::TU_DIFFUSE, mp->map_text);
-    mp->occ_grid_bb = mp->map->CreateComponent<urho::BillboardSet>();
-    mp->occ_grid_bb->SetFixedScreenSize(false);
-    mp->occ_grid_bb->SetMaterial(occ_mat);
-    mp->occ_grid_bb->SetFaceCameraMode(urho::FC_NONE);
-    mp->map_image->SetSize(1024, 1024, 4);
-    for (int y = 0; y < mp->map_image->GetHeight(); ++y)
-    {
-        for (int x = 0; x < mp->map_image->GetWidth(); ++x)
-            mp->map_image->SetPixel(x, y, NO_GRID_COLOR);
-    }
-
-    mp->map_text->SetData(mp->map_image);
-    mp->map_text->SetFilterMode(Urho3D::TextureFilterMode::FILTER_NEAREST);
-    mp->occ_grid_bb->SetNumBillboards(1);
-    auto bb = mp->occ_grid_bb->GetBillboard(0);
-    bb->enabled_ = true;
-    bb->size_ = {10, 10};
-    mp->occ_grid_bb->Commit();
-    mp->node_lut[MAP] = mp->map;
+    mp->glob_cmap.undiscovered = mp->glob_cmap.free_space;
+    mp->glob_cmap.map_type = OCC_GRID_TYPE_COSTMAP;
+    setup_occ_grid_map(&mp->glob_cmap, "global_costmap", cache, scene, uctxt);
+    mp->glob_cmap.node->Translate({0, 0,-0.01});
 
     // Odom frame is smoothly moving while map may experience discreet jumps
-    mp->odom = mp->map->CreateChild(ODOM.c_str());
+    mp->odom = mp->map.node->CreateChild(ODOM.c_str());
     mp->node_lut[ODOM] = mp->odom;
 
     // Base link is main node tied to the jackal base
@@ -288,11 +287,11 @@ intern ivec2 index_to_texture_coords(u32 index, u32 row_width, u32 height)
     return {(int)(index % row_width), (int)height - (int)(index / row_width)};
 }
 
-intern void update_scene_from_occ_grid(map_panel *mp, const occ_grid_update &grid)
+intern void update_scene_map_from_occ_grid(const occ_grid_map &map, const occ_grid_update &grid)
 {
     ilog("Got %d changes this frame for map size %dx%d", grid.meta.change_elem_count, grid.meta.width, grid.meta.height);
 
-    ivec2 resized{mp->map_image->GetWidth(), mp->map_image->GetHeight()};
+    ivec2 resized{map.image->GetWidth(), map.image->GetHeight()};
     while (resized.x_ < grid.meta.width)
         resized.x_ *= 2;
     while (resized.x_/2 > grid.meta.width)
@@ -302,47 +301,77 @@ intern void update_scene_from_occ_grid(map_panel *mp, const occ_grid_update &gri
     while (resized.y_/2 > grid.meta.height)
         resized.y_ /= 2;
 
-    if (resized != ivec2{mp->map_image->GetWidth(), mp->map_image->GetHeight()})
+    if (resized != ivec2{map.image->GetWidth(), map.image->GetHeight()})
     {
         ilog("Map resized texture to %d by %d (actual map size %d %d)", resized.x_, resized.y_, grid.meta.width, grid.meta.height);
-        mp->map_image->Resize(resized.x_, resized.y_);
+        map.image->Resize(resized.x_, resized.y_);
         for (int y = 0; y < resized.y_; ++y)
         {
             for (int x = 0; x < resized.x_; ++x)
-                mp->map_image->SetPixel(x, y, NO_GRID_COLOR);
+                map.image->SetPixel(x, y, map.undiscovered);
         }
     }
 
     quat q = quat_from(grid.meta.origin_orientation);
     vec3 pos = vec3_from(grid.meta.origin_pos);
-    mp->map->SetRotation(q);
+    map.node->SetRotation(q);
 
-    auto map_bb = mp->occ_grid_bb->GetBillboard(0);
-    map_bb->size_ = vec2{(float)mp->map_image->GetWidth(), (float)mp->map_image->GetHeight()} * grid.meta.resolution * 0.5;
-    float h_diff = map_bb->size_.y_ - grid.meta.height * grid.meta.resolution * 0.5;
-    map_bb->position_ = pos + vec3{map_bb->size_};
-    map_bb->enabled_ = true;
+    auto billboard = map.bb_set->GetBillboard(0);
+    billboard->size_ = vec2{(float)map.image->GetWidth(), (float)map.image->GetHeight()} * grid.meta.resolution * 0.5;
+    float h_diff = billboard->size_.y_ - grid.meta.height * grid.meta.resolution * 0.5;
+    billboard->position_ = pos + vec3{billboard->size_};
+    billboard->enabled_ = true;
 
     // Go through and use the arriving delta packet to set the current map values
     for (int i = 0; i < grid.meta.change_elem_count; ++i)
     {
         u32 map_ind = (grid.change_elems[i] >> 8);
         u8 prob = (u8)grid.change_elems[i];
-        ivec2 tex_coods = index_to_texture_coords(map_ind, grid.meta.width, mp->map_image->GetHeight());
+        ivec2 tex_coods = index_to_texture_coords(map_ind, grid.meta.width, map.image->GetHeight());
 
-        if (prob <= 100)
+        if (map.map_type == OCC_GRID_TYPE_MAP)
         {
-            float fprob = 1.0 - (float)prob * 0.01;
-            mp->map_image->SetPixel(tex_coods.x_, tex_coods.y_, {fprob, fprob, fprob, 1.0f});
+            if (prob <= 100)
+            {
+                float fprob = 1.0 - (float)prob * 0.01;
+                map.image->SetPixel(tex_coods.x_, tex_coods.y_, {fprob, fprob, fprob, 1.0});
+            }
+            else
+            {
+                map.image->SetPixel(tex_coods.x_, tex_coods.y_, map.undiscovered);
+            }
         }
         else
         {
-            mp->map_image->SetPixel(tex_coods.x_, tex_coods.y_, NO_GRID_COLOR);
+            if (prob == 100)
+            {
+                map.image->SetPixel(tex_coods.x_, tex_coods.y_, map.lethal);
+            }
+            else if (prob == 99)
+            {
+                map.image->SetPixel(tex_coods.x_, tex_coods.y_, map.inscribed);
+            }
+            else if (prob <= 98 && prob >= 50)
+            {
+                auto col = map.possibly_circumscribed;
+                col.a_ -= - (1.0 - (prob - 50.0) / (98.0 - 50.0)) * 0.4;
+                map.image->SetPixel(tex_coods.x_, tex_coods.y_, col);
+            }
+            else if (prob <= 50 && prob >= 1)
+            {
+                auto col = map.no_collision;
+                col.a_ -= (1.0 - (prob - 1.0) / (50.0 - 1.0)) * 0.4;
+                map.image->SetPixel(tex_coods.x_, tex_coods.y_, col);
+            }
+            else
+            {
+                map.image->SetPixel(tex_coods.x_, tex_coods.y_, map.free_space);
+            }
         }
     }
 
-    mp->occ_grid_bb->Commit();
-    mp->map_text->SetData(mp->map_image);
+    map.bb_set->Commit();
+    map.rend_texture->SetData(map.image);
 }
 
 intern void update_scene_from_scan(map_panel *mp, const sicklms_laser_scan &packet)
@@ -532,14 +561,18 @@ void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, 
     auto cache = uctxt->GetSubsystem<urho::ResourceCache>();
 
     create_3dview(mp, cache, ui_inf.ui_sys->GetRoot(), uctxt);
-    setup_scene(mp, cache, mp->view->GetScene());
+    setup_scene(mp, cache, mp->view->GetScene(), uctxt);
     setup_camera_controls(mp, mp->view->GetCameraNode(), inp);
     setup_cam_move_widget(mp, ui_inf);
     setup_cam_zoom_widget(mp, ui_inf);
 
     ss_connect(&mp->router, conn->scan_received, [mp](const sicklms_laser_scan &pckt) { update_scene_from_scan(mp, pckt); });
 
-    ss_connect(&mp->router, conn->map_update_received, [mp](const occ_grid_update &pckt) { update_scene_from_occ_grid(mp, pckt); });
+    ss_connect(&mp->router, conn->map_update_received, [mp](const occ_grid_update &pckt) { update_scene_map_from_occ_grid(mp->map, pckt); });
+
+    ss_connect(&mp->router, conn->glob_cm_update_received, [mp](const occ_grid_update &pckt) { 
+        ilog("Got costmap update");
+        update_scene_map_from_occ_grid(mp->glob_cmap, pckt); });
 
     ss_connect(&mp->router, conn->transform_updated, [mp](const node_transform &pckt) { update_node_transform(mp, pckt); });
 

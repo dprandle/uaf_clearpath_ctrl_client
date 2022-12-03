@@ -392,7 +392,7 @@ intern sizet matching_packet_size(u8 *data)
     {
         return scan_size;
     }
-    else if (matches_packet_id(MAP_PCKT_ID, data))
+    else if (matches_packet_id(MAP_PCKT_ID, data) || matches_packet_id(GLOB_CM_PCKT_ID, data))
     {
         return occ_meta;
     }
