@@ -117,6 +117,22 @@ pack_unpack(ArchiveT &ar, T (&val)[N], const pack_var_info & vinfo)
     ar.cur_offset += sz;
 }
 
+template<class ArchiveT, class T, sizet N>
+typename std::enable_if<!std::is_arithmetic_v<T>, void>::type
+pack_unpack(ArchiveT &ar, T (&val)[N], const pack_var_info & vinfo)
+{
+    sizet size = 0;
+    if (test_flags(vinfo.meta.flags, pack_va_flags::FIXED_ARRAY_CUSTOM_SIZE))
+        size = *((u32*)vinfo.meta.data);
+    else
+        size = N;
+
+    for (int i = 0; i < size; ++i)
+    {
+        pack_unpack(ar, val[i], vinfo);
+    }
+}
+
 #define pup_func(type) \
 template<class ArchiveT> \
 void pack_unpack(ArchiveT &ar, type &val, const pack_var_info & vinfo)

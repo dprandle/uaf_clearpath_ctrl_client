@@ -6,6 +6,7 @@
 #include <Urho3D/Graphics/Octree.h>
 #include <Urho3D/Graphics/Renderer.h>
 #include <Urho3D/Graphics/DebugRenderer.h>
+#include <Urho3D/Graphics/View.h>
 #include <Urho3D/Graphics/Camera.h>
 #include <Urho3D/Graphics/Zone.h>
 #include <Urho3D/Graphics/BillboardSet.h>
@@ -49,8 +50,9 @@ const std::string FRONT_LASER{"front_laser"};
 intern void setup_camera_controls(map_panel *mp, urho::Node *cam_node, input_data *inp)
 {
     auto on_mouse_tilt = [cam_node, mp](const itrigger_event &tevent) {
-        if (mp->js_enabled || mp->view != tevent.vp.element_under_mouse && tevent.vp.element_under_mouse && tevent.vp.element_under_mouse->GetPriority() > 2)
+        if (mp->npview.nw.button_was_pressed || mp->js_enabled || (mp->view != tevent.vp.element_under_mouse && tevent.vp.element_under_mouse->GetPriority() > 2))
             return;
+
         auto rot_node = cam_node;
         auto parent = cam_node->GetParent();
         if (parent)
@@ -61,14 +63,22 @@ intern void setup_camera_controls(map_panel *mp, urho::Node *cam_node, input_dat
         rot_node->Rotate(quat(tevent.vp.vp_norm_mdelta.x_ * 100.0f, {0, 0, -1}), urho::TransformSpace::World);
     };
 
-    auto on_mouse_zoom = [cam_node, mp](const itrigger_event &tevent) {
-        if (mp->js_enabled || mp->view != tevent.vp.element_under_mouse && tevent.vp.element_under_mouse && tevent.vp.element_under_mouse->GetPriority() > 2)
+    auto on_click = [cam_node, mp](const itrigger_event &tevent) {
+        if (!mp->npview.nw.button_was_pressed || mp->js_enabled || (mp->view != tevent.vp.element_under_mouse && tevent.vp.element_under_mouse->GetPriority() > 2))
             return;
-        float amount = tevent.wheel;
-#if defined(__EMSCRIPTEN__)
-        amount *= 0.01f;
-#endif
-        cam_node->Translate(vec3{0, 0, amount});
+
+        mp->npview.nw.button_was_pressed = false;
+        auto camc = cam_node->GetComponent<urho::Camera>();
+
+        urho::Plane p{{0,0,-1},{0,0,0}};
+        auto scrn_ray = camc->GetScreenRay(tevent.norm_mpos.x_, tevent.norm_mpos.y_);
+
+        double dist = scrn_ray.HitDistance(p);
+        if (dist < 1000)
+        {
+            ilog("Found map - sending info");
+            mp->npview.nw.goal_to_set = scrn_ray.origin_ + scrn_ray.direction_ * dist;
+        }
     };
 
     auto on_debug_key = [mp](const itrigger_event &tevent) { ilog("Debug Key"); };
@@ -83,6 +93,16 @@ intern void setup_camera_controls(map_panel *mp, urho::Node *cam_node, input_dat
     it.qual_allowed = urho::QUAL_ANY;
     input_add_trigger(&inp->map, it);
     ss_connect(&mp->router, inp->dispatch.trigger, it.name, on_mouse_tilt);
+
+    it.cond.mbutton = urho::MOUSEB_LEFT;
+    it.name = urho::StringHash("Click").ToHash();
+    it.tstate = T_BEGIN;
+    it.mb_req = 0;
+    it.mb_allowed = 0;
+    it.qual_req = 0;
+    it.qual_allowed = urho::QUAL_ANY;
+    input_add_trigger(&inp->map, it);
+    ss_connect(&mp->router, inp->dispatch.trigger, it.name, on_click);
 
     it.cond = {};
     it.cond.key = urho::KEY_D;
@@ -107,7 +127,8 @@ intern void create_3dview(map_panel *mp, urho::ResourceCache *cache, urho::UIEle
     mp->view->SetMinAnchor({0.0f, 0.0f});
     mp->view->SetMaxAnchor({1.0f, 1.0f});
 
-    scene->CreateComponent<urho::DebugRenderer>();
+    auto dbg = scene->CreateComponent<urho::DebugRenderer>();
+    dbg->SetLineAntiAlias(true);
     scene->CreateComponent<urho::Octree>();
 
     auto cam = cam_node->CreateComponent<urho::Camera>();
@@ -183,7 +204,7 @@ intern void create_jackal(map_panel *mp, urho::ResourceCache *cache)
     rr_wheel_node->Rotate({90, {-1, 0, 0}});
 }
 
-intern void setup_occ_grid_map(occ_grid_map * map, const char *node_name, urho::ResourceCache *cache, urho::Scene *scene, urho::Context *uctxt)
+intern void setup_occ_grid_map(occ_grid_map *map, const char *node_name, urho::ResourceCache *cache, urho::Scene *scene, urho::Context *uctxt)
 {
     auto occ_mat = cache->GetResource<urho::Material>("Materials/" + urho::String(node_name) + "_billboard.xml");
 
@@ -200,7 +221,7 @@ intern void setup_occ_grid_map(occ_grid_map * map, const char *node_name, urho::
     map->bb_set->SetFixedScreenSize(false);
     map->bb_set->SetMaterial(occ_mat);
     map->bb_set->SetFaceCameraMode(urho::FC_NONE);
-    
+
     map->image->SetSize(512, 512, 4);
     for (int y = 0; y < map->image->GetHeight(); ++y)
     {
@@ -211,6 +232,8 @@ intern void setup_occ_grid_map(occ_grid_map * map, const char *node_name, urho::
     map->rend_texture->SetData(map->image);
     map->rend_texture->SetFilterMode(Urho3D::TextureFilterMode::FILTER_NEAREST);
     map->bb_set->SetNumBillboards(1);
+
+    map->bb_set->SetMinMaxZ(-0.01,0.01);
 
     auto bb = map->bb_set->GetBillboard(0);
     bb->enabled_ = true;
@@ -229,7 +252,7 @@ intern void setup_scene(map_panel *mp, urho::ResourceCache *cache, urho::Scene *
     mp->glob_cmap.undiscovered = mp->glob_cmap.free_space;
     mp->glob_cmap.map_type = OCC_GRID_TYPE_COSTMAP;
     setup_occ_grid_map(&mp->glob_cmap, "global_costmap", cache, scene, uctxt);
-    mp->glob_cmap.node->Translate({0, 0,-0.01});
+    mp->glob_cmap.node->Translate({0, 0, -0.01});
 
     // Odom frame is smoothly moving while map may experience discreet jumps
     mp->odom = mp->map.node->CreateChild(ODOM.c_str());
@@ -289,16 +312,14 @@ intern ivec2 index_to_texture_coords(u32 index, u32 row_width, u32 height)
 
 intern void update_scene_map_from_occ_grid(const occ_grid_map &map, const occ_grid_update &grid)
 {
-    ilog("Got %d changes this frame for map size %dx%d", grid.meta.change_elem_count, grid.meta.width, grid.meta.height);
-
     ivec2 resized{map.image->GetWidth(), map.image->GetHeight()};
     while (resized.x_ < grid.meta.width)
         resized.x_ *= 2;
-    while (resized.x_/2 > grid.meta.width)
+    while (resized.x_ / 2 > grid.meta.width)
         resized.x_ /= 2;
     while (resized.y_ < grid.meta.height)
         resized.y_ *= 2;
-    while (resized.y_/2 > grid.meta.height)
+    while (resized.y_ / 2 > grid.meta.height)
         resized.y_ /= 2;
 
     if (resized != ivec2{map.image->GetWidth(), map.image->GetHeight()})
@@ -312,8 +333,8 @@ intern void update_scene_map_from_occ_grid(const occ_grid_map &map, const occ_gr
         }
     }
 
-    quat q = quat_from(grid.meta.origin_orientation);
-    vec3 pos = vec3_from(grid.meta.origin_pos);
+    quat q = quat_from(grid.meta.origin_p.orientation);
+    vec3 pos = vec3_from(grid.meta.origin_p.pos);
     map.node->SetRotation(q);
 
     auto billboard = map.bb_set->GetBillboard(0);
@@ -354,7 +375,7 @@ intern void update_scene_map_from_occ_grid(const occ_grid_map &map, const occ_gr
             else if (prob <= 98 && prob >= 50)
             {
                 auto col = map.possibly_circumscribed;
-                col.a_ -= - (1.0 - (prob - 50.0) / (98.0 - 50.0)) * 0.4;
+                col.a_ -= -(1.0 - (prob - 50.0) / (98.0 - 50.0)) * 0.4;
                 map.image->SetPixel(tex_coods.x_, tex_coods.y_, col);
             }
             else if (prob <= 50 && prob >= 1)
@@ -429,7 +450,14 @@ intern void update_node_transform(map_panel *mp, const node_transform &tform)
     node->SetRotationSilent(quat_from(tform.orientation));
 }
 
-intern void map_panel_run_frame(map_panel *mp, float dt)
+intern void update_nav_path(map_panel *mp, const nav_path &np)
+{
+    mp->npview.entry_count = np.path_cnt;
+    for (int i = 0; i < np.path_cnt; ++i)
+        mp->npview.path_entries[i] = vec3_from(np.path[i].pos);
+}
+
+intern void map_panel_run_frame(map_panel *mp, float dt, net_connection *conn)
 {
     static float counter = 0.0f;
     counter += dt;
@@ -448,6 +476,77 @@ intern void map_panel_run_frame(map_panel *mp, float dt)
     {
         mp->view->GetCameraNode()->Translate(mp->cam_zoom_widget.loc_trans * dt * 20);
     }
+
+    auto dbg = mp->view->GetScene()->GetComponent<urho::DebugRenderer>();
+    
+    for (int i = 1; i < mp->npview.entry_count; ++i)
+    {
+        dbg->AddLine(mp->npview.path_entries[i-1], mp->npview.path_entries[i], mp->npview.color);
+    }
+
+    if (mp->npview.entry_count > 0)
+    {
+        static bool increasing = true;
+        if (increasing && mp->npview.goal_marker.cur_anim_time < mp->npview.goal_marker.loop_anim_time)
+        {
+            mp->npview.goal_marker.cur_anim_time += dt;
+            if (mp->npview.goal_marker.cur_anim_time > mp->npview.goal_marker.loop_anim_time)
+                increasing = false;
+        }
+        else
+        {
+            mp->npview.goal_marker.cur_anim_time -= dt;
+            if (mp->npview.goal_marker.cur_anim_time < 0)
+                increasing = true;
+        }
+        
+        float rad = (mp->npview.goal_marker.max_rad - mp->npview.goal_marker.min_rad) * (mp->npview.goal_marker.cur_anim_time / mp->npview.goal_marker.loop_anim_time) + mp->npview.goal_marker.min_rad;
+        dbg->AddCircle(mp->npview.path_entries[mp->npview.entry_count-1], {0,0,-1}, rad, mp->npview.goal_marker.color);
+    }
+    else
+    {
+        mp->npview.goal_marker.cur_anim_time = 0.0f;
+    }
+
+    if (mp->npview.nw.goal_to_set != vec3::ZERO)
+    {
+        command_goal cg;
+        cg.goal_p.pos = dvec3_from(mp->npview.nw.goal_to_set);
+        ilog("Setting goal to {%f %f %f}", cg.goal_p.pos.x, cg.goal_p.pos.y, cg.goal_p.pos.z);
+        net_tx(*conn, cg);
+        mp->npview.nw.goal_to_set = {};
+    }
+
+    mp->map.bb_set->DrawDebugGeometry(dbg,false);
+}
+
+intern void setup_nav_widget(map_panel *mp, const ui_info &ui_inf)
+{
+    auto uctxt = ui_inf.ui_sys->GetContext();
+    auto cache = uctxt->GetSubsystem<urho::ResourceCache>();
+
+    mp->npview.nw.widget = new urho::BorderImage(uctxt);
+    ui_inf.ui_sys->GetRoot()->AddChild(mp->npview.nw.widget);
+    mp->npview.nw.widget->SetStyle("NavWidget", ui_inf.style);
+
+    mp->npview.nw.set_goal = new urho::Button(uctxt);
+    mp->npview.nw.widget->AddChild(mp->npview.nw.set_goal);
+    mp->npview.nw.set_goal->SetStyle("SetGoalButton", ui_inf.style);
+    
+
+    auto offset = mp->npview.nw.set_goal->GetImageRect().Size();
+    offset.x_ *= ui_inf.dev_pixel_ratio_inv * 0.75;
+    offset.y_ *= ui_inf.dev_pixel_ratio_inv * 0.75;
+    mp->npview.nw.widget->SetMaxOffset(offset);
+    mp->npview.nw.set_goal->SetMaxOffset(offset);
+
+    mp->npview.nw.widget->SubscribeToEvent(urho::E_PRESSED, [mp](urho::StringHash type, urho::VariantMap &ev_data) {
+        auto elem = (urho::UIElement *)ev_data[urho::ClickEnd::P_ELEMENT].GetPtr();
+        if (elem == mp->npview.nw.set_goal)
+            mp->npview.nw.button_was_pressed = true;
+    });
+
+    mp->cam_zoom_widget.widget->SubscribeToEvent(urho::E_CLICKEND, [mp](urho::StringHash type, urho::VariantMap &ev_data) { mp->cam_zoom_widget.loc_trans = {}; });
 }
 
 intern void setup_cam_zoom_widget(map_panel *mp, const ui_info &ui_inf)
@@ -565,20 +664,21 @@ void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, 
     setup_camera_controls(mp, mp->view->GetCameraNode(), inp);
     setup_cam_move_widget(mp, ui_inf);
     setup_cam_zoom_widget(mp, ui_inf);
+    setup_nav_widget(mp, ui_inf);
 
     ss_connect(&mp->router, conn->scan_received, [mp](const sicklms_laser_scan &pckt) { update_scene_from_scan(mp, pckt); });
 
     ss_connect(&mp->router, conn->map_update_received, [mp](const occ_grid_update &pckt) { update_scene_map_from_occ_grid(mp->map, pckt); });
 
-    ss_connect(&mp->router, conn->glob_cm_update_received, [mp](const occ_grid_update &pckt) { 
-        ilog("Got costmap update");
-        update_scene_map_from_occ_grid(mp->glob_cmap, pckt); });
+    ss_connect(&mp->router, conn->glob_cm_update_received, [mp](const occ_grid_update &pckt) { update_scene_map_from_occ_grid(mp->glob_cmap, pckt); });
 
     ss_connect(&mp->router, conn->transform_updated, [mp](const node_transform &pckt) { update_node_transform(mp, pckt); });
 
-    mp->view->SubscribeToEvent(urho::E_UPDATE, [mp](urho::StringHash type, urho::VariantMap &ev_data) {
+    ss_connect(&mp->router, conn->nav_path_updated, [mp](const nav_path &pckt) { update_nav_path(mp, pckt); });
+
+    mp->view->SubscribeToEvent(urho::E_UPDATE, [mp, conn](urho::StringHash type, urho::VariantMap &ev_data) {
         auto dt = ev_data[urho::Update::P_TIMESTEP].GetFloat();
-        map_panel_run_frame(mp, dt);
+        map_panel_run_frame(mp, dt, conn);
     });
 }
 

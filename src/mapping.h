@@ -70,6 +70,33 @@ struct occ_grid_map
     int map_type {OCC_GRID_TYPE_MAP};
 };
 
+struct nav_widget
+{
+    urho::UIElement * widget;
+    urho::Button *set_goal;
+    vec3 goal_to_set {};
+    bool button_was_pressed{false};
+};
+
+struct goal_marker_info
+{
+    float min_rad {0.25f};
+    float max_rad {0.35f};
+    float loop_anim_time {0.5f};
+    float cur_anim_time {0.0f};
+    urho::Color color{0,0.6,0.6,1};
+};
+
+struct nav_path_view
+{
+    static constexpr sizet MAX_LINE_ENTRIES = 10000;
+    urho::Color color{0,0.6,0,1};
+    goal_marker_info goal_marker;
+    sizet entry_count;
+    vec3 path_entries[MAX_LINE_ENTRIES];
+    nav_widget nw;
+};
+
 struct map_panel
 {
     bool js_enabled {false};
@@ -82,6 +109,8 @@ struct map_panel
     
     occ_grid_map map {};
     occ_grid_map glob_cmap {};
+
+    nav_path_view npview;
 
     urho::Node * base_link {};
     urho::Node * odom {};

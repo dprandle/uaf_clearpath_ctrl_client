@@ -214,11 +214,13 @@ intern void alloc_connection(net_connection *conn)
     conn->pckts.scan = (sicklms_laser_scan*)malloc(sizeof(sicklms_laser_scan));
     conn->pckts.ntf = (node_transform*)malloc(sizeof(node_transform));
     conn->pckts.gu = (occ_grid_update *)malloc(sizeof(occ_grid_update));
+    conn->pckts.navp = (nav_path *)malloc(sizeof(nav_path));
 
     memset(conn->rx_buf, 0, sizeof(net_rx_buffer));
     memset(conn->pckts.scan, 0, sizeof(sicklms_laser_scan));
     memset(conn->pckts.ntf, 0, sizeof(node_transform));
     memset(conn->pckts.gu, 0, sizeof(occ_grid_update));
+    memset(conn->pckts.navp, 0, sizeof(nav_path));
 }
 
 intern void free_connection(net_connection *conn)
@@ -227,6 +229,7 @@ intern void free_connection(net_connection *conn)
     free(conn->pckts.scan);
     free(conn->pckts.ntf);
     free(conn->pckts.gu);
+    free(conn->pckts.navp);
 }
 
 void net_connect(net_connection *conn, const char *ip, int port, int max_timeout_ms)
@@ -321,20 +324,6 @@ intern void handle_scan_packet(binary_fixed_buffer_archive<net_rx_buffer::MAX_PA
     if (available >= total_packet_size)
     {
         pack_unpack(read_buf, conn->pckts.scan->ranges, {"change_elems", {pack_va_flags::FIXED_ARRAY_CUSTOM_SIZE, &range_count}});
-
-#if defined(SCAN_DEBUG)
-        scan_dlog("Got scan packet - %d available bytes and %d packet size (%d ranges) - new offset is %d",
-                  available,
-                  total_packet_size,
-                  range_count,
-                  read_buf.cur_offset);
-        SCAN_PACK_LOG_ENABLE
-        static u8 buf[100];
-        binary_buffer_archive ba{buf, PACK_DIR_OUT};
-        pack_unpack(ba, conn->pckts.scan->meta, {"meta"});
-        SCAN_PACK_LOG_DISABLE
-#endif
-
         conn->scan_received(0, *conn->pckts.scan);
     }
     else
@@ -345,7 +334,7 @@ intern void handle_scan_packet(binary_fixed_buffer_archive<net_rx_buffer::MAX_PA
 }
 
 intern void handle_occ_grid_pckt(binary_fixed_buffer_archive<net_rx_buffer::MAX_PACKET_SIZE> &read_buf, sizet available, sizet cached_offset, occ_grid_update * gu, ss_signal<const occ_grid_update&> &sig)
-{
+{    
     pack_unpack(read_buf, gu->header, {"header"});
     pack_unpack(read_buf, gu->meta, {"meta"});
 
@@ -356,6 +345,27 @@ intern void handle_occ_grid_pckt(binary_fixed_buffer_archive<net_rx_buffer::MAX_
     {
         pack_unpack(read_buf, gu->change_elems, {"change_elems", {pack_va_flags::FIXED_ARRAY_CUSTOM_SIZE, &gu->meta.change_elem_count}});
         sig(0, *gu);
+    }
+    else
+    {
+        // Not all bytes have come in for packet - set back the cur_offset to what it was before reading the meta data
+        read_buf.cur_offset = cached_offset;
+    }
+}
+
+intern void handle_nav_path_packet(binary_fixed_buffer_archive<net_rx_buffer::MAX_PACKET_SIZE> &read_buf, sizet available, sizet cached_offset, net_connection *conn)
+{
+    static sizet pose_size = packed_sizeof<pose>();
+    pack_unpack(read_buf, conn->pckts.navp->header, {"header"});
+    pack_unpack(read_buf, conn->pckts.navp->path_cnt, {"path_cnt"});
+
+    sizet meta_and_header_size = read_buf.cur_offset - cached_offset;
+    sizet total_packet_size = conn->pckts.navp->path_cnt * pose_size + meta_and_header_size;
+
+    if (available >= total_packet_size)
+    {
+        pack_unpack(read_buf, conn->pckts.navp->path, {"path", {pack_va_flags::FIXED_ARRAY_CUSTOM_SIZE, &conn->pckts.navp->path_cnt}});
+        conn->nav_path_updated(0, *conn->pckts.navp);
     }
     else
     {
@@ -387,6 +397,7 @@ intern sizet matching_packet_size(u8 *data)
     static sizet scan_size = packed_sizeof<sicklms_laser_scan_meta>();
     static sizet occ_meta = packed_sizeof<occ_grid_meta>();
     static sizet node_tform = packed_sizeof<node_transform>();
+    static sizet nav_path_meta = sizeof(u32);
 
     if (matches_packet_id(SCAN_PACKET_ID, data))
     {
@@ -395,6 +406,10 @@ intern sizet matching_packet_size(u8 *data)
     else if (matches_packet_id(MAP_PCKT_ID, data) || matches_packet_id(GLOB_CM_PCKT_ID, data))
     {
         return occ_meta;
+    }
+    else if (matches_packet_id(NAVP_PCKT_ID, data))
+    {
+        return nav_path_meta;
     }
     else if (matches_packet_id(TFORM_PCKT_ID, data))
     {
@@ -421,6 +436,10 @@ intern sizet dispatch_received_packet(binary_fixed_buffer_archive<net_rx_buffer:
     else if (matches_packet_id(MAP_PCKT_ID, read_buf.data + read_buf.cur_offset))
     {
         handle_occ_grid_pckt(read_buf, available, cached_offset, conn->pckts.gu, conn->map_update_received);
+    }
+    else if (matches_packet_id(NAVP_PCKT_ID, read_buf.data + read_buf.cur_offset))
+    {
+        handle_nav_path_packet(read_buf, available, cached_offset, conn);
     }
     return read_buf.cur_offset - cached_offset;
 }
@@ -533,6 +552,10 @@ void net_tx(const net_connection &conn, const u8 *data, sizet data_size)
     else if (data_size != bwritten)
     {
         wlog("Bytes written was only %d when tried to write %d", bwritten, data_size);
+    }
+    else
+    {
+        ilog("Wrote %d bytes", bwritten);
     }
 #endif
 }

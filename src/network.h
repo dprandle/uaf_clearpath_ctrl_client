@@ -9,15 +9,21 @@ inline const char *SCAN_PACKET_ID = "SCAN_PCKT_ID";
 inline const char *MAP_PCKT_ID = "MAP_PCKT_ID";
 inline const char *GLOB_CM_PCKT_ID = "GLOB_CM_PCKT_ID";
 inline const char *TFORM_PCKT_ID = "TFORM_PCKT_ID";
+inline const char *NAVP_PCKT_ID = "NAVP_PCKT_ID";
+
+
+inline const char *VEL_CMD_HEADER = "VEL_CMD_PCKT_ID";
+inline const char *GOAL_CMD_HEADER = "GOAL_CMD_PCKT_ID";
+inline const char *STOP_CMD_HEADER = "STOP_CMD_PCKT_ID";
 
 static constexpr int MAX_MAP_SIZE = 4000;
 
 struct dvec3
 {
     static constexpr int size = 24;
-    double x{};
-    double y{};
-    double z{};
+    double x{0.0};
+    double y{0.0};
+    double z{0.0};
 };
 
 pup_func(dvec3)
@@ -30,10 +36,10 @@ pup_func(dvec3)
 struct dquat
 {
     static constexpr int size = 32;
-    double x{};
-    double y{};
-    double z{};
-    double w{};
+    double x{0.0};
+    double y{0.0};
+    double z{0.0};
+    double w{1.0};
 };
 
 pup_func(dquat)
@@ -54,11 +60,33 @@ inline quat quat_from(const dquat &q)
     return {(float)q.w, (float)q.x, (float)-q.y, (float)q.z};
 }
 
+inline dvec3 dvec3_from(const vec3 &vec)
+{
+    return {(float)vec.x_, (float)vec.y_, -(float)vec.z_};
+}
+
+inline dquat quat_from(const quat &q)
+{
+    return {(float)q.w_, (float)q.x_, (float)-q.y_, (float)q.z_};
+}
+
 struct packet_header
 {
-    static constexpr int size = 16;
+    static constexpr int size = 32;
     char type[size];
 };
+
+struct pose
+{
+    dvec3 pos;
+    dquat orientation;
+};
+
+pup_func(pose)
+{
+    pup_member(pos);
+    pup_member(orientation);
+}
 
 pup_func(packet_header)
 {
@@ -89,6 +117,18 @@ pup_func(command_velocity)
     pup_member(vinfo);
 }
 
+struct command_goal
+{
+    packet_header header{"GOAL_CMD_PCKT_ID"};
+    pose goal_p;
+};
+
+pup_func(command_goal)
+{
+    pup_member(header);
+    pup_member(goal_p);
+}
+
 struct sicklms_laser_scan_meta
 {
     float angle_min;
@@ -98,8 +138,9 @@ struct sicklms_laser_scan_meta
     float range_max;
 };
 
-inline sizet sicklms_get_range_count(const sicklms_laser_scan_meta & meta) {
-    return (sizet)((meta.angle_max - meta.angle_min)/meta.angle_increment) + 1;
+inline sizet sicklms_get_range_count(const sicklms_laser_scan_meta &meta)
+{
+    return (sizet)((meta.angle_max - meta.angle_min) / meta.angle_increment) + 1;
 }
 
 pup_func(sicklms_laser_scan_meta)
@@ -151,8 +192,7 @@ struct occ_grid_meta
     float resolution;
     u32 width;
     u32 height;
-    dvec3 origin_pos;
-    dquat origin_orientation;
+    pose origin_p;
     u32 change_elem_count;
 };
 
@@ -161,14 +201,13 @@ pup_func(occ_grid_meta)
     pup_member(resolution);
     pup_member(width);
     pup_member(height);
-    pup_member(origin_pos);
-    pup_member(origin_orientation);
+    pup_member(origin_p);
     pup_member(change_elem_count);
 }
 
 struct occ_grid_update
 {
-    static constexpr int MAX_CHANGE_ELEMS = MAX_MAP_SIZE*MAX_MAP_SIZE;
+    static constexpr int MAX_CHANGE_ELEMS = MAX_MAP_SIZE * MAX_MAP_SIZE;
     static constexpr int size = packet_header::size + occ_grid_meta::size + MAX_CHANGE_ELEMS;
     packet_header header{};
     occ_grid_meta meta;
@@ -182,12 +221,29 @@ pup_func(occ_grid_update)
     pup_member_meta(change_elems, pack_va_flags::FIXED_ARRAY_CUSTOM_SIZE, &val.meta.change_elem_count);
 }
 
+struct nav_path
+{
+    static constexpr int MAX_PATH_ELEMS = 10000;
+    packet_header header{};
+    u32 path_cnt;
+    pose path[MAX_PATH_ELEMS];
+};
+
+pup_func(nav_path)
+{
+    pup_member(header);
+    pup_member(path_cnt);
+
+    pup_member_meta(path, pack_va_flags::FIXED_ARRAY_CUSTOM_SIZE, &val.path_cnt);
+}
+
 /// Only malloc these once and reuse on every time a packet comes in
 struct reusable_packets
 {
-    occ_grid_update * gu;
-    sicklms_laser_scan * scan;
-    node_transform * ntf;
+    occ_grid_update *gu;
+    sicklms_laser_scan *scan;
+    node_transform *ntf;
+    nav_path *navp;
 };
 
 struct net_rx_buffer
@@ -200,13 +256,14 @@ struct net_rx_buffer
 struct net_connection
 {
     int socket_handle{0};
-    net_rx_buffer *rx_buf {};
-    reusable_packets pckts {};
-    
+    net_rx_buffer *rx_buf{};
+    reusable_packets pckts{};
+
     ss_signal<const sicklms_laser_scan &> scan_received;
     ss_signal<const occ_grid_update &> map_update_received;
     ss_signal<const occ_grid_update &> glob_cm_update_received;
     ss_signal<const node_transform &> transform_updated;
+    ss_signal<const nav_path &> nav_path_updated;
 };
 
 void net_connect(net_connection *conn, const char *ip, int port, int max_timeout_ms = -1);
@@ -223,8 +280,8 @@ void net_tx(const net_connection &conn, const u8 *data, sizet data_size);
 template<class T>
 void net_tx(const net_connection &conn, const T &packet)
 {
-    binary_fixed_buffer_archive<sizeof(T)> buf {PACK_DIR_OUT};
-    auto no_const = const_cast<T&>(packet);
+    binary_fixed_buffer_archive<sizeof(T)> buf{PACK_DIR_OUT};
+    auto no_const = const_cast<T &>(packet);
     pack_unpack(buf, no_const, {});
     net_tx(conn, buf.data, buf.cur_offset);
 }
