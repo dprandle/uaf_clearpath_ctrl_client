@@ -10,11 +10,14 @@ inline const char *MAP_PCKT_ID = "MAP_PCKT_ID";
 inline const char *GLOB_CM_PCKT_ID = "GLOB_CM_PCKT_ID";
 inline const char *TFORM_PCKT_ID = "TFORM_PCKT_ID";
 inline const char *NAVP_PCKT_ID = "NAVP_PCKT_ID";
+inline const char *GOAL_STAT_PCKT_ID = "GOAL_STAT_PCKT_ID";
 
 
 inline const char *VEL_CMD_HEADER = "VEL_CMD_PCKT_ID";
 inline const char *GOAL_CMD_HEADER = "GOAL_CMD_PCKT_ID";
 inline const char *STOP_CMD_HEADER = "STOP_CMD_PCKT_ID";
+inline const char *CLEAR_MAPS_CMD_HEADER = "CLEAR_MAPS_PCKT_ID";
+inline const char *SET_PARAMS_CMD_HEADER = "SET_PARAMS_CMD_PCKT_ID";
 
 static constexpr int MAX_MAP_SIZE = 4000;
 
@@ -129,6 +132,41 @@ pup_func(command_goal)
     pup_member(goal_p);
 }
 
+struct command_stop
+{
+    packet_header header{"STOP_CMD_PCKT_ID"};
+};
+
+pup_func(command_stop)
+{
+    pup_member(header);
+}
+
+struct command_clear_maps
+{
+    packet_header header{"CLEAR_MAPS_PCKT_ID"};
+};
+
+pup_func(command_clear_maps)
+{
+    pup_member(header);
+}
+
+struct command_set_params
+{
+    static constexpr sizet MAX_CHANGE_ELEMS = std::numeric_limits<u16>::max();
+    packet_header header{"SET_PARAMS_CMD_PCKT_ID"};
+    u16 blob_size;
+    u8 blob_data[MAX_CHANGE_ELEMS];
+};
+
+pup_func(command_set_params)
+{
+    pup_member(header);
+    pup_member(blob_size);
+    pup_member_meta(blob_data, pack_va_flags::FIXED_ARRAY_CUSTOM_SIZE, &val.blob_size);
+}
+
 struct sicklms_laser_scan_meta
 {
     float angle_min;
@@ -193,6 +231,7 @@ struct occ_grid_meta
     u32 width;
     u32 height;
     pose origin_p;
+    i8 reset_map;
     u32 change_elem_count;
 };
 
@@ -202,6 +241,7 @@ pup_func(occ_grid_meta)
     pup_member(width);
     pup_member(height);
     pup_member(origin_p);
+    pup_member(reset_map);
     pup_member(change_elem_count);
 }
 
@@ -233,17 +273,36 @@ pup_func(nav_path)
 {
     pup_member(header);
     pup_member(path_cnt);
-
     pup_member_meta(path, pack_va_flags::FIXED_ARRAY_CUSTOM_SIZE, &val.path_cnt);
+}
+
+struct current_goal_status
+{
+    packet_header header{};
+    i32 status;
+    pose goal_p;
+};
+
+
+pup_func(current_goal_status)
+{
+    pup_member(header);
+    pup_member(status);
+    pup_member(goal_p);
 }
 
 /// Only malloc these once and reuse on every time a packet comes in
 struct reusable_packets
 {
+    // Packets for receiving
     occ_grid_update *gu;
     sicklms_laser_scan *scan;
     node_transform *ntf;
     nav_path *navp;
+    current_goal_status * cur_goal_stat;
+
+    // Packets for sending
+    command_set_params * cmdp;
 };
 
 struct net_rx_buffer
@@ -264,6 +323,7 @@ struct net_connection
     ss_signal<const occ_grid_update &> glob_cm_update_received;
     ss_signal<const node_transform &> transform_updated;
     ss_signal<const nav_path &> nav_path_updated;
+    ss_signal<const current_goal_status &> goal_status_updated;
 };
 
 void net_connect(net_connection *conn, const char *ip, int port, int max_timeout_ms = -1);

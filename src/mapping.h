@@ -1,11 +1,8 @@
 #pragma once
 
-#include "Urho3D/Graphics/BillboardSet.h"
-#include "Urho3D/Graphics/Graphics.h"
-#include "Urho3D/UI/View3D.h"
-
 #include "math_utils.h"
 #include "ss_router.h"
+
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -15,6 +12,7 @@ namespace Urho3D
 class View3D;
 class BillboardSet;
 class Node;
+class Text;
 } // namespace Urho3D
 
 struct ui_info;
@@ -47,6 +45,20 @@ struct camera_move_zoom_widget
     vec3 loc_trans {};
 };
 
+struct cam_control_widget
+{
+    camera_move_control_widget cam_move_widget;
+    camera_move_zoom_widget cam_zoom_widget;
+    urho::UIElement * root_element;
+};
+
+struct accept_param_input_widget
+{
+    urho::UIElement * widget;
+    urho::Button * btn;
+    urho::Text * btn_text;
+};
+
 enum occ_grid_type
 {
     OCC_GRID_TYPE_MAP,
@@ -70,12 +82,20 @@ struct occ_grid_map
     int map_type {OCC_GRID_TYPE_MAP};
 };
 
-struct nav_widget
+struct nav_goals
+{
+    vec3 cur_goal {};
+    i32 cur_goal_status {-1};
+    std::vector<vec3> queued_goals {};
+};
+
+struct toolbar_widget
 {
     urho::UIElement * widget;
-    urho::Button *set_goal;
-    vec3 goal_to_set {};
-    bool button_was_pressed{false};
+    urho::Button *add_goal;
+    urho::Button *cancel_goal;
+    urho::Button *clear_maps;
+    urho::Button *set_params;
 };
 
 struct goal_marker_info
@@ -85,6 +105,7 @@ struct goal_marker_info
     float loop_anim_time {0.5f};
     float cur_anim_time {0.0f};
     urho::Color color{0,0.6,0.6,1};
+    urho::Color queued_color{0,0.6,0.6,1};
 };
 
 struct nav_path_view
@@ -94,23 +115,25 @@ struct nav_path_view
     goal_marker_info goal_marker;
     sizet entry_count;
     vec3 path_entries[MAX_LINE_ENTRIES];
-    nav_widget nw;
 };
 
 struct map_panel
 {
     bool js_enabled {false};
     urho::View3D *view {};
-    camera_move_control_widget cam_move_widget;
-    camera_move_zoom_widget cam_zoom_widget;
+
+    cam_control_widget cam_cwidget{};
+    toolbar_widget toolbar{};
+    accept_param_input_widget accept_inp{};
 
     urho::Node * front_laser {};
     urho::BillboardSet * scan_bb {};
     
     occ_grid_map map {};
     occ_grid_map glob_cmap {};
-
-    nav_path_view npview;
+    nav_path_view npview{};
+    
+    nav_goals goals{};
 
     urho::Node * base_link {};
     urho::Node * odom {};
@@ -119,5 +142,6 @@ struct map_panel
     std::unordered_map<std::string, urho::Node*> node_lut;
 };
 
+void map_clear_occ_grid(occ_grid_map * ocg);
 void map_panel_init(map_panel *jspanel, const ui_info &ui_inf, net_connection *conn, input_data * inp);
 void map_panel_term(map_panel *jspanel);

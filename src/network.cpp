@@ -215,12 +215,14 @@ intern void alloc_connection(net_connection *conn)
     conn->pckts.ntf = (node_transform*)malloc(sizeof(node_transform));
     conn->pckts.gu = (occ_grid_update *)malloc(sizeof(occ_grid_update));
     conn->pckts.navp = (nav_path *)malloc(sizeof(nav_path));
+    conn->pckts.cur_goal_stat = (current_goal_status *)malloc(sizeof(current_goal_status));
 
     memset(conn->rx_buf, 0, sizeof(net_rx_buffer));
     memset(conn->pckts.scan, 0, sizeof(sicklms_laser_scan));
     memset(conn->pckts.ntf, 0, sizeof(node_transform));
     memset(conn->pckts.gu, 0, sizeof(occ_grid_update));
     memset(conn->pckts.navp, 0, sizeof(nav_path));
+    memset(conn->pckts.cur_goal_stat, 0, sizeof(current_goal_status));
 }
 
 intern void free_connection(net_connection *conn)
@@ -230,6 +232,7 @@ intern void free_connection(net_connection *conn)
     free(conn->pckts.ntf);
     free(conn->pckts.gu);
     free(conn->pckts.navp);
+    free(conn->pckts.cur_goal_stat);
 }
 
 void net_connect(net_connection *conn, const char *ip, int port, int max_timeout_ms)
@@ -374,15 +377,17 @@ intern void handle_nav_path_packet(binary_fixed_buffer_archive<net_rx_buffer::MA
     }
 }
 
-intern void handle_tform_packet(binary_fixed_buffer_archive<net_rx_buffer::MAX_PACKET_SIZE> &read_buf, sizet available, sizet cached_offset, net_connection *conn)
+intern void handle_goal_status_packet(binary_fixed_buffer_archive<net_rx_buffer::MAX_PACKET_SIZE> &read_buf, net_connection *conn)
 {
-    TFORM_PACK_LOG_ENABLE
+    pack_unpack(read_buf, *conn->pckts.cur_goal_stat, {});
+    conn->goal_status_updated(0, *conn->pckts.cur_goal_stat);
+}
+
+
+intern void handle_tform_packet(binary_fixed_buffer_archive<net_rx_buffer::MAX_PACKET_SIZE> &read_buf, net_connection *conn)
+{
     pack_unpack(read_buf, *conn->pckts.ntf, {});
-#if defined(TFORM_DEBUG)
-    tform_dlog("Got tform packet - %d available bytes and %d packet size - new offset is %d", available, read_buf.cur_offset - cached_offset, read_buf.cur_offset);
-#endif
     conn->transform_updated(0, *conn->pckts.ntf);
-    TFORM_PACK_LOG_DISABLE
 }
 
 intern bool matches_packet_id(const char *packet_id, const u8 *data)
@@ -398,6 +403,7 @@ intern sizet matching_packet_size(u8 *data)
     static sizet occ_meta = packed_sizeof<occ_grid_meta>();
     static sizet node_tform = packed_sizeof<node_transform>();
     static sizet nav_path_meta = sizeof(u32);
+    static sizet goal_status = packed_sizeof<current_goal_status>();
 
     if (matches_packet_id(SCAN_PACKET_ID, data))
     {
@@ -415,6 +421,10 @@ intern sizet matching_packet_size(u8 *data)
     {
         return node_tform;
     }
+    else if (matches_packet_id(GOAL_STAT_PCKT_ID, data))
+    {
+        return goal_status;
+    }
     return 0;
 }
 
@@ -427,7 +437,11 @@ intern sizet dispatch_received_packet(binary_fixed_buffer_archive<net_rx_buffer:
     }
     else if (matches_packet_id(TFORM_PCKT_ID, read_buf.data + read_buf.cur_offset))
     {
-        handle_tform_packet(read_buf, available, cached_offset, conn);
+        handle_tform_packet(read_buf, conn);
+    }
+    else if (matches_packet_id(GOAL_STAT_PCKT_ID, read_buf.data + read_buf.cur_offset))
+    {
+        handle_goal_status_packet(read_buf, conn);
     }
     else if (matches_packet_id(GLOB_CM_PCKT_ID, read_buf.data + read_buf.cur_offset))
     {
@@ -552,10 +566,6 @@ void net_tx(const net_connection &conn, const u8 *data, sizet data_size)
     else if (data_size != bwritten)
     {
         wlog("Bytes written was only %d when tried to write %d", bwritten, data_size);
-    }
-    else
-    {
-        ilog("Wrote %d bytes", bwritten);
     }
 #endif
 }

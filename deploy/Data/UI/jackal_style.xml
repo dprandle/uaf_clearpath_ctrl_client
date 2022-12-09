@@ -1,25 +1,35 @@
 <elements>
+    <element type="CamControlButtonGroup">
+        <attribute name="Blend Mode" value="alpha" />
+        <attribute name="Priority" value="1" />
+        <attribute name="Name" value="CamControlWidget" />
+        <attribute name="Color" value="0.0 0.0 0.0 0.7" />
+        <attribute name="Enable Anchor" value="true" />
+        <attribute name="Min Anchor" value="0.5 0.01" />
+        <attribute name="Max Anchor" value="0.5 0.01" />
+        <attribute name="Pivot" value="0.5 0" />
+    </element>
     <element type="ArrowButtonGroup">
         <attribute name="Blend Mode" value="alpha" />
         <attribute name="Priority" value="1" />
         <attribute name="Name" value="CamMoveWidget" />
-        <attribute name="Color" value="0 0 0 0" />
+        <attribute name="Color" value="0.0 0.0 0.0 0.0" />
         <attribute name="Enable Anchor" value="true" />
-        <attribute name="Min Anchor" value="0.05 0.01" />
-        <attribute name="Max Anchor" value="0.05 0.01" />
+        <attribute name="Min Anchor" value="0.0 0.0" />
+        <attribute name="Max Anchor" value="0.0 0.0" />
         <attribute name="Pivot" value="0 0" />
     </element>
     <element type="ZoomButtonGroup">
         <attribute name="Blend Mode" value="alpha" />
         <attribute name="Priority" value="1" />
         <attribute name="Name" value="CamZoomWidget" />
-        <attribute name="Color" value="0 0 0 0" />
+        <attribute name="Color" value="0.0 0.0 0.0 0.0" />
         <attribute name="Enable Anchor" value="true" />
-        <attribute name="Min Anchor" value="0.95 0.01" />
-        <attribute name="Max Anchor" value="0.95 0.01" />
-        <attribute name="Pivot" value="1 0" />
+        <attribute name="Min Anchor" value="0.75 0" />
+        <attribute name="Max Anchor" value="0.75 0" />
+        <attribute name="Pivot" value="0 0" />
     </element>
-    <element type="CamButtonBI">
+    <element type="ButtonBI">
         <attribute name="Texture" value="Texture2D;Textures/ui.png" />
         <attribute name="Blend Mode" value="alpha" />
         <attribute name="Focus Mode" value="NotFocusable" />
@@ -28,42 +38,42 @@
         <attribute name="Priority" value="3" />
         <attribute name="Enable Anchor" value="true" />
     </element>
-    <element type="ArrowButtonForward" style="CamButtonBI">
+    <element type="ArrowButtonForward" style="ButtonBI">
         <attribute name="Image Rect" value="0 0 128 128" />
         <attribute name="Name" value="CamMoveForward" />
         <attribute name="Min Anchor" value="0.5 0" />
         <attribute name="Max Anchor" value="0.5 0" />
         <attribute name="Pivot" value="0.5 0" />
     </element>
-    <element type="ArrowButtonBack" style="CamButtonBI">
+    <element type="ArrowButtonBack" style="ButtonBI">
         <attribute name="Image Rect" value="0 128 128 256" />
         <attribute name="Name" value="CamMoveBack" />
         <attribute name="Min Anchor" value="0.5 1" />
         <attribute name="Max Anchor" value="0.5 1" />
         <attribute name="Pivot" value="0.5 1" />
     </element>
-    <element type="ArrowButtonLeft" style="CamButtonBI">
+    <element type="ArrowButtonLeft" style="ButtonBI">
         <attribute name="Image Rect" value="256 128 384 256" />
         <attribute name="Name" value="CamMoveLeft" />
         <attribute name="Min Anchor" value="0 0.5" />
         <attribute name="Max Anchor" value="0 0.5" />
         <attribute name="Pivot" value="0 0.5" />
     </element>
-    <element type="ArrowButtonRight" style="CamButtonBI">
+    <element type="ArrowButtonRight" style="ButtonBI">
         <attribute name="Image Rect" value="256 0 384 128" />
         <attribute name="Name" value="CamMoveRight" />
         <attribute name="Min Anchor" value="1 0.5" />
         <attribute name="Max Anchor" value="1 0.5" />
         <attribute name="Pivot" value="1 0.5" />
     </element>
-    <element type="ZoomInButton" style="CamButtonBI">
+    <element type="ZoomInButton" style="ButtonBI">
         <attribute name="Image Rect" value="512 0 640 128" />
         <attribute name="Name" value="CamZoomIn" />
         <attribute name="Min Anchor" value="0 0" />
         <attribute name="Max Anchor" value="0 0" />
         <attribute name="Pivot" value="0 0" />
     </element>
-    <element type="ZoomOutButton" style="CamButtonBI">
+    <element type="ZoomOutButton" style="ButtonBI">
         <attribute name="Image Rect" value="512 128 640 256" />
         <attribute name="Name" value="CamMoveRight" />
         <attribute name="Min Anchor" value="0 1" />
@@ -104,28 +114,75 @@
         <attribute name="Max Anchor" value="0.5 0.95" />
         <attribute name="Pivot" value="0.5 1" />
     </element>
-    <element type="NavWidget">
+    <element type="Toolbar">
         <attribute name="Blend Mode" value="alpha" />
         <attribute name="Priority" value="1" />
-        <attribute name="Name" value="NavWidget" />
-        <attribute name="Color" value="0 0 0 0" />
+        <attribute name="Name" value="Toolbar" />
+        <attribute name="Color" value="0.0 0.0 0.0 0.7" />
         <attribute name="Enable Anchor" value="true" />
-        <attribute name="Min Anchor" value="0.01 0.95" />
-        <attribute name="Max Anchor" value="0.01 0.95" />
-        <attribute name="Pivot" value="0 1" />
+        <attribute name="Min Anchor" value="0.01 0.5" />
+        <attribute name="Max Anchor" value="0.01 0.5" />
+        <attribute name="Pivot" value="0 0.5" />
     </element>
-    <element type="SetGoalButton" style="CamButtonBI">
+    <element type="AddGoalButton" style="ButtonBI">
         <attribute name="Name" value="SetGoalButton" />
-        <attribute name="Texture" value="Texture2D;Textures/ui.png" />
-        <attribute name="Blend Mode" value="alpha" />
-        <attribute name="Focus Mode" value="NotFocusable" />
-        <attribute name="Border" value="0 0 0 0" />
-        <attribute name="Pressed Image Offset" value="128 0" />
-        <attribute name="Priority" value="3" />
         <attribute name="Image Rect" value="0 256 128 384" />
-        <attribute name="Enable Anchor" value="true" />
         <attribute name="Min Anchor" value="0 0" />
         <attribute name="Max Anchor" value="0 0" />
         <attribute name="Pivot" value="0 0" />
+    </element>
+    <element type="CancelGoalsButton" style="ButtonBI">
+        <attribute name="Name" value="CancelGoalButton" />
+        <attribute name="Image Rect" value="256 256 384 384" />
+        <attribute name="Min Anchor" value="0 0.25" />
+        <attribute name="Max Anchor" value="0 0.25" />
+        <attribute name="Pivot" value="0 0" />
+    </element>
+    <element type="ClearMapsButton" style="ButtonBI">
+        <attribute name="Name" value="ClearMapsButton" />
+        <attribute name="Image Rect" value="512 256 640 384" />
+        <attribute name="Min Anchor" value="0 0.501" />
+        <attribute name="Max Anchor" value="0 0.501" />
+        <attribute name="Pivot" value="0 0" />
+    </element>
+    <element type="SetParamsButton" style="ButtonBI">
+        <attribute name="Name" value="SetParamsButton" />
+        <attribute name="Image Rect" value="768 256 896 384" />
+        <attribute name="Min Anchor" value="0 0.75" />
+        <attribute name="Max Anchor" value="0 0.75" />
+        <attribute name="Pivot" value="0 0" />
+    </element>
+    <element type="SendParamsGp">
+        <attribute name="Blend Mode" value="alpha" />
+        <attribute name="Priority" value="1" />
+        <attribute name="Name" value="SendParamsGp" />
+        <attribute name="Color" value="0.0 0.0 0.0 0.0" />
+        <attribute name="Is Visible" value="false" />
+        <attribute name="Enable Anchor" value="true" />
+        <attribute name="Min Anchor" value="0.5 0.18" />
+        <attribute name="Max Anchor" value="0.5 0.18" />
+        <attribute name="Pivot" value="0.5 1" />
+    </element>
+    <element type="SendParamsBtn" style="ButtonBI">
+        <attribute name="Name" value="SendParamsBtn" />
+        <attribute name="Image Rect" value="768 0 896 128" />
+        <attribute name="Min Anchor" value="0.5 0.5" />
+        <attribute name="Max Anchor" value="0.5 0.5" />
+        <attribute name="Color" value="0.2 0.2 0.2 0.9" />
+        <attribute name="Border" value="4 4 4 4" />
+        <attribute name="Pivot" value="0.5 0.5" />
+    </element>
+    <element type="SendParamsBtnText">
+        <attribute name="Blend Mode" value="alpha" />
+        <attribute name="Priority" value="3" />
+        <attribute name="Focus Mode" value="NotFocusable" />
+        <attribute name="Text Alignment" value="Center" />
+        <attribute name="Name" value="SendParamsBtnText" />
+        <attribute name="Text" value="Send Parameters" />
+        <attribute name="Font" value="Font;Fonts/Roboto-Medium.ttf" />
+        <attribute name="Enable Anchor" value="true" />
+        <attribute name="Min Anchor" value="0.0 0.5" />
+        <attribute name="Max Anchor" value="1.0 0.5" />
+        <attribute name="Pivot" value="0.0 0.5" />
     </element>
 </elements>

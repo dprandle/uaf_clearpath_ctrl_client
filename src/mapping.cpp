@@ -14,11 +14,13 @@
 #include <Urho3D/UI/UI.h>
 #include <Urho3D/UI/BorderImage.h>
 #include <Urho3D/UI/Button.h>
+#include <Urho3D/UI/Text.h>
 #include <Urho3D/UI/UIEvents.h>
 #include <Urho3D/UI/View3D.h>
 
 #include <Urho3D/Resource/ResourceCache.h>
 #include "Urho3D/Resource/XMLFile.h"
+#include "Urho3D/UI/Font.h"
 
 #include <Urho3D/Scene/Scene.h>
 #include "Urho3D/Scene/Node.h"
@@ -28,6 +30,23 @@
 #include "mapping.h"
 #include "math_utils.h"
 #include "network.h"
+
+#if defined(__EMSCRIPTEN__)
+#include <emscripten/websocket.h>
+EM_JS(void, make_input_visible, (int rows, int cols), {
+    let ta = document.getElementById('text-area');
+    if (ta.style.display === "block")
+        ta.style.display = "none";
+    else
+    {
+        ta.style.display = "block";
+        if (rows > ta.rows)
+            ta.rows = rows;
+        if (cols > ta.cols)
+            ta.cols = cols;
+    }
+});
+#endif
 
 const std::string MAP{"map"};
 const std::string ODOM{"odom"};
@@ -47,10 +66,14 @@ const std::string FRONT_MOUNT{"front_mount"};
 const std::string FRONT_LASER_MOUNT{"front_laser_mount"};
 const std::string FRONT_LASER{"front_laser"};
 
+intern const float UI_ADDITIONAL_BTN_SCALING = 1.0f;;
+intern const float UI_ADDITIONAL_CAM_SCALING = 0.75f;
+intern const float UI_ADDITIONAL_TOOLBAR_SCALING = 1.00f;
+
 intern void setup_camera_controls(map_panel *mp, urho::Node *cam_node, input_data *inp)
 {
     auto on_mouse_tilt = [cam_node, mp](const itrigger_event &tevent) {
-        if (mp->npview.nw.button_was_pressed || mp->js_enabled || (mp->view != tevent.vp.element_under_mouse && tevent.vp.element_under_mouse->GetPriority() > 2))
+        if (!mp->toolbar.add_goal->IsEnabled() || mp->js_enabled || (mp->view != tevent.vp.element_under_mouse && tevent.vp.element_under_mouse->GetPriority() > 2))
             return;
 
         auto rot_node = cam_node;
@@ -64,20 +87,24 @@ intern void setup_camera_controls(map_panel *mp, urho::Node *cam_node, input_dat
     };
 
     auto on_click = [cam_node, mp](const itrigger_event &tevent) {
-        if (!mp->npview.nw.button_was_pressed || mp->js_enabled || (mp->view != tevent.vp.element_under_mouse && tevent.vp.element_under_mouse->GetPriority() > 2))
+        if (mp->toolbar.add_goal->IsEnabled() || mp->js_enabled || (mp->view != tevent.vp.element_under_mouse && tevent.vp.element_under_mouse->GetPriority() > 2))
             return;
 
-        mp->npview.nw.button_was_pressed = false;
+        auto r = mp->toolbar.add_goal->GetImageRect() + irect{-128, 0, -128, 0};
+        mp->toolbar.add_goal->SetImageRect(r);
+        mp->toolbar.add_goal->SetEnabled(true);
+
         auto camc = cam_node->GetComponent<urho::Camera>();
 
-        urho::Plane p{{0,0,-1},{0,0,0}};
+        urho::Plane p{{0, 0, -1}, {0, 0, 0}};
         auto scrn_ray = camc->GetScreenRay(tevent.norm_mpos.x_, tevent.norm_mpos.y_);
 
         double dist = scrn_ray.HitDistance(p);
         if (dist < 1000)
         {
-            ilog("Found map - sending info");
-            mp->npview.nw.goal_to_set = scrn_ray.origin_ + scrn_ray.direction_ * dist;
+            auto pos = scrn_ray.origin_ + scrn_ray.direction_ * dist;
+            // Place at the front
+            mp->goals.queued_goals.insert(mp->goals.queued_goals.begin(), pos);
         }
     };
 
@@ -221,19 +248,10 @@ intern void setup_occ_grid_map(occ_grid_map *map, const char *node_name, urho::R
     map->bb_set->SetFixedScreenSize(false);
     map->bb_set->SetMaterial(occ_mat);
     map->bb_set->SetFaceCameraMode(urho::FC_NONE);
-
-    map->image->SetSize(512, 512, 4);
-    for (int y = 0; y < map->image->GetHeight(); ++y)
-    {
-        for (int x = 0; x < map->image->GetWidth(); ++x)
-            map->image->SetPixel(x, y, map->undiscovered);
-    }
-
-    map->rend_texture->SetData(map->image);
     map->rend_texture->SetFilterMode(Urho3D::TextureFilterMode::FILTER_NEAREST);
     map->bb_set->SetNumBillboards(1);
 
-    map->bb_set->SetMinMaxZ(-0.01,0.01);
+    map_clear_occ_grid(map);
 
     auto bb = map->bb_set->GetBillboard(0);
     bb->enabled_ = true;
@@ -310,9 +328,9 @@ intern ivec2 index_to_texture_coords(u32 index, u32 row_width, u32 height)
     return {(int)(index % row_width), (int)height - (int)(index / row_width)};
 }
 
-intern void update_scene_map_from_occ_grid(const occ_grid_map &map, const occ_grid_update &grid)
+intern void update_scene_map_from_occ_grid(occ_grid_map *map, const occ_grid_update &grid)
 {
-    ivec2 resized{map.image->GetWidth(), map.image->GetHeight()};
+    ivec2 resized{map->image->GetWidth(), map->image->GetHeight()};
     while (resized.x_ < grid.meta.width)
         resized.x_ *= 2;
     while (resized.x_ / 2 > grid.meta.width)
@@ -322,23 +340,23 @@ intern void update_scene_map_from_occ_grid(const occ_grid_map &map, const occ_gr
     while (resized.y_ / 2 > grid.meta.height)
         resized.y_ /= 2;
 
-    if (resized != ivec2{map.image->GetWidth(), map.image->GetHeight()})
+    if (resized != ivec2{map->image->GetWidth(), map->image->GetHeight()} || grid.meta.reset_map == 1)
     {
         ilog("Map resized texture to %d by %d (actual map size %d %d)", resized.x_, resized.y_, grid.meta.width, grid.meta.height);
-        map.image->Resize(resized.x_, resized.y_);
+        map->image->Resize(resized.x_, resized.y_);
         for (int y = 0; y < resized.y_; ++y)
         {
             for (int x = 0; x < resized.x_; ++x)
-                map.image->SetPixel(x, y, map.undiscovered);
+                map->image->SetPixel(x, y, map->undiscovered);
         }
     }
 
     quat q = quat_from(grid.meta.origin_p.orientation);
     vec3 pos = vec3_from(grid.meta.origin_p.pos);
-    map.node->SetRotation(q);
+    map->node->SetRotation(q);
 
-    auto billboard = map.bb_set->GetBillboard(0);
-    billboard->size_ = vec2{(float)map.image->GetWidth(), (float)map.image->GetHeight()} * grid.meta.resolution * 0.5;
+    auto billboard = map->bb_set->GetBillboard(0);
+    billboard->size_ = vec2{(float)map->image->GetWidth(), (float)map->image->GetHeight()} * grid.meta.resolution * 0.5;
     float h_diff = billboard->size_.y_ - grid.meta.height * grid.meta.resolution * 0.5;
     billboard->position_ = pos + vec3{billboard->size_};
     billboard->enabled_ = true;
@@ -348,51 +366,51 @@ intern void update_scene_map_from_occ_grid(const occ_grid_map &map, const occ_gr
     {
         u32 map_ind = (grid.change_elems[i] >> 8);
         u8 prob = (u8)grid.change_elems[i];
-        ivec2 tex_coods = index_to_texture_coords(map_ind, grid.meta.width, map.image->GetHeight());
+        ivec2 tex_coods = index_to_texture_coords(map_ind, grid.meta.width, map->image->GetHeight());
 
-        if (map.map_type == OCC_GRID_TYPE_MAP)
+        if (map->map_type == OCC_GRID_TYPE_MAP)
         {
             if (prob <= 100)
             {
                 float fprob = 1.0 - (float)prob * 0.01;
-                map.image->SetPixel(tex_coods.x_, tex_coods.y_, {fprob, fprob, fprob, 1.0});
+                map->image->SetPixel(tex_coods.x_, tex_coods.y_, {fprob, fprob, fprob, 1.0});
             }
             else
             {
-                map.image->SetPixel(tex_coods.x_, tex_coods.y_, map.undiscovered);
+                map->image->SetPixel(tex_coods.x_, tex_coods.y_, map->undiscovered);
             }
         }
         else
         {
             if (prob == 100)
             {
-                map.image->SetPixel(tex_coods.x_, tex_coods.y_, map.lethal);
+                map->image->SetPixel(tex_coods.x_, tex_coods.y_, map->lethal);
             }
             else if (prob == 99)
             {
-                map.image->SetPixel(tex_coods.x_, tex_coods.y_, map.inscribed);
+                map->image->SetPixel(tex_coods.x_, tex_coods.y_, map->inscribed);
             }
             else if (prob <= 98 && prob >= 50)
             {
-                auto col = map.possibly_circumscribed;
+                auto col = map->possibly_circumscribed;
                 col.a_ -= -(1.0 - (prob - 50.0) / (98.0 - 50.0)) * 0.4;
-                map.image->SetPixel(tex_coods.x_, tex_coods.y_, col);
+                map->image->SetPixel(tex_coods.x_, tex_coods.y_, col);
             }
             else if (prob <= 50 && prob >= 1)
             {
-                auto col = map.no_collision;
+                auto col = map->no_collision;
                 col.a_ -= (1.0 - (prob - 1.0) / (50.0 - 1.0)) * 0.4;
-                map.image->SetPixel(tex_coods.x_, tex_coods.y_, col);
+                map->image->SetPixel(tex_coods.x_, tex_coods.y_, col);
             }
             else
             {
-                map.image->SetPixel(tex_coods.x_, tex_coods.y_, map.free_space);
+                map->image->SetPixel(tex_coods.x_, tex_coods.y_, map->free_space);
             }
         }
     }
 
-    map.bb_set->Commit();
-    map.rend_texture->SetData(map.image);
+    map->bb_set->Commit();
+    map->rend_texture->SetData(map->image);
 }
 
 intern void update_scene_from_scan(map_panel *mp, const sicklms_laser_scan &packet)
@@ -457,96 +475,173 @@ intern void update_nav_path(map_panel *mp, const nav_path &np)
         mp->npview.path_entries[i] = vec3_from(np.path[i].pos);
 }
 
+intern void update_cur_goal_status(map_panel *mp, const current_goal_status &gs)
+{
+    if (mp->goals.cur_goal_status != -2 || gs.status == 0 || gs.status == 1)
+    {
+        mp->goals.cur_goal = vec3_from(gs.goal_p.pos);
+        mp->goals.cur_goal_status = gs.status;
+    }
+}
+
+intern float animate_marker_circles(goal_marker_info *gm, float dt)
+{
+    static bool increasing = true;
+    if (increasing && gm->cur_anim_time < gm->loop_anim_time)
+    {
+        gm->cur_anim_time += dt;
+        if (gm->cur_anim_time > gm->loop_anim_time)
+            increasing = false;
+    }
+    else
+    {
+        gm->cur_anim_time -= dt;
+        if (gm->cur_anim_time < 0)
+            increasing = true;
+    }
+
+    float rad = (gm->max_rad - gm->min_rad) * (gm->cur_anim_time / gm->loop_anim_time) + gm->min_rad;
+    return rad;
+}
+
 intern void map_panel_run_frame(map_panel *mp, float dt, net_connection *conn)
 {
     static float counter = 0.0f;
     counter += dt;
-    if (counter >= 0.030f)
+    if (counter >= 0.016f)
     {
         mp->odom->MarkDirty();
         counter = 0.0f;
     }
 
-    if (mp->cam_move_widget.world_trans != vec3::ZERO)
+    if (mp->cam_cwidget.cam_move_widget.world_trans != vec3::ZERO)
     {
-        mp->view->GetCameraNode()->Translate(mp->cam_move_widget.world_trans * dt * 10, Urho3D::TransformSpace::World);
+        mp->view->GetCameraNode()->Translate(mp->cam_cwidget.cam_move_widget.world_trans * dt * 10, Urho3D::TransformSpace::World);
     }
 
-    if (mp->cam_zoom_widget.loc_trans != vec3::ZERO)
+    if (mp->cam_cwidget.cam_zoom_widget.loc_trans != vec3::ZERO)
     {
-        mp->view->GetCameraNode()->Translate(mp->cam_zoom_widget.loc_trans * dt * 20);
+        mp->view->GetCameraNode()->Translate(mp->cam_cwidget.cam_zoom_widget.loc_trans * dt * 20);
     }
 
     auto dbg = mp->view->GetScene()->GetComponent<urho::DebugRenderer>();
-    
-    for (int i = 1; i < mp->npview.entry_count; ++i)
-    {
-        dbg->AddLine(mp->npview.path_entries[i-1], mp->npview.path_entries[i], mp->npview.color);
-    }
+    float marker_rad = animate_marker_circles(&mp->npview.goal_marker, dt);
 
-    if (mp->npview.entry_count > 0)
+    if (mp->goals.cur_goal_status == 0 || mp->goals.cur_goal_status == 1 || mp->goals.cur_goal_status == -2)
     {
-        static bool increasing = true;
-        if (increasing && mp->npview.goal_marker.cur_anim_time < mp->npview.goal_marker.loop_anim_time)
+        dbg->AddCircle(mp->goals.cur_goal, {0, 0, -1}, marker_rad, mp->npview.goal_marker.color);
+        auto dist_to_goal = (mp->base_link->GetWorldPosition() - mp->goals.cur_goal).Length();
+        if (dist_to_goal < 0.25)
         {
-            mp->npview.goal_marker.cur_anim_time += dt;
-            if (mp->npview.goal_marker.cur_anim_time > mp->npview.goal_marker.loop_anim_time)
-                increasing = false;
+            command_stop stop{};
+            net_tx(*conn, stop);
         }
-        else
-        {
-            mp->npview.goal_marker.cur_anim_time -= dt;
-            if (mp->npview.goal_marker.cur_anim_time < 0)
-                increasing = true;
-        }
-        
-        float rad = (mp->npview.goal_marker.max_rad - mp->npview.goal_marker.min_rad) * (mp->npview.goal_marker.cur_anim_time / mp->npview.goal_marker.loop_anim_time) + mp->npview.goal_marker.min_rad;
-        dbg->AddCircle(mp->npview.path_entries[mp->npview.entry_count-1], {0,0,-1}, rad, mp->npview.goal_marker.color);
     }
     else
     {
         mp->npview.goal_marker.cur_anim_time = 0.0f;
+        mp->npview.entry_count = 0;
+        if (!mp->goals.queued_goals.empty())
+        {
+            command_goal cg;
+            mp->goals.cur_goal = mp->goals.queued_goals.back();
+            mp->goals.queued_goals.pop_back();
+            cg.goal_p.pos = dvec3_from(mp->goals.cur_goal);
+            mp->goals.cur_goal_status = -2;
+            net_tx(*conn, cg);
+        }
     }
 
-    if (mp->npview.nw.goal_to_set != vec3::ZERO)
+    for (int i = 1; i < mp->npview.entry_count; ++i)
     {
-        command_goal cg;
-        cg.goal_p.pos = dvec3_from(mp->npview.nw.goal_to_set);
-        ilog("Setting goal to {%f %f %f}", cg.goal_p.pos.x, cg.goal_p.pos.y, cg.goal_p.pos.z);
-        net_tx(*conn, cg);
-        mp->npview.nw.goal_to_set = {};
+        dbg->AddLine(mp->npview.path_entries[i - 1], mp->npview.path_entries[i], mp->npview.color);
     }
 
-    mp->map.bb_set->DrawDebugGeometry(dbg,false);
+    for (int i = mp->goals.queued_goals.size() - 1; i >= 0; --i)
+    {
+        vec3 from = mp->goals.cur_goal;
+        if (i != mp->goals.queued_goals.size() - 1)
+            from = mp->goals.queued_goals[i + 1];
+        dbg->AddLine(from, mp->goals.queued_goals[i], mp->npview.color);
+        dbg->AddCircle(mp->goals.queued_goals[i], {0, 0, -1}, marker_rad * 0.75, mp->npview.goal_marker.queued_color);
+    }
 }
 
-intern void setup_nav_widget(map_panel *mp, const ui_info &ui_inf)
+intern void setup_toolbar_widget(map_panel *mp, const ui_info &ui_inf, net_connection *conn)
 {
     auto uctxt = ui_inf.ui_sys->GetContext();
     auto cache = uctxt->GetSubsystem<urho::ResourceCache>();
 
-    mp->npview.nw.widget = new urho::BorderImage(uctxt);
-    ui_inf.ui_sys->GetRoot()->AddChild(mp->npview.nw.widget);
-    mp->npview.nw.widget->SetStyle("NavWidget", ui_inf.style);
+    mp->toolbar.widget = new urho::BorderImage(uctxt);
+    ui_inf.ui_sys->GetRoot()->AddChild(mp->toolbar.widget);
+    mp->toolbar.widget->SetStyle("Toolbar", ui_inf.style);
 
-    mp->npview.nw.set_goal = new urho::Button(uctxt);
-    mp->npview.nw.widget->AddChild(mp->npview.nw.set_goal);
-    mp->npview.nw.set_goal->SetStyle("SetGoalButton", ui_inf.style);
-    
+    mp->toolbar.add_goal = new urho::Button(uctxt);
+    mp->toolbar.widget->AddChild(mp->toolbar.add_goal);
+    mp->toolbar.add_goal->SetStyle("AddGoalButton", ui_inf.style);
+    auto offset = mp->toolbar.add_goal->GetImageRect().Size();
+    offset.x_ *= ui_inf.dev_pixel_ratio_inv * UI_ADDITIONAL_TOOLBAR_SCALING;
+    offset.y_ *= ui_inf.dev_pixel_ratio_inv * UI_ADDITIONAL_TOOLBAR_SCALING;
+    mp->toolbar.add_goal->SetMaxOffset(offset);
 
-    auto offset = mp->npview.nw.set_goal->GetImageRect().Size();
-    offset.x_ *= ui_inf.dev_pixel_ratio_inv * 0.75;
-    offset.y_ *= ui_inf.dev_pixel_ratio_inv * 0.75;
-    mp->npview.nw.widget->SetMaxOffset(offset);
-    mp->npview.nw.set_goal->SetMaxOffset(offset);
+    mp->toolbar.cancel_goal = new urho::Button(uctxt);
+    mp->toolbar.widget->AddChild(mp->toolbar.cancel_goal);
+    mp->toolbar.cancel_goal->SetStyle("CancelGoalsButton", ui_inf.style);
+    offset = mp->toolbar.cancel_goal->GetImageRect().Size();
+    offset.x_ *= ui_inf.dev_pixel_ratio_inv * UI_ADDITIONAL_TOOLBAR_SCALING;
+    offset.y_ *= ui_inf.dev_pixel_ratio_inv * UI_ADDITIONAL_TOOLBAR_SCALING;
+    mp->toolbar.cancel_goal->SetMaxOffset(offset);
 
-    mp->npview.nw.widget->SubscribeToEvent(urho::E_PRESSED, [mp](urho::StringHash type, urho::VariantMap &ev_data) {
-        auto elem = (urho::UIElement *)ev_data[urho::ClickEnd::P_ELEMENT].GetPtr();
-        if (elem == mp->npview.nw.set_goal)
-            mp->npview.nw.button_was_pressed = true;
-    });
+    mp->toolbar.clear_maps = new urho::Button(uctxt);
+    mp->toolbar.widget->AddChild(mp->toolbar.clear_maps);
+    mp->toolbar.clear_maps->SetStyle("ClearMapsButton", ui_inf.style);
+    offset = mp->toolbar.clear_maps->GetImageRect().Size();
+    offset.x_ *= ui_inf.dev_pixel_ratio_inv * UI_ADDITIONAL_TOOLBAR_SCALING;
+    offset.y_ *= ui_inf.dev_pixel_ratio_inv * UI_ADDITIONAL_TOOLBAR_SCALING;
+    mp->toolbar.clear_maps->SetMaxOffset(offset);
+    mp->toolbar.clear_maps->SetMinOffset({});
 
-    mp->cam_zoom_widget.widget->SubscribeToEvent(urho::E_CLICKEND, [mp](urho::StringHash type, urho::VariantMap &ev_data) { mp->cam_zoom_widget.loc_trans = {}; });
+    mp->toolbar.set_params = new urho::Button(uctxt);
+    mp->toolbar.widget->AddChild(mp->toolbar.set_params);
+    mp->toolbar.set_params->SetStyle("SetParamsButton", ui_inf.style);
+    offset = mp->toolbar.set_params->GetImageRect().Size();
+    offset.x_ *= ui_inf.dev_pixel_ratio_inv * UI_ADDITIONAL_TOOLBAR_SCALING;
+    offset.y_ *= ui_inf.dev_pixel_ratio_inv * UI_ADDITIONAL_TOOLBAR_SCALING;
+    mp->toolbar.set_params->SetMaxOffset(offset);
+
+    ivec2 tb_offset = {offset.x_, 0};
+    for (int i = 0; i < mp->toolbar.widget->GetNumChildren(); ++i)
+    {
+        auto child = mp->toolbar.widget->GetChild(i);
+        tb_offset.y_ += child->GetMaxOffset().y_ + 10;
+    }
+    mp->toolbar.widget->SetMaxOffset(tb_offset);
+}
+
+intern void setup_accept_params_button(map_panel *mp, const ui_info &ui_inf)
+{
+    auto uctxt = ui_inf.ui_sys->GetContext();
+    auto cache = uctxt->GetSubsystem<urho::ResourceCache>();
+
+    mp->accept_inp.widget = new urho::UIElement(uctxt);
+    ui_inf.ui_sys->GetRoot()->AddChild(mp->accept_inp.widget);
+    mp->accept_inp.widget->SetStyle("SendParamsGp", ui_inf.style);
+
+    mp->accept_inp.btn = new urho::Button(uctxt);
+    mp->accept_inp.widget->AddChild(mp->accept_inp.btn);
+    mp->accept_inp.btn->SetStyle("SendParamsBtn", ui_inf.style);
+
+    mp->accept_inp.btn_text = new urho::Text(uctxt);
+    mp->accept_inp.btn->AddChild(mp->accept_inp.btn_text);
+    mp->accept_inp.btn_text->SetStyle("SendParamsBtnText", ui_inf.style);
+
+    auto offset = mp->accept_inp.btn->GetImageRect().Size();
+    offset.x_ = ui_inf.dev_pixel_ratio_inv * UI_ADDITIONAL_BTN_SCALING * 320;
+    offset.y_ = ui_inf.dev_pixel_ratio_inv * UI_ADDITIONAL_BTN_SCALING * 80;
+    mp->accept_inp.btn->SetMaxOffset(offset);
+    mp->accept_inp.widget->SetMaxOffset(offset);
+
+    mp->accept_inp.btn_text->SetFontSize(24 * ui_inf.dev_pixel_ratio_inv);
 }
 
 intern void setup_cam_zoom_widget(map_panel *mp, const ui_info &ui_inf)
@@ -554,36 +649,26 @@ intern void setup_cam_zoom_widget(map_panel *mp, const ui_info &ui_inf)
     auto uctxt = ui_inf.ui_sys->GetContext();
     auto cache = uctxt->GetSubsystem<urho::ResourceCache>();
 
-    mp->cam_zoom_widget.widget = new urho::BorderImage(uctxt);
-    ui_inf.ui_sys->GetRoot()->AddChild(mp->cam_zoom_widget.widget);
-    mp->cam_zoom_widget.widget->SetStyle("ZoomButtonGroup", ui_inf.style);
+    mp->cam_cwidget.cam_zoom_widget.widget = new urho::BorderImage(uctxt);
+    mp->cam_cwidget.root_element->AddChild(mp->cam_cwidget.cam_zoom_widget.widget);
+    mp->cam_cwidget.cam_zoom_widget.widget->SetStyle("ZoomButtonGroup", ui_inf.style);
 
-    mp->cam_zoom_widget.zoom_in = new urho::Button(uctxt);
-    mp->cam_zoom_widget.widget->AddChild(mp->cam_zoom_widget.zoom_in);
-    mp->cam_zoom_widget.zoom_in->SetStyle("ZoomInButton", ui_inf.style);
+    mp->cam_cwidget.cam_zoom_widget.zoom_in = new urho::Button(uctxt);
+    mp->cam_cwidget.cam_zoom_widget.widget->AddChild(mp->cam_cwidget.cam_zoom_widget.zoom_in);
+    mp->cam_cwidget.cam_zoom_widget.zoom_in->SetStyle("ZoomInButton", ui_inf.style);
 
-    auto offset = mp->cam_zoom_widget.zoom_in->GetImageRect().Size();
-    offset.x_ *= ui_inf.dev_pixel_ratio_inv * 0.75;
-    offset.y_ *= ui_inf.dev_pixel_ratio_inv * 0.75;
+    auto offset = mp->cam_cwidget.cam_zoom_widget.zoom_in->GetImageRect().Size();
+    offset.x_ *= ui_inf.dev_pixel_ratio_inv * UI_ADDITIONAL_CAM_SCALING;
+    offset.y_ *= ui_inf.dev_pixel_ratio_inv * UI_ADDITIONAL_CAM_SCALING;
     auto parent_offset = offset;
-    parent_offset.y_ = offset.y_ * 2 + 10;
-    mp->cam_zoom_widget.widget->SetMaxOffset(parent_offset);
-    mp->cam_zoom_widget.zoom_in->SetMaxOffset(offset);
+    parent_offset.y_ = offset.y_ * 2;
+    mp->cam_cwidget.cam_zoom_widget.widget->SetMaxOffset(parent_offset);
+    mp->cam_cwidget.cam_zoom_widget.zoom_in->SetMaxOffset(offset);
 
-    mp->cam_zoom_widget.zoom_out = new urho::Button(uctxt);
-    mp->cam_zoom_widget.widget->AddChild(mp->cam_zoom_widget.zoom_out);
-    mp->cam_zoom_widget.zoom_out->SetStyle("ZoomOutButton", ui_inf.style);
-    mp->cam_zoom_widget.zoom_out->SetMaxOffset(offset);
-
-    mp->cam_zoom_widget.widget->SubscribeToEvent(urho::E_PRESSED, [mp](urho::StringHash type, urho::VariantMap &ev_data) {
-        auto elem = (urho::UIElement *)ev_data[urho::ClickEnd::P_ELEMENT].GetPtr();
-        if (elem == mp->cam_zoom_widget.zoom_in)
-            mp->cam_zoom_widget.loc_trans = mp->view->GetCameraNode()->GetDirection();
-        else if (elem == mp->cam_zoom_widget.zoom_out)
-            mp->cam_zoom_widget.loc_trans = mp->view->GetCameraNode()->GetDirection() * -1;
-    });
-
-    mp->cam_zoom_widget.widget->SubscribeToEvent(urho::E_CLICKEND, [mp](urho::StringHash type, urho::VariantMap &ev_data) { mp->cam_zoom_widget.loc_trans = {}; });
+    mp->cam_cwidget.cam_zoom_widget.zoom_out = new urho::Button(uctxt);
+    mp->cam_cwidget.cam_zoom_widget.widget->AddChild(mp->cam_cwidget.cam_zoom_widget.zoom_out);
+    mp->cam_cwidget.cam_zoom_widget.zoom_out->SetStyle("ZoomOutButton", ui_inf.style);
+    mp->cam_cwidget.cam_zoom_widget.zoom_out->SetMaxOffset(offset);
 }
 
 intern void setup_cam_move_widget(map_panel *mp, const ui_info &ui_inf)
@@ -591,67 +676,41 @@ intern void setup_cam_move_widget(map_panel *mp, const ui_info &ui_inf)
     auto uctxt = ui_inf.ui_sys->GetContext();
     auto cache = uctxt->GetSubsystem<urho::ResourceCache>();
 
-    mp->cam_move_widget.widget = new urho::BorderImage(uctxt);
-    ui_inf.ui_sys->GetRoot()->AddChild(mp->cam_move_widget.widget);
-    mp->cam_move_widget.widget->SetStyle("ArrowButtonGroup", ui_inf.style);
+    mp->cam_cwidget.cam_move_widget.widget = new urho::BorderImage(uctxt);
+    mp->cam_cwidget.root_element->AddChild(mp->cam_cwidget.cam_move_widget.widget);
+    mp->cam_cwidget.cam_move_widget.widget->SetStyle("ArrowButtonGroup", ui_inf.style);
 
-    mp->cam_move_widget.forward = new urho::Button(uctxt);
-    mp->cam_move_widget.widget->AddChild(mp->cam_move_widget.forward);
-    mp->cam_move_widget.forward->SetStyle("ArrowButtonForward", ui_inf.style);
-    mp->cam_move_widget.forward->SetVar("md", 1);
+    mp->cam_cwidget.cam_move_widget.forward = new urho::Button(uctxt);
+    mp->cam_cwidget.cam_move_widget.widget->AddChild(mp->cam_cwidget.cam_move_widget.forward);
+    mp->cam_cwidget.cam_move_widget.forward->SetStyle("ArrowButtonForward", ui_inf.style);
+    mp->cam_cwidget.cam_move_widget.forward->SetVar("md", 1);
 
-    auto offset = mp->cam_move_widget.forward->GetImageRect().Size();
-    offset.x_ *= ui_inf.dev_pixel_ratio_inv * 0.75;
-    offset.y_ *= ui_inf.dev_pixel_ratio_inv * 0.75;
+    auto offset = mp->cam_cwidget.cam_move_widget.forward->GetImageRect().Size();
+    offset.x_ *= ui_inf.dev_pixel_ratio_inv * UI_ADDITIONAL_CAM_SCALING;
+    offset.y_ *= ui_inf.dev_pixel_ratio_inv * UI_ADDITIONAL_CAM_SCALING;
     auto parent_offset = offset;
-    parent_offset.x_ = offset.x_ * 3 + 20;
-    parent_offset.y_ = offset.y_ * 2 + 10;
-    mp->cam_move_widget.widget->SetMaxOffset(parent_offset);
-    mp->cam_move_widget.forward->SetMaxOffset(offset);
+    parent_offset.x_ = offset.x_ * 3;
+    parent_offset.y_ = offset.y_ * 2;
+    mp->cam_cwidget.cam_move_widget.widget->SetMaxOffset(parent_offset);
+    mp->cam_cwidget.cam_move_widget.forward->SetMaxOffset(offset);
 
-    mp->cam_move_widget.back = new urho::Button(uctxt);
-    mp->cam_move_widget.widget->AddChild(mp->cam_move_widget.back);
-    mp->cam_move_widget.back->SetStyle("ArrowButtonBack", ui_inf.style);
-    mp->cam_move_widget.back->SetMaxOffset(offset);
-    mp->cam_move_widget.back->SetVar("md", -1);
+    mp->cam_cwidget.cam_move_widget.back = new urho::Button(uctxt);
+    mp->cam_cwidget.cam_move_widget.widget->AddChild(mp->cam_cwidget.cam_move_widget.back);
+    mp->cam_cwidget.cam_move_widget.back->SetStyle("ArrowButtonBack", ui_inf.style);
+    mp->cam_cwidget.cam_move_widget.back->SetMaxOffset(offset);
+    mp->cam_cwidget.cam_move_widget.back->SetVar("md", -1);
 
-    mp->cam_move_widget.left = new urho::Button(uctxt);
-    mp->cam_move_widget.widget->AddChild(mp->cam_move_widget.left);
-    mp->cam_move_widget.left->SetStyle("ArrowButtonLeft", ui_inf.style);
-    mp->cam_move_widget.left->SetMaxOffset(offset);
-    mp->cam_move_widget.left->SetVar("md", -2);
+    mp->cam_cwidget.cam_move_widget.left = new urho::Button(uctxt);
+    mp->cam_cwidget.cam_move_widget.widget->AddChild(mp->cam_cwidget.cam_move_widget.left);
+    mp->cam_cwidget.cam_move_widget.left->SetStyle("ArrowButtonLeft", ui_inf.style);
+    mp->cam_cwidget.cam_move_widget.left->SetMaxOffset(offset);
+    mp->cam_cwidget.cam_move_widget.left->SetVar("md", -2);
 
-    mp->cam_move_widget.right = new urho::Button(uctxt);
-    mp->cam_move_widget.widget->AddChild(mp->cam_move_widget.right);
-    mp->cam_move_widget.right->SetStyle("ArrowButtonRight", ui_inf.style);
-    mp->cam_move_widget.right->SetMaxOffset(offset);
-    mp->cam_move_widget.right->SetVar("md", 2);
-
-    mp->cam_move_widget.widget->SubscribeToEvent(urho::E_PRESSED, [mp](urho::StringHash type, urho::VariantMap &ev_data) {
-        auto elem = (urho::UIElement *)ev_data[urho::ClickEnd::P_ELEMENT].GetPtr();
-        auto trans = elem->GetVar("md").GetInt();
-        if (trans == 0)
-            return;
-
-        auto cam_node = mp->view->GetCameraNode();
-        auto world_right = cam_node->GetWorldRight().Normalized();
-        auto world_up = cam_node->GetWorldUp().Normalized();
-        float angle = std::abs(world_up.Angle({0, 0, 1}) - 90.0f);
-        if (std::abs(angle) > 70)
-        {
-            mp->cam_move_widget.world_trans = vec3(0, 0, -trans);
-            if (std::abs(trans) == 2)
-                mp->cam_move_widget.world_trans = world_right * trans / 2;
-        }
-        else
-        {
-            mp->cam_move_widget.world_trans = vec3(world_up.x_, world_up.y_, 0.0) * trans;
-            if (std::abs(trans) == 2)
-                mp->cam_move_widget.world_trans = world_right * trans / 2;
-        }
-    });
-
-    mp->cam_move_widget.widget->SubscribeToEvent(urho::E_CLICKEND, [mp](urho::StringHash type, urho::VariantMap &ev_data) { mp->cam_move_widget.world_trans = {}; });
+    mp->cam_cwidget.cam_move_widget.right = new urho::Button(uctxt);
+    mp->cam_cwidget.cam_move_widget.widget->AddChild(mp->cam_cwidget.cam_move_widget.right);
+    mp->cam_cwidget.cam_move_widget.right->SetStyle("ArrowButtonRight", ui_inf.style);
+    mp->cam_cwidget.cam_move_widget.right->SetMaxOffset(offset);
+    mp->cam_cwidget.cam_move_widget.right->SetVar("md", 2);
 }
 
 void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, input_data *inp)
@@ -662,24 +721,137 @@ void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, 
     create_3dview(mp, cache, ui_inf.ui_sys->GetRoot(), uctxt);
     setup_scene(mp, cache, mp->view->GetScene(), uctxt);
     setup_camera_controls(mp, mp->view->GetCameraNode(), inp);
+
+    mp->cam_cwidget.root_element = new urho::BorderImage(uctxt);
+    ui_inf.ui_sys->GetRoot()->AddChild(mp->cam_cwidget.root_element);
+    mp->cam_cwidget.root_element->SetStyle("CamControlButtonGroup", ui_inf.style);
+
     setup_cam_move_widget(mp, ui_inf);
     setup_cam_zoom_widget(mp, ui_inf);
-    setup_nav_widget(mp, ui_inf);
+    ivec2 child_offsets = {};
+    for (int i = 0; i < mp->cam_cwidget.root_element->GetNumChildren(); ++i)
+    {
+        auto child = mp->cam_cwidget.root_element->GetChild(i);
+        auto coffset = child->GetMaxOffset();
+        child_offsets.x_ += coffset.x_ + 20;
+        child_offsets.y_ = coffset.y_;
+    }
+
+    if (mp->cam_cwidget.root_element->GetMinAnchor() == mp->cam_cwidget.root_element->GetMaxAnchor())
+        mp->cam_cwidget.root_element->SetMaxOffset(child_offsets);
+
+    setup_accept_params_button(mp, ui_inf);
+    setup_toolbar_widget(mp, ui_inf, conn);
 
     ss_connect(&mp->router, conn->scan_received, [mp](const sicklms_laser_scan &pckt) { update_scene_from_scan(mp, pckt); });
 
-    ss_connect(&mp->router, conn->map_update_received, [mp](const occ_grid_update &pckt) { update_scene_map_from_occ_grid(mp->map, pckt); });
+    ss_connect(&mp->router, conn->map_update_received, [mp](const occ_grid_update &pckt) { update_scene_map_from_occ_grid(&mp->map, pckt); });
 
-    ss_connect(&mp->router, conn->glob_cm_update_received, [mp](const occ_grid_update &pckt) { update_scene_map_from_occ_grid(mp->glob_cmap, pckt); });
+    ss_connect(&mp->router, conn->glob_cm_update_received, [mp](const occ_grid_update &pckt) { update_scene_map_from_occ_grid(&mp->glob_cmap, pckt); });
 
     ss_connect(&mp->router, conn->transform_updated, [mp](const node_transform &pckt) { update_node_transform(mp, pckt); });
 
     ss_connect(&mp->router, conn->nav_path_updated, [mp](const nav_path &pckt) { update_nav_path(mp, pckt); });
 
+    ss_connect(&mp->router, conn->goal_status_updated, [mp](const current_goal_status &pckt) { update_cur_goal_status(mp, pckt); });
+
     mp->view->SubscribeToEvent(urho::E_UPDATE, [mp, conn](urho::StringHash type, urho::VariantMap &ev_data) {
         auto dt = ev_data[urho::Update::P_TIMESTEP].GetFloat();
         map_panel_run_frame(mp, dt, conn);
     });
+
+    mp->toolbar.widget->SubscribeToEvent(urho::E_CLICKEND, [mp, conn](urho::StringHash type, urho::VariantMap &ev_data) {
+        mp->cam_cwidget.cam_zoom_widget.loc_trans = {};
+        mp->cam_cwidget.cam_move_widget.world_trans = {};
+
+        auto elem = (urho::UIElement *)ev_data[urho::ClickEnd::P_ELEMENT].GetPtr();
+        if (elem == mp->toolbar.add_goal)
+        {
+            auto r = mp->toolbar.add_goal->GetImageRect() + irect{128, 0, 128, 0};
+            mp->toolbar.add_goal->SetImageRect(r);
+            mp->toolbar.add_goal->SetEnabled(false);
+        }
+        else if (elem == mp->toolbar.cancel_goal)
+        {
+            if (!mp->toolbar.add_goal->IsEnabled())
+            {
+                auto r = mp->toolbar.add_goal->GetImageRect() + irect{-128, 0, -128, 0};
+                mp->toolbar.add_goal->SetImageRect(r);
+                mp->toolbar.add_goal->SetEnabled(true);
+            }
+            command_stop stop{};
+            mp->goals.queued_goals.clear();
+            net_tx(*conn, stop);
+        }
+        else if (elem == mp->toolbar.clear_maps)
+        {
+            if (!mp->toolbar.add_goal->IsEnabled())
+            {
+                auto r = mp->toolbar.add_goal->GetImageRect() + irect{-128, 0, -128, 0};
+                mp->toolbar.add_goal->SetImageRect(r);
+                mp->toolbar.add_goal->SetEnabled(true);
+            }
+            command_clear_maps cm{};
+            net_tx(*conn, cm);
+        }
+        else if (elem == mp->toolbar.set_params)
+        {
+#if defined(__EMSCRIPTEN__)
+            make_input_visible(mp->view->GetHeight() * 0.03, mp->view->GetWidth() * 0.08);
+#else
+#endif
+            mp->accept_inp.widget->SetVisible(!mp->accept_inp.widget->IsVisible());
+        }
+        else if (elem == mp->accept_inp.btn || elem == mp->accept_inp.btn_text)
+        {
+            ilog("Button Pressed");
+        }
+    });
+
+    mp->cam_cwidget.cam_move_widget.widget->SubscribeToEvent(urho::E_PRESSED, [mp](urho::StringHash type, urho::VariantMap &ev_data) {
+        auto elem = (urho::UIElement *)ev_data[urho::ClickEnd::P_ELEMENT].GetPtr();
+        auto trans = elem->GetVar("md").GetInt();
+
+        if (elem == mp->cam_cwidget.cam_zoom_widget.zoom_in)
+            mp->cam_cwidget.cam_zoom_widget.loc_trans = mp->view->GetCameraNode()->GetDirection();
+        else if (elem == mp->cam_cwidget.cam_zoom_widget.zoom_out)
+            mp->cam_cwidget.cam_zoom_widget.loc_trans = mp->view->GetCameraNode()->GetDirection() * -1;
+        else if (trans == 0)
+            return;
+
+        auto cam_node = mp->view->GetCameraNode();
+        auto world_right = cam_node->GetWorldRight().Normalized();
+        auto world_up = cam_node->GetWorldUp().Normalized();
+        float angle = std::abs(world_up.Angle({0, 0, 1}) - 90.0f);
+        if (std::abs(angle) > 70)
+        {
+            mp->cam_cwidget.cam_move_widget.world_trans = vec3(0, 0, -trans);
+            if (std::abs(trans) == 2)
+                mp->cam_cwidget.cam_move_widget.world_trans = world_right * trans / 2;
+        }
+        else
+        {
+            mp->cam_cwidget.cam_move_widget.world_trans = vec3(world_up.x_, world_up.y_, 0.0) * trans;
+            if (std::abs(trans) == 2)
+                mp->cam_cwidget.cam_move_widget.world_trans = world_right * trans / 2;
+        }
+    });
+}
+
+void map_clear_occ_grid(occ_grid_map *ocg)
+{
+    ocg->image->SetSize(512, 512, 4);
+    for (int h = 0; h < ocg->image->GetHeight(); ++h)
+    {
+        for (int w = 0; w < ocg->image->GetWidth(); ++w)
+            ocg->image->SetPixel(w, h, ocg->undiscovered);
+    }
+    ocg->rend_texture->SetData(ocg->image);
+
+    auto bb = ocg->bb_set->GetBillboard(0);
+    bb->enabled_ = true;
+    bb->size_ = {25.6f, 25.6f};
+    ocg->bb_set->Commit();
 }
 
 void map_panel_term(map_panel *mp)
