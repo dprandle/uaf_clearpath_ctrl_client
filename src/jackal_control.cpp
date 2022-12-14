@@ -39,15 +39,15 @@ int main(int argc, char **argv)
     jctrl_term(&jctrl);
 }
 
-intern bool init_urho_engine(urho::Engine * urho_engine)
+intern bool init_urho_engine(urho::Engine * urho_engine, float ui_scale)
 {
     urho::VariantMap engine_params;
     String log_loc = "build_and_battle.log";
     engine_params[urho::EP_FRAME_LIMITER] = false;
     engine_params[urho::EP_LOG_NAME] = log_loc;
     engine_params[urho::EP_FULL_SCREEN] = false;
-    engine_params[urho::EP_WINDOW_WIDTH] = 1080;
-    engine_params[urho::EP_WINDOW_HEIGHT] = 2400;
+    engine_params[urho::EP_WINDOW_WIDTH] = 1080*ui_scale;
+    engine_params[urho::EP_WINDOW_HEIGHT] = 2400*ui_scale;
 #if !defined(__EMSCRIPTEN__)
     engine_params[urho::EP_HIGH_DPI] = true;
     engine_params[urho::EP_WINDOW_RESIZABLE] = true;
@@ -83,12 +83,8 @@ intern void setup_main_renderer(jackal_control_ctxt *ctxt)
     zn->SetFogColor({0.0, 0.0, 0.0, 1.0});
 }
 
-intern urho::String parse_ip_command_line_args(int *port, const urho::StringVector & args)
+intern void parse_command_line_args(int *port, urho::String * ip, float *ui_scale, const urho::StringVector & args)
 {
-    urho::String ip("192.168.1.11");
-    if (port)
-        *port = 4000;
-    
     for (const auto &arg : args)
     {
         auto split = arg.Split('=');
@@ -96,21 +92,29 @@ intern urho::String parse_ip_command_line_args(int *port, const urho::StringVect
         {
             if (split[0] == "-ip")
             {
-                ip = split[1];
+                *ip = split[1];
             }
-            else if (split[0] == "-port" && port)
+            else if (split[0] == "-port")
             {
                 *port = strtol(split[1].CString(), nullptr, 10);
             }
+            else if (split[0] == "-ui_scale")
+            {
+                *ui_scale = strtof(split[1].CString(), nullptr);
+                ilog("Setting ui scale val to %f", *ui_scale);
+            }
         }
     }
-    return ip;
 }
 
 bool jctrl_init(jackal_control_ctxt *ctxt, const urho::StringVector & args)
 {
     ctxt->urho_engine = new urho::Engine(ctxt->urho_ctxt);
-    if (!init_urho_engine(ctxt->urho_engine))
+    int port;
+    urho::String ip;
+    parse_command_line_args(&port, &ip, &ctxt->ui_inf.dev_pixel_ratio_inv, args);
+
+    if (!init_urho_engine(ctxt->urho_engine, ctxt->ui_inf.dev_pixel_ratio_inv))
         return false;
     
     log_init(ctxt->urho_ctxt);
@@ -138,8 +142,6 @@ bool jctrl_init(jackal_control_ctxt *ctxt, const urho::StringVector & args)
         ctxt->mpanel.js_enabled = in_use;
     });
     
-    int port;
-    auto ip = parse_ip_command_line_args(&port, args);
     net_connect(&ctxt->conn, ip.CString(), port);
 
     ilog("Device pixel ratio inverse: %f", ctxt->ui_inf.dev_pixel_ratio_inv);

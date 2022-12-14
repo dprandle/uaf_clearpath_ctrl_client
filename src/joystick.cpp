@@ -8,7 +8,7 @@
 #include "joystick.h"
 #include "network.h"
 
-intern void handle_jostick_move(const ivec2 &cur_mpos, joystick_panel *jspanel, float dev_pixel_ratio_inv)
+intern void handle_jostick_move(const ivec2 &cur_mpos, joystick_panel *jspanel)
 {
     float max_r = jspanel->outer_ring->GetMaxOffset().x_ / 3.0f;
     vec2 dir_vec = vec2{cur_mpos.x_, cur_mpos.y_} - jspanel->cached_mouse_pos;
@@ -35,7 +35,7 @@ intern void handle_joystick_move_begin(joystick_panel *jsp, const ui_info &ui_in
     jsp->cached_js_pos = pos;
     ivec2 cmp;
     SDL_GetMouseState(&cmp.x_, &cmp.y_);
-    jsp->cached_mouse_pos = vec2{cmp.x_, cmp.y_} * ui_inf.dev_pixel_ratio_inv;
+    jsp->cached_mouse_pos = vec2{cmp.x_, cmp.y_};// * ui_inf.dev_pixel_ratio_inv;
     jsp->js->SetEnableAnchor(false);
 }
 
@@ -53,7 +53,7 @@ intern void setup_event_handlers(joystick_panel *jsp, const ui_info &ui_inf, net
         using namespace urho::DragMove;
         auto elem = (urho::UIElement *)ev_data[P_ELEMENT].GetPtr();
         if (elem == jsp->js)
-            handle_jostick_move({ev_data[P_X].GetInt(), ev_data[P_Y].GetInt()}, jsp, ui_inf.dev_pixel_ratio_inv);
+            handle_jostick_move({ev_data[P_X].GetInt(), ev_data[P_Y].GetInt()}, jsp);
     });
 
     jsp->js->SubscribeToEvent(urho::E_DRAGEND, [jsp](urho::StringHash type, urho::VariantMap &ev_data) {
