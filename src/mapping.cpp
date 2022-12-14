@@ -33,7 +33,7 @@
 
 #if defined(__EMSCRIPTEN__)
 #include <emscripten/websocket.h>
-EM_JS(void, make_input_visible, (int rows, int cols), {
+EM_JS(void, toggle_input_visibility, (int rows, int cols), {
     let ta = document.getElementById('text-area');
     if (ta.style.display === "block")
         ta.style.display = "none";
@@ -66,7 +66,8 @@ const std::string FRONT_MOUNT{"front_mount"};
 const std::string FRONT_LASER_MOUNT{"front_laser_mount"};
 const std::string FRONT_LASER{"front_laser"};
 
-intern const float UI_ADDITIONAL_BTN_SCALING = 1.0f;;
+intern const float UI_ADDITIONAL_BTN_SCALING = 1.0f;
+;
 intern const float UI_ADDITIONAL_CAM_SCALING = 0.75f;
 intern const float UI_ADDITIONAL_TOOLBAR_SCALING = 1.00f;
 
@@ -797,14 +798,19 @@ void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, 
         else if (elem == mp->toolbar.set_params)
         {
 #if defined(__EMSCRIPTEN__)
-            make_input_visible(mp->view->GetHeight() * 0.03, mp->view->GetWidth() * 0.08);
+            toggle_input_visibility(mp->view->GetHeight() * 0.03, mp->view->GetWidth() * 0.08);
 #else
 #endif
             mp->accept_inp.widget->SetVisible(!mp->accept_inp.widget->IsVisible());
         }
         else if (elem == mp->accept_inp.btn || elem == mp->accept_inp.btn_text)
         {
-            ilog("Button Pressed");
+            // Get input from box and send it
+#if defined(__EMSCRIPTEN__)
+            toggle_input_visibility(mp->view->GetHeight() * 0.03, mp->view->GetWidth() * 0.08);
+#else
+#endif
+            mp->accept_inp.widget->SetVisible(!mp->accept_inp.widget->IsVisible());
         }
     });
 
