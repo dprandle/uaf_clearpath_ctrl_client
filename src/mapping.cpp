@@ -46,6 +46,15 @@ EM_JS(void, toggle_input_visibility, (int rows, int cols), {
             ta.cols = cols;
     }
 });
+
+EM_JS(char*, get_input_text, (), {
+    let ta_text = document.getElementById('text-area').value;
+    let length = lengthBytesUTF8(ta_text) + 1;
+    let str = _malloc(length);
+    stringToUTF8(ta_text, str, length);
+    console.log(`Should be returning  ${length} bytes for ${ta_text}`);
+    return str;
+});
 #endif
 
 const std::string MAP{"map"};
@@ -485,6 +494,14 @@ intern void update_cur_goal_status(map_panel *mp, const current_goal_status &gs)
     }
 }
 
+intern void show_received_text(map_panel *mp, const text_block &tb)
+{
+    static char txt[5000] = {};
+    strncpy(txt, tb.text, tb.txt_size);
+    txt[tb.txt_size] = '\0';
+    ilog("Recieved text: %s", txt);
+}
+
 intern float animate_marker_circles(goal_marker_info *gm, float dt)
 {
     static bool increasing = true;
@@ -756,6 +773,8 @@ void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, 
 
     ss_connect(&mp->router, conn->goal_status_updated, [mp](const current_goal_status &pckt) { update_cur_goal_status(mp, pckt); });
 
+    ss_connect(&mp->router, conn->param_set_response_received, [mp](const text_block &pckt) { show_received_text(mp, pckt); });
+
     mp->view->SubscribeToEvent(urho::E_UPDATE, [mp, conn](urho::StringHash type, urho::VariantMap &ev_data) {
         auto dt = ev_data[urho::Update::P_TIMESTEP].GetFloat();
         map_panel_run_frame(mp, dt, conn);
@@ -805,10 +824,20 @@ void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, 
         }
         else if (elem == mp->accept_inp.btn || elem == mp->accept_inp.btn_text)
         {
+
+            static command_set_params param_pckt {};
+
             // Get input from box and send it
 #if defined(__EMSCRIPTEN__)
             toggle_input_visibility(mp->view->GetHeight() * 0.03, mp->view->GetWidth() * 0.08);
-#else
+
+            char *txt = get_input_text();
+            param_pckt.blob_size = strlen(txt);
+            if (command_set_params::MAX_STR_SIZE < param_pckt.blob_size)
+                param_pckt.blob_size = command_set_params::MAX_STR_SIZE;
+            strncpy((char*)param_pckt.blob_data, txt, param_pckt.blob_size);
+            free(txt);
+            net_tx(*conn, param_pckt);
 #endif
             mp->accept_inp.widget->SetVisible(!mp->accept_inp.widget->IsVisible());
         }

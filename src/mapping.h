@@ -37,6 +37,11 @@ struct camera_move_control_widget
     vec3 world_trans {};
 };
 
+struct text_notice_widget
+{
+    urho::UIElement * widget;
+};
+
 struct camera_move_zoom_widget
 {
     urho::UIElement * widget;

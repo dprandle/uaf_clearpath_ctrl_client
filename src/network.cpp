@@ -66,7 +66,7 @@
 #if defined(__EMSCRIPTEN__)
 #include <emscripten/websocket.h>
 
-EM_JS(const char*, get_browser_url, (), {
+EM_JS(char*, get_browser_url, (), {
     let host = window.location.host;
     let length = lengthBytesUTF8(host) + 1;
     let str = _malloc(length);
@@ -183,8 +183,9 @@ intern void em_net_connect(net_connection *conn)
         return;
     }
 
-    const char *url = get_browser_url();
+    char *url = get_browser_url();
     strncat(SERVER_URL, url, 64);
+    free(url);
 
     ilog("URL: %s", SERVER_URL);
 
@@ -377,6 +378,26 @@ intern void handle_nav_path_packet(binary_fixed_buffer_archive<net_rx_buffer::MA
     }
 }
 
+intern void handle_text_block_packet(binary_fixed_buffer_archive<net_rx_buffer::MAX_PACKET_SIZE> &read_buf, sizet available, sizet cached_offset, net_connection *conn)
+{
+    pack_unpack(read_buf, conn->pckts.txt->header, {"header"});
+    pack_unpack(read_buf, conn->pckts.txt->txt_size, {"txt_size"});
+
+    sizet meta_and_header_size = read_buf.cur_offset - cached_offset;
+    sizet total_packet_size = conn->pckts.txt->txt_size + meta_and_header_size;
+
+    if (available >= total_packet_size)
+    {
+        pack_unpack(read_buf, conn->pckts.txt->text, {"text", {pack_va_flags::FIXED_ARRAY_CUSTOM_SIZE, &conn->pckts.txt->txt_size}});
+        conn->param_set_response_received(0, *conn->pckts.txt);
+    }
+    else
+    {
+        // Not all bytes have come in for packet - set back the cur_offset to what it was before reading the meta data
+        read_buf.cur_offset = cached_offset;
+    }
+}
+
 intern void handle_goal_status_packet(binary_fixed_buffer_archive<net_rx_buffer::MAX_PACKET_SIZE> &read_buf, net_connection *conn)
 {
     pack_unpack(read_buf, *conn->pckts.cur_goal_stat, {});
@@ -404,6 +425,7 @@ intern sizet matching_packet_size(u8 *data)
     static sizet node_tform = packed_sizeof<node_transform>();
     static sizet nav_path_meta = sizeof(u32);
     static sizet goal_status = packed_sizeof<current_goal_status>();
+    static sizet txt_block_sz = packed_sizeof<text_block>();
 
     if (matches_packet_id(SCAN_PACKET_ID, data))
     {
@@ -424,6 +446,10 @@ intern sizet matching_packet_size(u8 *data)
     else if (matches_packet_id(GOAL_STAT_PCKT_ID, data))
     {
         return goal_status;
+    }
+    else if (matches_packet_id(SET_PARAMS_RESP_CMD_PCKT_ID, data))
+    {
+        return txt_block_sz;
     }
     return 0;
 }
@@ -454,6 +480,10 @@ intern sizet dispatch_received_packet(binary_fixed_buffer_archive<net_rx_buffer:
     else if (matches_packet_id(NAVP_PCKT_ID, read_buf.data + read_buf.cur_offset))
     {
         handle_nav_path_packet(read_buf, available, cached_offset, conn);
+    }
+    else if (matches_packet_id(SET_PARAMS_RESP_CMD_PCKT_ID, read_buf.data + read_buf.cur_offset))
+    {
+        handle_text_block_packet(read_buf, available, cached_offset, conn);
     }
     return read_buf.cur_offset - cached_offset;
 }

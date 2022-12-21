@@ -11,7 +11,7 @@ inline const char *GLOB_CM_PCKT_ID = "GLOB_CM_PCKT_ID";
 inline const char *TFORM_PCKT_ID = "TFORM_PCKT_ID";
 inline const char *NAVP_PCKT_ID = "NAVP_PCKT_ID";
 inline const char *GOAL_STAT_PCKT_ID = "GOAL_STAT_PCKT_ID";
-
+inline const char *SET_PARAMS_RESP_CMD_PCKT_ID = "SET_PARAMS_RESP_CMD_PCKT_ID";
 
 inline const char *VEL_CMD_HEADER = "VEL_CMD_PCKT_ID";
 inline const char *GOAL_CMD_HEADER = "GOAL_CMD_PCKT_ID";
@@ -154,10 +154,10 @@ pup_func(command_clear_maps)
 
 struct command_set_params
 {
-    static constexpr sizet MAX_CHANGE_ELEMS = std::numeric_limits<u16>::max();
+    static constexpr sizet MAX_STR_SIZE = std::numeric_limits<u16>::max();
     packet_header header{"SET_PARAMS_CMD_PCKT_ID"};
-    u16 blob_size;
-    u8 blob_data[MAX_CHANGE_ELEMS];
+    u32 blob_size;
+    u8 blob_data[MAX_STR_SIZE];
 };
 
 pup_func(command_set_params)
@@ -214,6 +214,21 @@ struct node_transform
     dvec3 pos;
     dquat orientation;
 };
+
+struct text_block
+{
+    static constexpr int MAX_TXT_SIZE = 5000;
+    packet_header header{};
+    u32 txt_size {0};
+    char text[MAX_TXT_SIZE];
+};
+
+pup_func(text_block)
+{
+    pup_member(header);
+    pup_member(txt_size);
+    pup_member_meta(text, pack_va_flags::FIXED_ARRAY_CUSTOM_SIZE, &val.txt_size);
+}
 
 pup_func(node_transform)
 {
@@ -300,6 +315,7 @@ struct reusable_packets
     node_transform *ntf;
     nav_path *navp;
     current_goal_status * cur_goal_stat;
+    text_block * txt;
 
     // Packets for sending
     command_set_params * cmdp;
@@ -324,6 +340,7 @@ struct net_connection
     ss_signal<const node_transform &> transform_updated;
     ss_signal<const nav_path &> nav_path_updated;
     ss_signal<const current_goal_status &> goal_status_updated;
+    ss_signal<const text_block &> param_set_response_received;
 };
 
 void net_connect(net_connection *conn, const char *ip, int port, int max_timeout_ms = -1);

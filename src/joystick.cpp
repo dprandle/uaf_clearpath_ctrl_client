@@ -35,7 +35,7 @@ intern void handle_joystick_move_begin(joystick_panel *jsp, const ui_info &ui_in
     jsp->cached_js_pos = pos;
     ivec2 cmp;
     SDL_GetMouseState(&cmp.x_, &cmp.y_);
-    jsp->cached_mouse_pos = vec2{cmp.x_, cmp.y_};// * ui_inf.dev_pixel_ratio_inv;
+    jsp->cached_mouse_pos = vec2{cmp.x_, cmp.y_} * ui_inf.dev_pixel_ratio_inv;
     jsp->js->SetEnableAnchor(false);
 }
 
@@ -118,7 +118,7 @@ void joystick_panel_run_frame(joystick_panel*jspanel, net_connection * conn)
 {
     if (!jspanel->js->GetEnableAnchor())
     {
-        command_velocity pckt {};
+        static command_velocity pckt {};
         pckt.vinfo.linear = jspanel->velocity.y_;
         pckt.vinfo.angular = jspanel->velocity.x_;
         net_tx(*conn, pckt);
