@@ -363,19 +363,19 @@ intern void handle_occ_grid_pckt(binary_fixed_buffer_archive<net_rx_buffer::MAX_
     }
 }
 
-intern void handle_nav_path_packet(binary_fixed_buffer_archive<net_rx_buffer::MAX_PACKET_SIZE> &read_buf, sizet available, sizet cached_offset, net_connection *conn)
+intern void handle_nav_path_packet(binary_fixed_buffer_archive<net_rx_buffer::MAX_PACKET_SIZE> &read_buf, sizet available, sizet cached_offset, nav_path *npckt, ss_signal<const nav_path &> & sig)
 {
     static sizet pose_size = packed_sizeof<pose>();
-    pack_unpack(read_buf, conn->pckts.navp->header, {"header"});
-    pack_unpack(read_buf, conn->pckts.navp->path_cnt, {"path_cnt"});
+    pack_unpack(read_buf, npckt->header, {"header"});
+    pack_unpack(read_buf, npckt->path_cnt, {"path_cnt"});
 
     sizet meta_and_header_size = read_buf.cur_offset - cached_offset;
-    sizet total_packet_size = conn->pckts.navp->path_cnt * pose_size + meta_and_header_size;
+    sizet total_packet_size = npckt->path_cnt * pose_size + meta_and_header_size;
 
     if (available >= total_packet_size)
     {
-        pack_unpack(read_buf, conn->pckts.navp->path, {"path", {pack_va_flags::FIXED_ARRAY_CUSTOM_SIZE, &conn->pckts.navp->path_cnt}});
-        conn->nav_path_updated(0, *conn->pckts.navp);
+        pack_unpack(read_buf, npckt->path, {"path", {pack_va_flags::FIXED_ARRAY_CUSTOM_SIZE, &npckt->path_cnt}});
+        sig(0, *npckt);
     }
     else
     {
@@ -437,11 +437,11 @@ intern sizet matching_packet_size(u8 *data)
     {
         return scan_size;
     }
-    else if (matches_packet_id(MAP_PCKT_ID, data) || matches_packet_id(GLOB_CM_PCKT_ID, data))
+    else if (matches_packet_id(LOC_CM_PCKT_ID, data) || matches_packet_id(MAP_PCKT_ID, data) || matches_packet_id(GLOB_CM_PCKT_ID, data))
     {
         return occ_meta;
     }
-    else if (matches_packet_id(NAVP_PCKT_ID, data))
+    else if (matches_packet_id(GLOB_NAVP_PCKT_ID, data) || matches_packet_id(LOC_NAVP_PCKT_ID, data))
     {
         return nav_path_meta;
     }
@@ -453,11 +453,7 @@ intern sizet matching_packet_size(u8 *data)
     {
         return goal_status;
     }
-    else if (matches_packet_id(SET_PARAMS_RESP_CMD_PCKT_ID, data))
-    {
-        return txt_block_sz;
-    }
-    else if (matches_packet_id(GET_PARAMS_RESP_CMD_PCKT_ID, data))
+    else if (matches_packet_id(SET_PARAMS_RESP_CMD_PCKT_ID, data) || matches_packet_id(GET_PARAMS_RESP_CMD_PCKT_ID, data))
     {
         return txt_block_sz;
     }
@@ -479,6 +475,10 @@ intern sizet dispatch_received_packet(binary_fixed_buffer_archive<net_rx_buffer:
     {
         handle_goal_status_packet(read_buf, conn);
     }
+    else if (matches_packet_id(LOC_CM_PCKT_ID, read_buf.data + read_buf.cur_offset))
+    {
+        handle_occ_grid_pckt(read_buf, available, cached_offset, conn->pckts.gu, conn->loc_cm_update_received);
+    }
     else if (matches_packet_id(GLOB_CM_PCKT_ID, read_buf.data + read_buf.cur_offset))
     {
         handle_occ_grid_pckt(read_buf, available, cached_offset, conn->pckts.gu, conn->glob_cm_update_received);
@@ -487,9 +487,13 @@ intern sizet dispatch_received_packet(binary_fixed_buffer_archive<net_rx_buffer:
     {
         handle_occ_grid_pckt(read_buf, available, cached_offset, conn->pckts.gu, conn->map_update_received);
     }
-    else if (matches_packet_id(NAVP_PCKT_ID, read_buf.data + read_buf.cur_offset))
+    else if (matches_packet_id(LOC_NAVP_PCKT_ID, read_buf.data + read_buf.cur_offset))
     {
-        handle_nav_path_packet(read_buf, available, cached_offset, conn);
+        handle_nav_path_packet(read_buf, available, cached_offset, conn->pckts.navp, conn->loc_nav_path_updated);
+    }
+    else if (matches_packet_id(GLOB_NAVP_PCKT_ID, read_buf.data + read_buf.cur_offset))
+    {
+        handle_nav_path_packet(read_buf, available, cached_offset, conn->pckts.navp, conn->glob_nav_path_updated);
     }
     else if (matches_packet_id(SET_PARAMS_RESP_CMD_PCKT_ID, read_buf.data + read_buf.cur_offset))
     {

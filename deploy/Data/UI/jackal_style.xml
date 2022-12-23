@@ -195,7 +195,7 @@
         <attribute name="Focus Mode" value="NotFocusable" />
         <attribute name="Text Alignment" value="Center" />
         <attribute name="Name" value="SendParamsBtnText" />
-        <attribute name="Text" value="Send Params" />
+        <attribute name="Text" value="Set Params" />
         <attribute name="Font" value="Font;Fonts/Roboto-Medium.ttf" />
         <attribute name="Enable Anchor" value="true" />
         <attribute name="Min Anchor" value="0 0.5" />
@@ -203,7 +203,7 @@
         <attribute name="Pivot" value="0 0.5" />
     </element>
     <element type="TextDispWidget">
-        <attribute name="Priority" value="3" />
+        <attribute name="Priority" value="4" />
         <attribute name="Name" value="TextDispWidget" />
         <attribute name="Enable Anchor" value="true" />
         <attribute name="Min Anchor" value="0.0 0.0" />
@@ -216,23 +216,22 @@
         <attribute name="Min Anchor" value="0.0 0.0" />
         <attribute name="Max Anchor" value="1.0 1.0" />
         <element type="BorderImage" internal="true">
-            <attribute name="Color" value="0.0 0.0 0.0 0.8" />
+            <attribute name="Color" value="0.0 0.0 0.0 0.95" />
             <element internal="true">
                 <attribute name="Layout Mode" value="Vertical" />
             </element>
         </element>
     </element>
     <element type="TextDispText">
-        <attribute name="Priority" value="3" />
         <attribute name="Focus Mode" value="NotFocusable" />
         <attribute name="Text Alignment" value="Left" />
         <attribute name="Word Wrap" value="True" />
         <attribute name="Font" value="Font;Fonts/Roboto-Medium.ttf" />
     </element>
     <element type="TextDispHideShowBG">
-        <attribute name="Priority" value="3" />
+        <attribute name="Priority" value="4" />
         <attribute name="Name" value="TextDispHideShowBG" />
-        <attribute name="Color" value="0.0 0.0 0.0 0.8" />
+        <attribute name="Color" value="0.0 0.0 0.0 0.95" />
         <attribute name="Enable Anchor" value="true" />
         <attribute name="Min Anchor" value="0.01 1" />
         <attribute name="Max Anchor" value="0.01 1" />

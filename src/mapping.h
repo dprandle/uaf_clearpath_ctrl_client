@@ -51,12 +51,12 @@ struct text_notice_widget
     urho::ListView * sview;
     urho::UIElement * hide_show_btn_bg;
     urho::Button * hide_show_panel;
-    float max_y_anchor {0.1f};
+    float max_y_anchor {};
     float cur_anim_time {0.0f};
     float max_anim_time {0.2f};
 
     float cur_open_time {0.0f};
-    float max_open_timer_time {3.0f};
+    float max_open_timer_time {5.0f};
     text_notic_anim_state anim_state {TEXT_NOTICE_ANIM_INACTIVE};
 };
 
@@ -90,19 +90,23 @@ enum occ_grid_type
     OCC_GRID_TYPE_COSTMAP
 };
 
+struct ogmap_colors
+{
+    urho::Color undiscovered{0,0,0,0};
+    urho::Color lethal{0,0,0,0};
+    urho::Color inscribed{0,0,0,0};
+    urho::Color possibly_circumscribed {0,0,0,0};
+    urho::Color no_collision {0,0,0,0};
+    urho::Color free_space{0,0,0,0};
+};
+
 struct occ_grid_map
 {
     urho::Node * node {};
     urho::Texture2D * rend_texture {};
     urho::Image * image {};
     urho::BillboardSet * bb_set {};
-
-    urho::Color undiscovered {0, 0.7, 0.7, 1};
-    urho::Color lethal{1,0,1,0.7};
-    urho::Color inscribed{0,1,1,0.7};
-    urho::Color possibly_circumscribed {1,0,0,0.7};
-    urho::Color no_collision {0,1,0,0.7};
-    urho::Color free_space{0,0,0,0};
+    ogmap_colors cols;
 
     int map_type {OCC_GRID_TYPE_MAP};
 };
@@ -157,7 +161,10 @@ struct map_panel
     
     occ_grid_map map {};
     occ_grid_map glob_cmap {};
-    nav_path_view npview{};
+    occ_grid_map loc_cmap {};
+
+    nav_path_view glob_npview{};
+    nav_path_view loc_npview{};
     
     nav_goals goals{};
 

@@ -8,8 +8,10 @@
 inline const char *SCAN_PACKET_ID = "SCAN_PCKT_ID";
 inline const char *MAP_PCKT_ID = "MAP_PCKT_ID";
 inline const char *GLOB_CM_PCKT_ID = "GLOB_CM_PCKT_ID";
+inline const char *LOC_CM_PCKT_ID = "LOC_CM_PCKT_ID";
 inline const char *TFORM_PCKT_ID = "TFORM_PCKT_ID";
-inline const char *NAVP_PCKT_ID = "NAVP_PCKT_ID";
+inline const char *GLOB_NAVP_PCKT_ID = "GLOB_NAVP_PCKT_ID";
+inline const char *LOC_NAVP_PCKT_ID = "LOC_NAVP_PCKT_ID";
 inline const char *GOAL_STAT_PCKT_ID = "GOAL_STAT_PCKT_ID";
 inline const char *SET_PARAMS_RESP_CMD_PCKT_ID = "SET_PARAMS_RESP_CMD_PCKT_ID";
 inline const char *GET_PARAMS_RESP_CMD_PCKT_ID = "GET_PARAMS_RESP_CMD_PCKT_ID";
@@ -350,8 +352,10 @@ struct net_connection
     ss_signal<const sicklms_laser_scan &> scan_received;
     ss_signal<const occ_grid_update &> map_update_received;
     ss_signal<const occ_grid_update &> glob_cm_update_received;
+    ss_signal<const occ_grid_update &> loc_cm_update_received;
     ss_signal<const node_transform &> transform_updated;
-    ss_signal<const nav_path &> nav_path_updated;
+    ss_signal<const nav_path &> glob_nav_path_updated;
+    ss_signal<const nav_path &> loc_nav_path_updated;
     ss_signal<const current_goal_status &> goal_status_updated;
     ss_signal<const text_block &> param_set_response_received;
     ss_signal<const text_block &> param_get_response_received;
