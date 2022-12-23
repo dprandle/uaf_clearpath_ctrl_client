@@ -12,12 +12,14 @@ inline const char *TFORM_PCKT_ID = "TFORM_PCKT_ID";
 inline const char *NAVP_PCKT_ID = "NAVP_PCKT_ID";
 inline const char *GOAL_STAT_PCKT_ID = "GOAL_STAT_PCKT_ID";
 inline const char *SET_PARAMS_RESP_CMD_PCKT_ID = "SET_PARAMS_RESP_CMD_PCKT_ID";
+inline const char *GET_PARAMS_RESP_CMD_PCKT_ID = "GET_PARAMS_RESP_CMD_PCKT_ID";
 
 inline const char *VEL_CMD_HEADER = "VEL_CMD_PCKT_ID";
 inline const char *GOAL_CMD_HEADER = "GOAL_CMD_PCKT_ID";
 inline const char *STOP_CMD_HEADER = "STOP_CMD_PCKT_ID";
 inline const char *CLEAR_MAPS_CMD_HEADER = "CLEAR_MAPS_PCKT_ID";
 inline const char *SET_PARAMS_CMD_HEADER = "SET_PARAMS_CMD_PCKT_ID";
+inline const char *GET_PARAMS_CMD_HEADER = "GET_PARAMS_CMD_PCKT_ID";
 
 static constexpr int MAX_MAP_SIZE = 4000;
 
@@ -152,6 +154,17 @@ pup_func(command_clear_maps)
     pup_member(header);
 }
 
+struct command_get_params
+{
+    packet_header header{"GET_PARAMS_CMD_PCKT_ID"};
+};
+
+pup_func(command_get_params)
+{
+    pup_member(header);
+}
+
+
 struct command_set_params
 {
     static constexpr sizet MAX_STR_SIZE = std::numeric_limits<u16>::max();
@@ -217,7 +230,7 @@ struct node_transform
 
 struct text_block
 {
-    static constexpr int MAX_TXT_SIZE = 5000;
+    static constexpr int MAX_TXT_SIZE = 30000;
     packet_header header{};
     u32 txt_size {0};
     char text[MAX_TXT_SIZE];
@@ -341,6 +354,7 @@ struct net_connection
     ss_signal<const nav_path &> nav_path_updated;
     ss_signal<const current_goal_status &> goal_status_updated;
     ss_signal<const text_block &> param_set_response_received;
+    ss_signal<const text_block &> param_get_response_received;
 };
 
 void net_connect(net_connection *conn, const char *ip, int port, int max_timeout_ms = -1);

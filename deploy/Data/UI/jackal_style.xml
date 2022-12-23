@@ -1,16 +1,14 @@
 <elements>
     <element type="CamControlButtonGroup">
-        <attribute name="Blend Mode" value="alpha" />
         <attribute name="Priority" value="1" />
         <attribute name="Name" value="CamControlWidget" />
         <attribute name="Color" value="0.0 0.0 0.0 0.7" />
         <attribute name="Enable Anchor" value="true" />
-        <attribute name="Min Anchor" value="0.5 0.01" />
-        <attribute name="Max Anchor" value="0.5 0.01" />
+        <attribute name="Min Anchor" value="0.5 0.005" />
+        <attribute name="Max Anchor" value="0.5 0.005" />
         <attribute name="Pivot" value="0.5 0" />
     </element>
     <element type="ArrowButtonGroup">
-        <attribute name="Blend Mode" value="alpha" />
         <attribute name="Priority" value="1" />
         <attribute name="Name" value="CamMoveWidget" />
         <attribute name="Color" value="0.0 0.0 0.0 0.0" />
@@ -20,7 +18,6 @@
         <attribute name="Pivot" value="0 0" />
     </element>
     <element type="ZoomButtonGroup">
-        <attribute name="Blend Mode" value="alpha" />
         <attribute name="Priority" value="1" />
         <attribute name="Name" value="CamZoomWidget" />
         <attribute name="Color" value="0.0 0.0 0.0 0.0" />
@@ -115,13 +112,12 @@
         <attribute name="Pivot" value="0.5 1" />
     </element>
     <element type="Toolbar">
-        <attribute name="Blend Mode" value="alpha" />
         <attribute name="Priority" value="1" />
         <attribute name="Name" value="Toolbar" />
         <attribute name="Color" value="0.0 0.0 0.0 0.7" />
         <attribute name="Enable Anchor" value="true" />
-        <attribute name="Min Anchor" value="0.01 0.5" />
-        <attribute name="Max Anchor" value="0.01 0.5" />
+        <attribute name="Min Anchor" value="0.01 0.4" />
+        <attribute name="Max Anchor" value="0.01 0.4" />
         <attribute name="Pivot" value="0 0.5" />
     </element>
     <element type="AddGoalButton" style="ButtonBI">
@@ -153,36 +149,107 @@
         <attribute name="Pivot" value="0 0" />
     </element>
     <element type="SendParamsGp">
-        <attribute name="Blend Mode" value="alpha" />
         <attribute name="Priority" value="1" />
         <attribute name="Name" value="SendParamsGp" />
         <attribute name="Color" value="0.0 0.0 0.0 0.0" />
         <attribute name="Is Visible" value="false" />
         <attribute name="Enable Anchor" value="true" />
-        <attribute name="Min Anchor" value="0.5 0.18" />
-        <attribute name="Max Anchor" value="0.5 0.18" />
+        <attribute name="Min Anchor" value="0.5 0.245" />
+        <attribute name="Max Anchor" value="0.5 0.245" />
         <attribute name="Pivot" value="0.5 1" />
     </element>
-    <element type="SendParamsBtn" style="ButtonBI">
-        <attribute name="Name" value="SendParamsBtn" />
+    <element type="GetParamsBtn" style="ButtonBI">
+        <attribute name="Priority" value="3" />
+        <attribute name="Name" value="GetParamsBtn" />
         <attribute name="Image Rect" value="768 0 896 128" />
-        <attribute name="Min Anchor" value="0.5 0.5" />
-        <attribute name="Max Anchor" value="0.5 0.5" />
+        <attribute name="Min Anchor" value="0 0" />
+        <attribute name="Max Anchor" value="0.45 1" />
         <attribute name="Color" value="0.2 0.2 0.2 0.9" />
         <attribute name="Border" value="4 4 4 4" />
-        <attribute name="Pivot" value="0.5 0.5" />
+        <attribute name="Pivot" value="0 0" />
+    </element>
+    <element type="GetParamsBtnText">
+        <attribute name="Priority" value="3" />
+        <attribute name="Focus Mode" value="NotFocusable" />
+        <attribute name="Text Alignment" value="Center" />
+        <attribute name="Name" value="GetParamsBtnText" />
+        <attribute name="Text" value="Get Params" />
+        <attribute name="Font" value="Font;Fonts/Roboto-Medium.ttf" />
+        <attribute name="Enable Anchor" value="true" />
+        <attribute name="Min Anchor" value="0 0.5" />
+        <attribute name="Max Anchor" value="1 0.5" />
+        <attribute name="Pivot" value="0 0.5" />
+    </element>
+    <element type="SendParamsBtn" style="ButtonBI">
+        <attribute name="Priority" value="3" />
+        <attribute name="Name" value="SendParamsBtn" />
+        <attribute name="Image Rect" value="768 0 896 128" />
+        <attribute name="Min Anchor" value="0.55 0" />
+        <attribute name="Max Anchor" value="1 1" />
+        <attribute name="Color" value="0.2 0.2 0.2 0.9" />
+        <attribute name="Border" value="4 4 4 4" />
+        <attribute name="Pivot" value="0 0" />
     </element>
     <element type="SendParamsBtnText">
-        <attribute name="Blend Mode" value="alpha" />
         <attribute name="Priority" value="3" />
         <attribute name="Focus Mode" value="NotFocusable" />
         <attribute name="Text Alignment" value="Center" />
         <attribute name="Name" value="SendParamsBtnText" />
-        <attribute name="Text" value="Send Parameters" />
+        <attribute name="Text" value="Send Params" />
         <attribute name="Font" value="Font;Fonts/Roboto-Medium.ttf" />
         <attribute name="Enable Anchor" value="true" />
-        <attribute name="Min Anchor" value="0.0 0.5" />
-        <attribute name="Max Anchor" value="1.0 0.5" />
-        <attribute name="Pivot" value="0.0 0.5" />
+        <attribute name="Min Anchor" value="0 0.5" />
+        <attribute name="Max Anchor" value="1 0.5" />
+        <attribute name="Pivot" value="0 0.5" />
+    </element>
+    <element type="TextDispWidget">
+        <attribute name="Priority" value="3" />
+        <attribute name="Name" value="TextDispWidget" />
+        <attribute name="Enable Anchor" value="true" />
+        <attribute name="Min Anchor" value="0.0 0.0" />
+        <attribute name="Max Anchor" value="1.0 0.0" />
+    </element>
+    <element type="TextDispScrollView">
+        <attribute name="Name" value="TextDispScrollView" />
+        <attribute name="Is Visible" value="true" />
+        <attribute name="Enable Anchor" value="true" />
+        <attribute name="Min Anchor" value="0.0 0.0" />
+        <attribute name="Max Anchor" value="1.0 1.0" />
+        <element type="BorderImage" internal="true">
+            <attribute name="Color" value="0.0 0.0 0.0 0.8" />
+            <element internal="true">
+                <attribute name="Layout Mode" value="Vertical" />
+            </element>
+        </element>
+    </element>
+    <element type="TextDispText">
+        <attribute name="Priority" value="3" />
+        <attribute name="Focus Mode" value="NotFocusable" />
+        <attribute name="Text Alignment" value="Left" />
+        <attribute name="Word Wrap" value="True" />
+        <attribute name="Font" value="Font;Fonts/Roboto-Medium.ttf" />
+    </element>
+    <element type="TextDispHideShowBG">
+        <attribute name="Priority" value="3" />
+        <attribute name="Name" value="TextDispHideShowBG" />
+        <attribute name="Color" value="0.0 0.0 0.0 0.8" />
+        <attribute name="Enable Anchor" value="true" />
+        <attribute name="Min Anchor" value="0.01 1" />
+        <attribute name="Max Anchor" value="0.01 1" />
+        <attribute name="Pivot" value="0 0" />
+    </element>
+    <element type="TextDispShow" style="ButtonBI">
+        <attribute name="Name" value="TextDispHideShow" />
+        <attribute name="Image Rect" value="0 422 128 474" />
+        <attribute name="Min Anchor" value="0 0" />
+        <attribute name="Max Anchor" value="0 0" />
+        <attribute name="Pivot" value="0 0" />
+    </element>
+    <element type="TextDispHide" style="ButtonBI">
+        <attribute name="Name" value="TextDispHideShow" />
+        <attribute name="Image Rect" value="0 384 128 436" />
+        <attribute name="Min Anchor" value="0 0" />
+        <attribute name="Max Anchor" value="0 0" />
+        <attribute name="Pivot" value="0 0" />
     </element>
 </elements>

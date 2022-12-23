@@ -217,6 +217,8 @@ intern void alloc_connection(net_connection *conn)
     conn->pckts.gu = (occ_grid_update *)malloc(sizeof(occ_grid_update));
     conn->pckts.navp = (nav_path *)malloc(sizeof(nav_path));
     conn->pckts.cur_goal_stat = (current_goal_status *)malloc(sizeof(current_goal_status));
+    conn->pckts.txt = (text_block *)malloc(sizeof(text_block));
+    conn->pckts.cmdp = (command_set_params *)malloc(sizeof(command_set_params));
 
     memset(conn->rx_buf, 0, sizeof(net_rx_buffer));
     memset(conn->pckts.scan, 0, sizeof(sicklms_laser_scan));
@@ -224,6 +226,8 @@ intern void alloc_connection(net_connection *conn)
     memset(conn->pckts.gu, 0, sizeof(occ_grid_update));
     memset(conn->pckts.navp, 0, sizeof(nav_path));
     memset(conn->pckts.cur_goal_stat, 0, sizeof(current_goal_status));
+    memset(conn->pckts.txt, 0, sizeof(text_block));
+    memset(conn->pckts.cmdp, 0, sizeof(command_set_params));
 }
 
 intern void free_connection(net_connection *conn)
@@ -234,6 +238,8 @@ intern void free_connection(net_connection *conn)
     free(conn->pckts.gu);
     free(conn->pckts.navp);
     free(conn->pckts.cur_goal_stat);
+    free(conn->pckts.txt);
+    free(conn->pckts.cmdp);
 }
 
 void net_connect(net_connection *conn, const char *ip, int port, int max_timeout_ms)
@@ -378,18 +384,18 @@ intern void handle_nav_path_packet(binary_fixed_buffer_archive<net_rx_buffer::MA
     }
 }
 
-intern void handle_text_block_packet(binary_fixed_buffer_archive<net_rx_buffer::MAX_PACKET_SIZE> &read_buf, sizet available, sizet cached_offset, net_connection *conn)
+intern void handle_text_block_packet(binary_fixed_buffer_archive<net_rx_buffer::MAX_PACKET_SIZE> &read_buf, sizet available, sizet cached_offset, text_block *txt_pckt, ss_signal<const text_block &> &sig)
 {
-    pack_unpack(read_buf, conn->pckts.txt->header, {"header"});
-    pack_unpack(read_buf, conn->pckts.txt->txt_size, {"txt_size"});
+    pack_unpack(read_buf, txt_pckt->header, {"header"});
+    pack_unpack(read_buf, txt_pckt->txt_size, {"txt_size"});
 
     sizet meta_and_header_size = read_buf.cur_offset - cached_offset;
-    sizet total_packet_size = conn->pckts.txt->txt_size + meta_and_header_size;
+    sizet total_packet_size = txt_pckt->txt_size + meta_and_header_size;
 
     if (available >= total_packet_size)
     {
-        pack_unpack(read_buf, conn->pckts.txt->text, {"text", {pack_va_flags::FIXED_ARRAY_CUSTOM_SIZE, &conn->pckts.txt->txt_size}});
-        conn->param_set_response_received(0, *conn->pckts.txt);
+        pack_unpack(read_buf, txt_pckt->text, {"text", {pack_va_flags::FIXED_ARRAY_CUSTOM_SIZE, &txt_pckt->txt_size}});
+        sig(0, *txt_pckt);
     }
     else
     {
@@ -451,6 +457,10 @@ intern sizet matching_packet_size(u8 *data)
     {
         return txt_block_sz;
     }
+    else if (matches_packet_id(GET_PARAMS_RESP_CMD_PCKT_ID, data))
+    {
+        return txt_block_sz;
+    }
     return 0;
 }
 
@@ -483,7 +493,11 @@ intern sizet dispatch_received_packet(binary_fixed_buffer_archive<net_rx_buffer:
     }
     else if (matches_packet_id(SET_PARAMS_RESP_CMD_PCKT_ID, read_buf.data + read_buf.cur_offset))
     {
-        handle_text_block_packet(read_buf, available, cached_offset, conn);
+        handle_text_block_packet(read_buf, available, cached_offset, conn->pckts.txt, conn->param_set_response_received);
+    }
+    else if (matches_packet_id(GET_PARAMS_RESP_CMD_PCKT_ID, read_buf.data + read_buf.cur_offset))
+    {
+        handle_text_block_packet(read_buf, available, cached_offset, conn->pckts.txt, conn->param_get_response_received);
     }
     return read_buf.cur_offset - cached_offset;
 }

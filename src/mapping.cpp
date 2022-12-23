@@ -17,6 +17,7 @@
 #include <Urho3D/UI/Text.h>
 #include <Urho3D/UI/UIEvents.h>
 #include <Urho3D/UI/View3D.h>
+#include <Urho3D/UI/ListView.h>
 
 #include <Urho3D/Resource/ResourceCache.h>
 #include "Urho3D/Resource/XMLFile.h"
@@ -45,6 +46,12 @@ EM_JS(void, toggle_input_visibility, (int rows, int cols), {
         if (cols > ta.cols)
             ta.cols = cols;
     }
+});
+
+EM_JS(void, set_input_text, (const char * txt), {
+    let ta = document.getElementById('text-area');
+    ta.value = UTF8ToString(txt);
+    ta.style.display = "block";
 });
 
 EM_JS(char*, get_input_text, (), {
@@ -76,9 +83,9 @@ const std::string FRONT_LASER_MOUNT{"front_laser_mount"};
 const std::string FRONT_LASER{"front_laser"};
 
 intern const float UI_ADDITIONAL_BTN_SCALING = 1.0f;
-;
 intern const float UI_ADDITIONAL_CAM_SCALING = 0.75f;
 intern const float UI_ADDITIONAL_TOOLBAR_SCALING = 1.00f;
+intern const float CAM_CONTROL_DEFAULT_Y_ANCHOR = 0.01f;
 
 intern void setup_camera_controls(map_panel *mp, urho::Node *cam_node, input_data *inp)
 {
@@ -494,12 +501,47 @@ intern void update_cur_goal_status(map_panel *mp, const current_goal_status &gs)
     }
 }
 
-intern void show_received_text(map_panel *mp, const text_block &tb)
+intern void show_received_text(map_panel *mp, const text_block &tb, const ui_info &ui_inf)
 {
     static char txt[5000] = {};
     strncpy(txt, tb.text, tb.txt_size);
     txt[tb.txt_size] = '\0';
+
+    auto txt_elem = new urho::Text(mp->view->GetContext());
+    txt_elem->SetStyle("TextDispText", ui_inf.style);
+    txt_elem->SetFontSize(20 * ui_inf.dev_pixel_ratio_inv);
+    urho::String str("> ");
+    str += urho::String(txt);
+    txt_elem->SetText(str);
+    mp->text_disp.sview->AddItem(txt_elem);
+    mp->text_disp.sview->SetViewPosition(ivec2(0,-1));
+
     ilog("Recieved text: %s", txt);
+
+    if (mp->text_disp.anim_state != TEXT_NOTICE_ANIM_INACTIVE)
+        return;
+    float cur_y_anch = mp->text_disp.widget->GetMaxAnchor().y_;
+    if (fequals(cur_y_anch, 0.0f))
+    {
+        mp->text_disp.anim_state = TEXT_NOTICE_ANIM_SHOW;
+        mp->text_disp.cur_open_time = mp->text_disp.max_anim_time;
+    }
+    else if (mp->text_disp.cur_open_time > 0.0)
+    {
+        mp->text_disp.cur_open_time = mp->text_disp.max_anim_time;
+    }
+}
+
+intern void handle_received_get_params_response(map_panel *mp, const text_block &tb, const ui_info &ui_inf)
+{
+    static char txt[text_block::MAX_TXT_SIZE] = {};
+    strncpy(txt, tb.text, tb.txt_size);
+    txt[tb.txt_size] = '\0';
+    ilog("Recieved text: %s", txt);
+
+#if defined(__EMSCRIPTEN__)
+    set_input_text(txt);
+#endif
 }
 
 intern float animate_marker_circles(goal_marker_info *gm, float dt)
@@ -522,7 +564,7 @@ intern float animate_marker_circles(goal_marker_info *gm, float dt)
     return rad;
 }
 
-intern void map_panel_run_frame(map_panel *mp, float dt, net_connection *conn)
+intern void map_panel_run_frame(map_panel *mp, float dt, const ui_info & ui_inf, net_connection *conn)
 {
     static float counter = 0.0f;
     counter += dt;
@@ -583,9 +625,84 @@ intern void map_panel_run_frame(map_panel *mp, float dt, net_connection *conn)
         dbg->AddLine(from, mp->goals.queued_goals[i], mp->npview.color);
         dbg->AddCircle(mp->goals.queued_goals[i], {0, 0, -1}, marker_rad * 0.75, mp->npview.goal_marker.queued_color);
     }
+
+    if (mp->text_disp.anim_state != TEXT_NOTICE_ANIM_INACTIVE)
+    {
+        static vec2 min_cam_anchor = mp->cam_cwidget.root_element->GetMinAnchor();
+        static vec2 max_cam_anchor = mp->cam_cwidget.root_element->GetMaxAnchor();
+
+        float mult = mp->text_disp.cur_anim_time / mp->text_disp.max_anim_time;
+        if (mult > 1.0f)
+            mult = 1.0f;
+        if (mp->text_disp.anim_state == TEXT_NOTICE_ANIM_HIDE)
+            mult = 1 - mult;
+        
+        float cur_anchor = mult * mp->text_disp.max_y_anchor;
+        mp->text_disp.widget->SetMaxAnchor(1.0, cur_anchor);
+        mp->cam_cwidget.root_element->SetMaxAnchor(max_cam_anchor.x_, min_cam_anchor.y_ + cur_anchor);
+        
+        // This forces update anchoring to be called
+        mp->cam_cwidget.root_element->SetMinAnchor(min_cam_anchor.x_, min_cam_anchor.y_);
+        mp->cam_cwidget.root_element->SetMinAnchor(min_cam_anchor.x_, min_cam_anchor.y_ + cur_anchor);
+        mp->text_disp.cur_anim_time += dt;
+        
+        if (mp->text_disp.cur_anim_time >= mp->text_disp.max_anim_time)
+        {
+            if (mp->text_disp.anim_state == TEXT_NOTICE_ANIM_SHOW)
+            {
+                cur_anchor = mp->text_disp.max_y_anchor;
+                mp->text_disp.hide_show_panel->SetStyle("TextDispHide",ui_inf.style);
+            }
+            else
+            {
+                cur_anchor = 0.0f;
+                mp->text_disp.hide_show_panel->SetStyle("TextDispShow",ui_inf.style);
+            }
+
+            mp->text_disp.widget->SetMaxAnchor(1.0, cur_anchor);
+            mp->cam_cwidget.root_element->SetMaxAnchor(max_cam_anchor.x_, min_cam_anchor.y_ + cur_anchor);
+            mp->cam_cwidget.root_element->SetMinAnchor(min_cam_anchor.x_, min_cam_anchor.y_);
+            mp->cam_cwidget.root_element->SetMinAnchor(min_cam_anchor.x_, min_cam_anchor.y_ + cur_anchor);
+
+            mp->text_disp.anim_state = TEXT_NOTICE_ANIM_INACTIVE;
+            mp->text_disp.cur_anim_time = 0.0f;
+        }
+    }
+    else if (mp->text_disp.cur_open_time > (mp->text_disp.max_anim_time - FLOAT_EPS))
+    {
+        mp->text_disp.cur_open_time += dt;
+        if (mp->text_disp.cur_open_time >= mp->text_disp.max_open_timer_time)
+        {
+            mp->text_disp.cur_open_time = 0.0f;
+            mp->text_disp.anim_state = TEXT_NOTICE_ANIM_HIDE;
+        }
+    }
 }
 
-intern void setup_toolbar_widget(map_panel *mp, const ui_info &ui_inf, net_connection *conn)
+intern void setup_text_notice_widget(map_panel *mp, const ui_info &ui_inf)
+{
+    auto uctxt = ui_inf.ui_sys->GetContext();
+
+    mp->text_disp.widget = ui_inf.ui_sys->GetRoot()->CreateChild<urho::UIElement>();
+    mp->text_disp.widget->SetStyle("TextDispWidget", ui_inf.style);
+
+    mp->text_disp.sview = mp->text_disp.widget->CreateChild<urho::ListView>();
+    mp->text_disp.sview->SetStyle("TextDispScrollView", ui_inf.style);
+
+    mp->text_disp.hide_show_btn_bg = mp->text_disp.widget->CreateChild<urho::BorderImage>();
+    mp->text_disp.hide_show_btn_bg->SetStyle("TextDispHideShowBG", ui_inf.style);
+
+    mp->text_disp.hide_show_panel = mp->text_disp.hide_show_btn_bg->CreateChild<urho::Button>();
+    mp->text_disp.hide_show_panel->SetStyle("TextDispShow", ui_inf.style);
+    auto offset = mp->text_disp.hide_show_panel->GetImageRect().Size();
+    offset.x_ *= ui_inf.dev_pixel_ratio_inv;
+    offset.y_ *= ui_inf.dev_pixel_ratio_inv;
+    mp->text_disp.hide_show_panel->SetMaxOffset(offset);
+    offset.y_ *= 1.2;
+    mp->text_disp.hide_show_btn_bg->SetMaxOffset(offset);
+}
+
+intern void setup_toolbar_widget(map_panel *mp, const ui_info &ui_inf)
 {
     auto uctxt = ui_inf.ui_sys->GetContext();
     auto cache = uctxt->GetSubsystem<urho::ResourceCache>();
@@ -639,33 +756,32 @@ intern void setup_toolbar_widget(map_panel *mp, const ui_info &ui_inf, net_conne
 intern void setup_accept_params_button(map_panel *mp, const ui_info &ui_inf)
 {
     auto uctxt = ui_inf.ui_sys->GetContext();
-    auto cache = uctxt->GetSubsystem<urho::ResourceCache>();
 
-    mp->accept_inp.widget = new urho::UIElement(uctxt);
-    ui_inf.ui_sys->GetRoot()->AddChild(mp->accept_inp.widget);
+    mp->accept_inp.widget = ui_inf.ui_sys->GetRoot()->CreateChild<urho::UIElement>();
     mp->accept_inp.widget->SetStyle("SendParamsGp", ui_inf.style);
 
-    mp->accept_inp.btn = new urho::Button(uctxt);
-    mp->accept_inp.widget->AddChild(mp->accept_inp.btn);
-    mp->accept_inp.btn->SetStyle("SendParamsBtn", ui_inf.style);
+    mp->accept_inp.send_btn = mp->accept_inp.widget->CreateChild<urho::Button>();
+    mp->accept_inp.send_btn->SetStyle("SendParamsBtn", ui_inf.style);
 
-    mp->accept_inp.btn_text = new urho::Text(uctxt);
-    mp->accept_inp.btn->AddChild(mp->accept_inp.btn_text);
-    mp->accept_inp.btn_text->SetStyle("SendParamsBtnText", ui_inf.style);
+    mp->accept_inp.send_btn_text = mp->accept_inp.send_btn->CreateChild<urho::Text>();
+    mp->accept_inp.send_btn_text->SetStyle("SendParamsBtnText", ui_inf.style);
 
-    auto offset = mp->accept_inp.btn->GetImageRect().Size();
-    offset.x_ = ui_inf.dev_pixel_ratio_inv * UI_ADDITIONAL_BTN_SCALING * 320;
-    offset.y_ = ui_inf.dev_pixel_ratio_inv * UI_ADDITIONAL_BTN_SCALING * 80;
-    mp->accept_inp.btn->SetMaxOffset(offset);
-    mp->accept_inp.widget->SetMaxOffset(offset);
+    mp->accept_inp.get_btn = mp->accept_inp.widget->CreateChild<urho::Button>();
+    mp->accept_inp.get_btn->SetStyle("GetParamsBtn", ui_inf.style);
 
-    mp->accept_inp.btn_text->SetFontSize(24 * ui_inf.dev_pixel_ratio_inv);
+    mp->accept_inp.get_btn_text = mp->accept_inp.get_btn->CreateChild<urho::Text>();
+    mp->accept_inp.get_btn_text->SetStyle("GetParamsBtnText", ui_inf.style);
+
+    vec2 offset = vec2{270*2, 80}*ui_inf.dev_pixel_ratio_inv * UI_ADDITIONAL_BTN_SCALING;
+    mp->accept_inp.widget->SetMaxOffset(ivec2(offset.x_, offset.y_));
+
+    mp->accept_inp.send_btn_text->SetFontSize(24 * ui_inf.dev_pixel_ratio_inv);
+    mp->accept_inp.get_btn_text->SetFontSize(24 * ui_inf.dev_pixel_ratio_inv);
 }
 
 intern void setup_cam_zoom_widget(map_panel *mp, const ui_info &ui_inf)
 {
     auto uctxt = ui_inf.ui_sys->GetContext();
-    auto cache = uctxt->GetSubsystem<urho::ResourceCache>();
 
     mp->cam_cwidget.cam_zoom_widget.widget = new urho::BorderImage(uctxt);
     mp->cam_cwidget.root_element->AddChild(mp->cam_cwidget.cam_zoom_widget.widget);
@@ -746,6 +862,7 @@ void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, 
 
     setup_cam_move_widget(mp, ui_inf);
     setup_cam_zoom_widget(mp, ui_inf);
+
     ivec2 child_offsets = {};
     for (int i = 0; i < mp->cam_cwidget.root_element->GetNumChildren(); ++i)
     {
@@ -759,7 +876,8 @@ void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, 
         mp->cam_cwidget.root_element->SetMaxOffset(child_offsets);
 
     setup_accept_params_button(mp, ui_inf);
-    setup_toolbar_widget(mp, ui_inf, conn);
+    setup_toolbar_widget(mp, ui_inf);
+    setup_text_notice_widget(mp, ui_inf);
 
     ss_connect(&mp->router, conn->scan_received, [mp](const sicklms_laser_scan &pckt) { update_scene_from_scan(mp, pckt); });
 
@@ -773,11 +891,13 @@ void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, 
 
     ss_connect(&mp->router, conn->goal_status_updated, [mp](const current_goal_status &pckt) { update_cur_goal_status(mp, pckt); });
 
-    ss_connect(&mp->router, conn->param_set_response_received, [mp](const text_block &pckt) { show_received_text(mp, pckt); });
+    ss_connect(&mp->router, conn->param_set_response_received, [mp, ui_inf](const text_block &pckt) { show_received_text(mp, pckt, ui_inf); });
 
-    mp->view->SubscribeToEvent(urho::E_UPDATE, [mp, conn](urho::StringHash type, urho::VariantMap &ev_data) {
+    ss_connect(&mp->router, conn->param_get_response_received, [mp, ui_inf](const text_block &pckt) { handle_received_get_params_response(mp, pckt, ui_inf); });
+
+    mp->view->SubscribeToEvent(urho::E_UPDATE, [mp, conn, ui_inf](urho::StringHash type, urho::VariantMap &ev_data) {
         auto dt = ev_data[urho::Update::P_TIMESTEP].GetFloat();
-        map_panel_run_frame(mp, dt, conn);
+        map_panel_run_frame(mp, dt, ui_inf, conn);
     });
 
     mp->toolbar.widget->SubscribeToEvent(urho::E_CLICKEND, [mp, conn](urho::StringHash type, urho::VariantMap &ev_data) {
@@ -814,6 +934,23 @@ void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, 
             command_clear_maps cm{};
             net_tx(*conn, cm);
         }
+        else if (elem == mp->text_disp.hide_show_panel)
+        {
+            if (mp->text_disp.anim_state != TEXT_NOTICE_ANIM_INACTIVE)
+                return;
+            float cur_y_anch = mp->text_disp.widget->GetMaxAnchor().y_;
+            
+            if (fequals(cur_y_anch, 0.0f))
+                mp->text_disp.anim_state = TEXT_NOTICE_ANIM_SHOW;
+            else
+                mp->text_disp.anim_state = TEXT_NOTICE_ANIM_HIDE;
+            
+        }
+        else if (elem == mp->accept_inp.get_btn)
+        {
+               command_get_params cgp {};
+               net_tx(*conn, cgp);
+        }
         else if (elem == mp->toolbar.set_params)
         {
 #if defined(__EMSCRIPTEN__)
@@ -822,7 +959,7 @@ void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, 
 #endif
             mp->accept_inp.widget->SetVisible(!mp->accept_inp.widget->IsVisible());
         }
-        else if (elem == mp->accept_inp.btn || elem == mp->accept_inp.btn_text)
+        else if (elem == mp->accept_inp.send_btn || elem == mp->accept_inp.send_btn_text)
         {
 
             static command_set_params param_pckt {};
@@ -836,6 +973,7 @@ void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, 
             if (command_set_params::MAX_STR_SIZE < param_pckt.blob_size)
                 param_pckt.blob_size = command_set_params::MAX_STR_SIZE;
             strncpy((char*)param_pckt.blob_data, txt, param_pckt.blob_size);
+            ilog("Sending Params: %s", txt);
             free(txt);
             net_tx(*conn, param_pckt);
 #endif

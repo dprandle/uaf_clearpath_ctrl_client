@@ -11,6 +11,7 @@ namespace Urho3D
 {
 class View3D;
 class BillboardSet;
+class ListView;
 class Node;
 class Text;
 } // namespace Urho3D
@@ -37,9 +38,26 @@ struct camera_move_control_widget
     vec3 world_trans {};
 };
 
+enum text_notic_anim_state
+{
+    TEXT_NOTICE_ANIM_INACTIVE,
+    TEXT_NOTICE_ANIM_SHOW,
+    TEXT_NOTICE_ANIM_HIDE,
+};
+
 struct text_notice_widget
 {
     urho::UIElement * widget;
+    urho::ListView * sview;
+    urho::UIElement * hide_show_btn_bg;
+    urho::Button * hide_show_panel;
+    float max_y_anchor {0.1f};
+    float cur_anim_time {0.0f};
+    float max_anim_time {0.2f};
+
+    float cur_open_time {0.0f};
+    float max_open_timer_time {3.0f};
+    text_notic_anim_state anim_state {TEXT_NOTICE_ANIM_INACTIVE};
 };
 
 struct camera_move_zoom_widget
@@ -60,8 +78,10 @@ struct cam_control_widget
 struct accept_param_input_widget
 {
     urho::UIElement * widget;
-    urho::Button * btn;
-    urho::Text * btn_text;
+    urho::Button * send_btn;
+    urho::Text * send_btn_text;
+    urho::Button * get_btn;
+    urho::Text * get_btn_text;
 };
 
 enum occ_grid_type
@@ -130,6 +150,7 @@ struct map_panel
     cam_control_widget cam_cwidget{};
     toolbar_widget toolbar{};
     accept_param_input_widget accept_inp{};
+    text_notice_widget text_disp{};
 
     urho::Node * front_laser {};
     urho::BillboardSet * scan_bb {};

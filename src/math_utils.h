@@ -61,6 +61,8 @@ using ivec3 = urho::IntVector3;
 using bbox = urho::BoundingBox;
 using quat = urho::Quaternion;
 
+inline constexpr float FLOAT_EPS = 0.001;
+
 template<class T>
 T degrees(const T & val_)
 {
@@ -71,6 +73,12 @@ template<class T>
 T radians(const T & val_)
 {
     return (PI / 180) * val_;
+}
+
+template<class T>
+bool fequals(T left, T right, T eps = FLOAT_EPS)
+{
+    return (left < (right + FLOAT_EPS)) && (left > (right - FLOAT_EPS));
 }
 
 mat4 perspective_from(float fov_, float aspect_ratio_, float z_near_, float z_far_);
