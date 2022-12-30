@@ -120,6 +120,12 @@ struct input_context_stack
     ss_signal<const itrigger_event&> trigger {};
 };
 
+struct input_data
+{
+    input_context_stack dispatch;
+    input_keymap map;
+};
+
 void input_init(input_context_stack * input, urho::Context * uctxt);
 void input_term(input_context_stack * input);
 

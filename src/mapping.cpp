@@ -48,18 +48,19 @@ EM_JS(void, toggle_input_visibility, (int rows, int cols), {
     }
 });
 
-EM_JS(void, set_input_text, (const char * txt), {
+EM_JS(void, set_input_text, (const char *txt), {
     let ta = document.getElementById('text-area');
     ta.value = UTF8ToString(txt);
     ta.style.display = "block";
 });
 
-EM_JS(char*, get_input_text, (), {
+EM_JS(char *, get_input_text, (), {
     let ta_text = document.getElementById('text-area').value;
     let length = lengthBytesUTF8(ta_text) + 1;
     let str = _malloc(length);
     stringToUTF8(ta_text, str, length);
-    console.log(`Should be returning  ${length} bytes for ${ta_text}`);
+    console.log(`Should be returning  ${length} bytes for ${
+        ta_text}`);
     return str;
 });
 #endif
@@ -83,99 +84,17 @@ const std::string FRONT_LASER_MOUNT{"front_laser_mount"};
 const std::string FRONT_LASER{"front_laser"};
 
 intern const float UI_ADDITIONAL_BTN_SCALING = 1.0f;
-intern const float UI_ADDITIONAL_CAM_SCALING = 0.75f;
 intern const float UI_ADDITIONAL_TOOLBAR_SCALING = 1.00f;
 intern const float CAM_CONTROL_DEFAULT_Y_ANCHOR = 0.01f;
 
-intern const ogmap_colors map_colors {
-    .undiscovered {0, 0.7, 0.7, 1}
-};
+intern const ogmap_colors map_colors{.undiscovered{0, 0.7, 0.7, 1}};
 
-intern const ogmap_colors loc_cmc_colors {
-    .lethal {1, 0, 0.7, 0.7},
-    .inscribed {0, 0.7, 1, 0.7},
-    .possibly_circumscribed {0.7, 0, 0, 0.7},
-    .no_collision {0, 0.7, 0, 0.7}
-};
+intern const ogmap_colors loc_cmc_colors{.lethal{1, 0, 0.7, 0.7},
+                                         .inscribed{0, 0.7, 1, 0.7},
+                                         .possibly_circumscribed{0.7, 0, 0, 0.7},
+                                         .no_collision{0, 0.7, 0, 0.7}};
 
-intern const ogmap_colors glob_cmc_colors {
-    .lethal {1, 0, 1, 0.7},
-    .inscribed {0, 1, 1, 0.7},
-    .possibly_circumscribed {1, 0, 0, 0.7},
-    .no_collision {0, 1, 0, 0.7}
-};
-
-intern void setup_camera_controls(map_panel *mp, urho::Node *cam_node, input_data *inp)
-{
-    auto on_mouse_tilt = [cam_node, mp](const itrigger_event &tevent) {
-        if (!mp->toolbar.add_goal->IsEnabled() || mp->js_enabled || (mp->view != tevent.vp.element_under_mouse && tevent.vp.element_under_mouse->GetPriority() > 2))
-            return;
-
-        auto rot_node = cam_node;
-        auto parent = cam_node->GetParent();
-        if (parent)
-            rot_node = parent;
-        if (tevent.vp.vp_norm_mdelta.x_ > 0.1 || tevent.vp.vp_norm_mdelta.y_ > 0.1)
-            return;
-        rot_node->Rotate(quat(tevent.vp.vp_norm_mdelta.y_ * 100.0f, {1, 0, 0}));
-        rot_node->Rotate(quat(tevent.vp.vp_norm_mdelta.x_ * 100.0f, {0, 0, -1}), urho::TransformSpace::World);
-    };
-
-    auto on_click = [cam_node, mp](const itrigger_event &tevent) {
-        if (mp->toolbar.add_goal->IsEnabled() || mp->js_enabled || (mp->view != tevent.vp.element_under_mouse && tevent.vp.element_under_mouse->GetPriority() > 2))
-            return;
-
-        auto r = mp->toolbar.add_goal->GetImageRect() + irect{-128, 0, -128, 0};
-        mp->toolbar.add_goal->SetImageRect(r);
-        mp->toolbar.add_goal->SetEnabled(true);
-
-        auto camc = cam_node->GetComponent<urho::Camera>();
-
-        urho::Plane p{{0, 0, -1}, {0, 0, 0}};
-        auto scrn_ray = camc->GetScreenRay(tevent.norm_mpos.x_, tevent.norm_mpos.y_);
-
-        double dist = scrn_ray.HitDistance(p);
-        if (dist < 1000)
-        {
-            auto pos = scrn_ray.origin_ + scrn_ray.direction_ * dist;
-            // Place at the front
-            mp->goals.queued_goals.insert(mp->goals.queued_goals.begin(), pos);
-        }
-    };
-
-    auto on_debug_key = [mp](const itrigger_event &tevent) { ilog("Debug Key"); };
-
-    input_action_trigger it{};
-    it.cond.mbutton = MOUSEB_MOVE;
-    it.name = urho::StringHash("CamTiltAction").ToHash();
-    it.tstate = T_BEGIN;
-    it.mb_req = urho::MOUSEB_LEFT;
-    it.mb_allowed = 0;
-    it.qual_req = 0;
-    it.qual_allowed = urho::QUAL_ANY;
-    input_add_trigger(&inp->map, it);
-    ss_connect(&mp->router, inp->dispatch.trigger, it.name, on_mouse_tilt);
-
-    it.cond.mbutton = urho::MOUSEB_LEFT;
-    it.name = urho::StringHash("Click").ToHash();
-    it.tstate = T_BEGIN;
-    it.mb_req = 0;
-    it.mb_allowed = 0;
-    it.qual_req = 0;
-    it.qual_allowed = urho::QUAL_ANY;
-    input_add_trigger(&inp->map, it);
-    ss_connect(&mp->router, inp->dispatch.trigger, it.name, on_click);
-
-    it.cond = {};
-    it.cond.key = urho::KEY_D;
-    it.name = urho::StringHash("DebugButton").ToHash();
-    it.tstate = T_BEGIN;
-    input_add_trigger(&inp->map, it);
-    ss_connect(&mp->router, inp->dispatch.trigger, it.name, on_debug_key);
-
-    viewport_element vp{mp->view->GetViewport(), mp->view};
-    inp->dispatch.vp_stack.emplace_back(vp);
-}
+intern const ogmap_colors glob_cmc_colors{.lethal{1, 0, 1, 0.7}, .inscribed{0, 1, 1, 0.7}, .possibly_circumscribed{1, 0, 0, 0.7}, .no_collision{0, 1, 0, 0.7}};
 
 intern void create_3dview(map_panel *mp, urho::ResourceCache *cache, urho::UIElement *root, urho::Context *uctxt)
 {
@@ -547,7 +466,7 @@ intern void show_received_text(map_panel *mp, const text_block &tb, const ui_inf
     str += urho::String(txt);
     txt_elem->SetText(str);
     mp->text_disp.sview->AddItem(txt_elem);
-    mp->text_disp.sview->SetViewPosition(ivec2(0,-1));
+    mp->text_disp.sview->SetViewPosition(ivec2(0, -1));
 
     ilog("Recieved text: %s", txt);
 
@@ -598,29 +517,68 @@ intern float animate_marker_circles(goal_marker_info *gm, float dt)
     return rad;
 }
 
-intern void map_panel_run_frame(map_panel *mp, float dt, const ui_info & ui_inf, net_connection *conn)
+intern void animate_console_panel(map_panel *mp, float dt, const ui_info &ui_inf)
 {
-    static float counter = 0.0f;
-    counter += dt;
-    if (counter >= 0.016f)
+    if (mp->text_disp.anim_state != TEXT_NOTICE_ANIM_INACTIVE)
     {
-        mp->odom->MarkDirty();
-        counter = 0.0f;
+        static vec2 min_cam_anchor = mp->cam_cwidget.root_element->GetMinAnchor();
+        static vec2 max_cam_anchor = mp->cam_cwidget.root_element->GetMaxAnchor();
+
+        float mult = mp->text_disp.cur_anim_time / mp->text_disp.max_anim_time;
+        if (mult > 1.0f)
+            mult = 1.0f;
+        if (mp->text_disp.anim_state == TEXT_NOTICE_ANIM_HIDE)
+            mult = 1 - mult;
+
+        float cur_anchor = mult * mp->text_disp.max_y_anchor;
+        mp->text_disp.widget->SetMaxAnchor(1.0, cur_anchor);
+        mp->text_disp.cur_anim_time += dt;
+
+        if (mp->text_disp.cur_anim_time >= mp->text_disp.max_anim_time)
+        {
+            if (mp->text_disp.anim_state == TEXT_NOTICE_ANIM_SHOW)
+            {
+                cur_anchor = mp->text_disp.max_y_anchor;
+                mp->text_disp.hide_show_panel->SetStyle("TextDispHide", ui_inf.style);
+            }
+            else
+            {
+                cur_anchor = 0.0f;
+                mp->text_disp.hide_show_panel->SetStyle("TextDispShow", ui_inf.style);
+            }
+
+            mp->text_disp.widget->SetMaxAnchor(1.0, cur_anchor);
+            mp->text_disp.anim_state = TEXT_NOTICE_ANIM_INACTIVE;
+            mp->text_disp.cur_anim_time = 0.0f;
+        }
+    }
+    else if (mp->text_disp.cur_open_time > (mp->text_disp.max_anim_time - FLOAT_EPS))
+    {
+        mp->text_disp.cur_open_time += dt;
+        if (mp->text_disp.cur_open_time >= mp->text_disp.max_open_timer_time)
+        {
+            mp->text_disp.cur_open_time = 0.0f;
+            mp->text_disp.anim_state = TEXT_NOTICE_ANIM_HIDE;
+        }
+    }
+}
+
+intern void draw_nav_paths(map_panel *mp, urho::DebugRenderer *dbg)
+{
+    for (int i = 1; i < mp->glob_npview.entry_count; ++i)
+    {
+        dbg->AddLine(mp->glob_npview.path_entries[i - 1], mp->glob_npview.path_entries[i], mp->glob_npview.color);
     }
 
-    if (mp->cam_cwidget.cam_move_widget.world_trans != vec3::ZERO)
+    for (int i = 1; i < mp->loc_npview.entry_count; ++i)
     {
-        mp->view->GetCameraNode()->Translate(mp->cam_cwidget.cam_move_widget.world_trans * dt * 10, Urho3D::TransformSpace::World);
+        dbg->AddLine(mp->loc_npview.path_entries[i - 1], mp->loc_npview.path_entries[i], mp->loc_npview.color);
     }
+}
 
-    if (mp->cam_cwidget.cam_zoom_widget.loc_trans != vec3::ZERO)
-    {
-        mp->view->GetCameraNode()->Translate(mp->cam_cwidget.cam_zoom_widget.loc_trans * dt * 20);
-    }
-
-    auto dbg = mp->view->GetScene()->GetComponent<urho::DebugRenderer>();
+intern void update_and_draw_nav_goals(map_panel *mp, float dt, urho::DebugRenderer *dbg, net_connection *conn)
+{
     float marker_rad = animate_marker_circles(&mp->glob_npview.goal_marker, dt);
-
     if (mp->goals.cur_goal_status == 0 || mp->goals.cur_goal_status == 1 || mp->goals.cur_goal_status == -2)
     {
         dbg->AddCircle(mp->goals.cur_goal, {0, 0, -1}, marker_rad, mp->glob_npview.goal_marker.color);
@@ -646,16 +604,6 @@ intern void map_panel_run_frame(map_panel *mp, float dt, const ui_info & ui_inf,
         }
     }
 
-    for (int i = 1; i < mp->glob_npview.entry_count; ++i)
-    {
-        dbg->AddLine(mp->glob_npview.path_entries[i - 1], mp->glob_npview.path_entries[i], mp->glob_npview.color);
-    }
-
-    for (int i = 1; i < mp->loc_npview.entry_count; ++i)
-    {
-        dbg->AddLine(mp->loc_npview.path_entries[i - 1], mp->loc_npview.path_entries[i], mp->loc_npview.color);
-    }
-
     for (int i = mp->goals.queued_goals.size() - 1; i >= 0; --i)
     {
         vec3 from = mp->goals.cur_goal;
@@ -664,57 +612,22 @@ intern void map_panel_run_frame(map_panel *mp, float dt, const ui_info & ui_inf,
         dbg->AddLine(from, mp->goals.queued_goals[i], mp->glob_npview.color);
         dbg->AddCircle(mp->goals.queued_goals[i], {0, 0, -1}, marker_rad * 0.75, mp->glob_npview.goal_marker.queued_color);
     }
+}
 
-    if (mp->text_disp.anim_state != TEXT_NOTICE_ANIM_INACTIVE)
+intern void map_panel_run_frame(map_panel *mp, float dt, const ui_info &ui_inf, net_connection *conn)
+{
+    auto dbg = mp->view->GetScene()->GetComponent<urho::DebugRenderer>();
+    static float counter = 0.0f;
+    counter += dt;
+    if (counter >= 0.016f)
     {
-        static vec2 min_cam_anchor = mp->cam_cwidget.root_element->GetMinAnchor();
-        static vec2 max_cam_anchor = mp->cam_cwidget.root_element->GetMaxAnchor();
-
-        float mult = mp->text_disp.cur_anim_time / mp->text_disp.max_anim_time;
-        if (mult > 1.0f)
-            mult = 1.0f;
-        if (mp->text_disp.anim_state == TEXT_NOTICE_ANIM_HIDE)
-            mult = 1 - mult;
-        
-        float cur_anchor = mult * mp->text_disp.max_y_anchor;
-        mp->text_disp.widget->SetMaxAnchor(1.0, cur_anchor);
-        //mp->cam_cwidget.root_element->SetMaxAnchor(max_cam_anchor.x_, min_cam_anchor.y_ + cur_anchor);
-        
-        // This forces update anchoring to be called
-        // mp->cam_cwidget.root_element->SetMinAnchor(min_cam_anchor.x_, min_cam_anchor.y_);
-        // mp->cam_cwidget.root_element->SetMinAnchor(min_cam_anchor.x_, min_cam_anchor.y_ + cur_anchor);
-        mp->text_disp.cur_anim_time += dt;
-        
-        if (mp->text_disp.cur_anim_time >= mp->text_disp.max_anim_time)
-        {
-            if (mp->text_disp.anim_state == TEXT_NOTICE_ANIM_SHOW)
-            {
-                cur_anchor = mp->text_disp.max_y_anchor;
-                mp->text_disp.hide_show_panel->SetStyle("TextDispHide",ui_inf.style);
-            }
-            else
-            {
-                cur_anchor = 0.0f;
-                mp->text_disp.hide_show_panel->SetStyle("TextDispShow",ui_inf.style);
-            }
-
-            mp->text_disp.widget->SetMaxAnchor(1.0, cur_anchor);
-            // mp->cam_cwidget.root_element->SetMaxAnchor(max_cam_anchor.x_, min_cam_anchor.y_ + cur_anchor);
-            // mp->cam_cwidget.root_element->SetMinAnchor(min_cam_anchor.x_, min_cam_anchor.y_);
-            // mp->cam_cwidget.root_element->SetMinAnchor(min_cam_anchor.x_, min_cam_anchor.y_ + cur_anchor);
-            mp->text_disp.anim_state = TEXT_NOTICE_ANIM_INACTIVE;
-            mp->text_disp.cur_anim_time = 0.0f;
-        }
+        mp->odom->MarkDirty();
+        counter = 0.0f;
     }
-    else if (mp->text_disp.cur_open_time > (mp->text_disp.max_anim_time - FLOAT_EPS))
-    {
-        mp->text_disp.cur_open_time += dt;
-        if (mp->text_disp.cur_open_time >= mp->text_disp.max_open_timer_time)
-        {
-            mp->text_disp.cur_open_time = 0.0f;
-            mp->text_disp.anim_state = TEXT_NOTICE_ANIM_HIDE;
-        }
-    }
+
+    update_and_draw_nav_goals(mp, dt, dbg, conn);
+    draw_nav_paths(mp, dbg);
+    animate_console_panel(mp, dt, ui_inf);
 }
 
 intern void setup_text_notice_widget(map_panel *mp, const ui_info &ui_inf)
@@ -810,7 +723,7 @@ intern void setup_accept_params_button(map_panel *mp, const ui_info &ui_inf)
     mp->accept_inp.get_btn_text = mp->accept_inp.get_btn->CreateChild<urho::Text>();
     mp->accept_inp.get_btn_text->SetStyle("GetParamsBtnText", ui_inf.style);
 
-    vec2 offset = vec2{270*2, 60}*ui_inf.dev_pixel_ratio_inv * UI_ADDITIONAL_BTN_SCALING;
+    vec2 offset = vec2{270 * 2, 60} * ui_inf.dev_pixel_ratio_inv * UI_ADDITIONAL_BTN_SCALING;
     ivec2 ioffset = ivec2(offset.x_, offset.y_);
     mp->accept_inp.widget->SetMaxOffset(ioffset);
 
@@ -821,121 +734,44 @@ intern void setup_accept_params_button(map_panel *mp, const ui_info &ui_inf)
     mp->accept_inp.get_btn_text->SetFontSize(24 * ui_inf.dev_pixel_ratio_inv);
 }
 
-intern void setup_cam_zoom_widget(map_panel *mp, const ui_info &ui_inf)
+void intern setup_input_actions(map_panel *mp, const ui_info &ui_inf, net_connection *conn, input_data *inp)
 {
-    auto uctxt = ui_inf.ui_sys->GetContext();
+    auto cam_node = mp->view->GetCameraNode();
+    auto on_click = [cam_node, mp](const itrigger_event &tevent) {
+        if (mp->toolbar.add_goal->IsEnabled() || mp->js_enabled || (mp->view != tevent.vp.element_under_mouse && tevent.vp.element_under_mouse->GetPriority() > 2))
+            return;
 
-    mp->cam_cwidget.cam_zoom_widget.widget = new urho::BorderImage(uctxt);
-    mp->cam_cwidget.root_element->AddChild(mp->cam_cwidget.cam_zoom_widget.widget);
-    mp->cam_cwidget.cam_zoom_widget.widget->SetStyle("ZoomButtonGroup", ui_inf.style);
+        auto r = mp->toolbar.add_goal->GetImageRect() + irect{-128, 0, -128, 0};
+        mp->toolbar.add_goal->SetImageRect(r);
+        mp->toolbar.add_goal->SetEnabled(true);
 
-    mp->cam_cwidget.cam_zoom_widget.zoom_in = new urho::Button(uctxt);
-    mp->cam_cwidget.cam_zoom_widget.widget->AddChild(mp->cam_cwidget.cam_zoom_widget.zoom_in);
-    mp->cam_cwidget.cam_zoom_widget.zoom_in->SetStyle("ZoomInButton", ui_inf.style);
+        auto camc = cam_node->GetComponent<urho::Camera>();
 
-    auto offset = mp->cam_cwidget.cam_zoom_widget.zoom_in->GetImageRect().Size();
-    offset.x_ *= ui_inf.dev_pixel_ratio_inv * UI_ADDITIONAL_CAM_SCALING;
-    offset.y_ *= ui_inf.dev_pixel_ratio_inv * UI_ADDITIONAL_CAM_SCALING;
-    auto parent_offset = offset;
-    parent_offset.y_ = offset.y_ * 2;
-    mp->cam_cwidget.cam_zoom_widget.widget->SetMaxOffset(parent_offset);
-    mp->cam_cwidget.cam_zoom_widget.zoom_in->SetMaxOffset(offset);
+        urho::Plane p{{0, 0, -1}, {0, 0, 0}};
+        auto scrn_ray = camc->GetScreenRay(tevent.norm_mpos.x_, tevent.norm_mpos.y_);
 
-    mp->cam_cwidget.cam_zoom_widget.zoom_out = new urho::Button(uctxt);
-    mp->cam_cwidget.cam_zoom_widget.widget->AddChild(mp->cam_cwidget.cam_zoom_widget.zoom_out);
-    mp->cam_cwidget.cam_zoom_widget.zoom_out->SetStyle("ZoomOutButton", ui_inf.style);
-    mp->cam_cwidget.cam_zoom_widget.zoom_out->SetMaxOffset(offset);
-}
+        double dist = scrn_ray.HitDistance(p);
+        if (dist < 1000)
+        {
+            auto pos = scrn_ray.origin_ + scrn_ray.direction_ * dist;
+            // Place at the front
+            mp->goals.queued_goals.insert(mp->goals.queued_goals.begin(), pos);
+        }
+    };
 
-intern void setup_cam_move_widget(map_panel *mp, const ui_info &ui_inf)
-{
-    auto uctxt = ui_inf.ui_sys->GetContext();
-    auto cache = uctxt->GetSubsystem<urho::ResourceCache>();
+    input_action_trigger it{};
+    it.cond.mbutton = urho::MOUSEB_LEFT;
+    it.name = urho::StringHash("Click").ToHash();
+    it.tstate = T_BEGIN;
+    it.mb_req = 0;
+    it.mb_allowed = 0;
+    it.qual_req = 0;
+    it.qual_allowed = urho::QUAL_ANY;
+    input_add_trigger(&inp->map, it);
+    ss_connect(&mp->router, inp->dispatch.trigger, it.name, on_click);
 
-    mp->cam_cwidget.cam_move_widget.widget = new urho::BorderImage(uctxt);
-    mp->cam_cwidget.root_element->AddChild(mp->cam_cwidget.cam_move_widget.widget);
-    mp->cam_cwidget.cam_move_widget.widget->SetStyle("ArrowButtonGroup", ui_inf.style);
-
-    mp->cam_cwidget.cam_move_widget.forward = new urho::Button(uctxt);
-    mp->cam_cwidget.cam_move_widget.widget->AddChild(mp->cam_cwidget.cam_move_widget.forward);
-    mp->cam_cwidget.cam_move_widget.forward->SetStyle("ArrowButtonForward", ui_inf.style);
-    mp->cam_cwidget.cam_move_widget.forward->SetVar("md", 1);
-
-    auto offset = mp->cam_cwidget.cam_move_widget.forward->GetImageRect().Size();
-    offset.x_ *= ui_inf.dev_pixel_ratio_inv * UI_ADDITIONAL_CAM_SCALING;
-    offset.y_ *= ui_inf.dev_pixel_ratio_inv * UI_ADDITIONAL_CAM_SCALING;
-    auto parent_offset = offset;
-    parent_offset.x_ = offset.x_ * 3;
-    parent_offset.y_ = offset.y_ * 2;
-    mp->cam_cwidget.cam_move_widget.widget->SetMaxOffset(parent_offset);
-    mp->cam_cwidget.cam_move_widget.forward->SetMaxOffset(offset);
-
-    mp->cam_cwidget.cam_move_widget.back = new urho::Button(uctxt);
-    mp->cam_cwidget.cam_move_widget.widget->AddChild(mp->cam_cwidget.cam_move_widget.back);
-    mp->cam_cwidget.cam_move_widget.back->SetStyle("ArrowButtonBack", ui_inf.style);
-    mp->cam_cwidget.cam_move_widget.back->SetMaxOffset(offset);
-    mp->cam_cwidget.cam_move_widget.back->SetVar("md", -1);
-
-    mp->cam_cwidget.cam_move_widget.left = new urho::Button(uctxt);
-    mp->cam_cwidget.cam_move_widget.widget->AddChild(mp->cam_cwidget.cam_move_widget.left);
-    mp->cam_cwidget.cam_move_widget.left->SetStyle("ArrowButtonLeft", ui_inf.style);
-    mp->cam_cwidget.cam_move_widget.left->SetMaxOffset(offset);
-    mp->cam_cwidget.cam_move_widget.left->SetVar("md", -2);
-
-    mp->cam_cwidget.cam_move_widget.right = new urho::Button(uctxt);
-    mp->cam_cwidget.cam_move_widget.widget->AddChild(mp->cam_cwidget.cam_move_widget.right);
-    mp->cam_cwidget.cam_move_widget.right->SetStyle("ArrowButtonRight", ui_inf.style);
-    mp->cam_cwidget.cam_move_widget.right->SetMaxOffset(offset);
-    mp->cam_cwidget.cam_move_widget.right->SetVar("md", 2);
-}
-
-void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, input_data *inp)
-{
-    auto uctxt = ui_inf.ui_sys->GetContext();
-    auto cache = uctxt->GetSubsystem<urho::ResourceCache>();
-
-    create_3dview(mp, cache, ui_inf.ui_sys->GetRoot(), uctxt);
-    setup_scene(mp, cache, mp->view->GetScene(), uctxt);
-    setup_camera_controls(mp, mp->view->GetCameraNode(), inp);
-
-    mp->cam_cwidget.root_element = new urho::BorderImage(uctxt);
-    ui_inf.ui_sys->GetRoot()->AddChild(mp->cam_cwidget.root_element);
-    mp->cam_cwidget.root_element->SetStyle("CamControlButtonGroup", ui_inf.style);
-
-    setup_cam_move_widget(mp, ui_inf);
-    setup_cam_zoom_widget(mp, ui_inf);
-
-    ivec2 child_offsets = {};
-    for (int i = 0; i < mp->cam_cwidget.root_element->GetNumChildren(); ++i)
-    {
-        auto child = mp->cam_cwidget.root_element->GetChild(i);
-        auto coffset = child->GetMaxOffset();
-        child_offsets.x_ += coffset.x_ + 20;
-        child_offsets.y_ = coffset.y_;
-    }
-
-    if (mp->cam_cwidget.root_element->GetMinAnchor() == mp->cam_cwidget.root_element->GetMaxAnchor())
-        mp->cam_cwidget.root_element->SetMaxOffset(child_offsets);
-
-    setup_accept_params_button(mp, ui_inf);
-    setup_toolbar_widget(mp, ui_inf);
-    setup_text_notice_widget(mp, ui_inf);
-
-    ss_connect(&mp->router, conn->scan_received, [mp](const sicklms_laser_scan &pckt) { update_scene_from_scan(mp, pckt); });
-    ss_connect(&mp->router, conn->map_update_received, [mp](const occ_grid_update &pckt) { update_scene_map_from_occ_grid(&mp->map, pckt); });
-    ss_connect(&mp->router, conn->glob_cm_update_received, [mp](const occ_grid_update &pckt) { update_scene_map_from_occ_grid(&mp->glob_cmap, pckt); });
-    ss_connect(&mp->router, conn->loc_cm_update_received, [mp](const occ_grid_update &pckt) { update_scene_map_from_occ_grid(&mp->loc_cmap, pckt); });
-    ss_connect(&mp->router, conn->transform_updated, [mp](const node_transform &pckt) { update_node_transform(mp, pckt); });
-    ss_connect(&mp->router, conn->glob_nav_path_updated, [mp](const nav_path &pckt) { update_glob_nav_path(mp, pckt); });
-    ss_connect(&mp->router, conn->loc_nav_path_updated, [mp](const nav_path &pckt) { update_loc_nav_path(mp, pckt); });
-    ss_connect(&mp->router, conn->goal_status_updated, [mp](const current_goal_status &pckt) { update_cur_goal_status(mp, pckt); });
-    ss_connect(&mp->router, conn->param_set_response_received, [mp, ui_inf](const text_block &pckt) { show_received_text(mp, pckt, ui_inf); });
-    ss_connect(&mp->router, conn->param_get_response_received, [mp, ui_inf](const text_block &pckt) { handle_received_get_params_response(mp, pckt, ui_inf); });
-
-    mp->view->SubscribeToEvent(urho::E_UPDATE, [mp, conn, ui_inf](urho::StringHash type, urho::VariantMap &ev_data) {
-        auto dt = ev_data[urho::Update::P_TIMESTEP].GetFloat();
-        map_panel_run_frame(mp, dt, ui_inf, conn);
-    });
+    viewport_element vp{mp->view->GetViewport(), mp->view};
+    inp->dispatch.vp_stack.emplace_back(vp);
 
     mp->toolbar.widget->SubscribeToEvent(urho::E_CLICKEND, [mp, conn](urho::StringHash type, urho::VariantMap &ev_data) {
         mp->cam_cwidget.cam_zoom_widget.loc_trans = {};
@@ -976,17 +812,16 @@ void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, 
             if (mp->text_disp.anim_state != TEXT_NOTICE_ANIM_INACTIVE)
                 return;
             float cur_y_anch = mp->text_disp.widget->GetMaxAnchor().y_;
-            
+
             if (fequals(cur_y_anch, 0.0f))
                 mp->text_disp.anim_state = TEXT_NOTICE_ANIM_SHOW;
             else
                 mp->text_disp.anim_state = TEXT_NOTICE_ANIM_HIDE;
-            
         }
         else if (elem == mp->accept_inp.get_btn)
         {
-               command_get_params cgp {};
-               net_tx(*conn, cgp);
+            command_get_params cgp{};
+            net_tx(*conn, cgp);
         }
         else if (elem == mp->toolbar.set_params)
         {
@@ -998,8 +833,7 @@ void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, 
         }
         else if (elem == mp->accept_inp.send_btn || elem == mp->accept_inp.send_btn_text)
         {
-
-            static command_set_params param_pckt {};
+            static command_set_params param_pckt{};
 
             // Get input from box and send it
 #if defined(__EMSCRIPTEN__)
@@ -1009,7 +843,7 @@ void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, 
             param_pckt.blob_size = strlen(txt);
             if (command_set_params::MAX_STR_SIZE < param_pckt.blob_size)
                 param_pckt.blob_size = command_set_params::MAX_STR_SIZE;
-            strncpy((char*)param_pckt.blob_data, txt, param_pckt.blob_size);
+            strncpy((char *)param_pckt.blob_data, txt, param_pckt.blob_size);
             ilog("Sending Params: %s", txt);
             free(txt);
             net_tx(*conn, param_pckt);
@@ -1017,35 +851,41 @@ void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, 
             mp->accept_inp.widget->SetVisible(!mp->accept_inp.widget->IsVisible());
         }
     });
+}
 
-    mp->cam_cwidget.cam_move_widget.widget->SubscribeToEvent(urho::E_PRESSED, [mp](urho::StringHash type, urho::VariantMap &ev_data) {
-        auto elem = (urho::UIElement *)ev_data[urho::ClickEnd::P_ELEMENT].GetPtr();
-        auto trans = elem->GetVar("md").GetInt();
+void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, input_data *inp)
+{
+    auto uctxt = ui_inf.ui_sys->GetContext();
+    auto cache = uctxt->GetSubsystem<urho::ResourceCache>();
 
-        if (elem == mp->cam_cwidget.cam_zoom_widget.zoom_in)
-            mp->cam_cwidget.cam_zoom_widget.loc_trans = mp->view->GetCameraNode()->GetDirection();
-        else if (elem == mp->cam_cwidget.cam_zoom_widget.zoom_out)
-            mp->cam_cwidget.cam_zoom_widget.loc_trans = mp->view->GetCameraNode()->GetDirection() * -1;
-        else if (trans == 0)
-            return;
+    create_3dview(mp, cache, ui_inf.ui_sys->GetRoot(), uctxt);
+    setup_scene(mp, cache, mp->view->GetScene(), uctxt);
 
-        auto cam_node = mp->view->GetCameraNode();
-        auto world_right = cam_node->GetWorldRight().Normalized();
-        auto world_up = cam_node->GetWorldUp().Normalized();
-        float angle = std::abs(world_up.Angle({0, 0, 1}) - 90.0f);
-        if (std::abs(angle) > 70)
-        {
-            mp->cam_cwidget.cam_move_widget.world_trans = vec3(0, 0, -trans);
-            if (std::abs(trans) == 2)
-                mp->cam_cwidget.cam_move_widget.world_trans = world_right * trans / 2;
-        }
-        else
-        {
-            mp->cam_cwidget.cam_move_widget.world_trans = vec3(world_up.x_, world_up.y_, 0.0) * trans;
-            if (std::abs(trans) == 2)
-                mp->cam_cwidget.cam_move_widget.world_trans = world_right * trans / 2;
-        }
+    setup_accept_params_button(mp, ui_inf);
+    setup_toolbar_widget(mp, ui_inf);
+    setup_text_notice_widget(mp, ui_inf);
+
+    cam_init(mp, inp, ui_inf);
+
+    ss_connect(&mp->router, conn->scan_received, [mp](const sicklms_laser_scan &pckt) { update_scene_from_scan(mp, pckt); });
+    ss_connect(&mp->router, conn->map_update_received, [mp](const occ_grid_update &pckt) { update_scene_map_from_occ_grid(&mp->map, pckt); });
+    ss_connect(&mp->router, conn->glob_cm_update_received, [mp](const occ_grid_update &pckt) { update_scene_map_from_occ_grid(&mp->glob_cmap, pckt); });
+    ss_connect(&mp->router, conn->loc_cm_update_received, [mp](const occ_grid_update &pckt) { update_scene_map_from_occ_grid(&mp->loc_cmap, pckt); });
+    ss_connect(&mp->router, conn->transform_updated, [mp](const node_transform &pckt) { update_node_transform(mp, pckt); });
+    ss_connect(&mp->router, conn->glob_nav_path_updated, [mp](const nav_path &pckt) { update_glob_nav_path(mp, pckt); });
+    ss_connect(&mp->router, conn->loc_nav_path_updated, [mp](const nav_path &pckt) { update_loc_nav_path(mp, pckt); });
+    ss_connect(&mp->router, conn->goal_status_updated, [mp](const current_goal_status &pckt) { update_cur_goal_status(mp, pckt); });
+    
+    ss_connect(&mp->router, conn->param_set_response_received, [mp, ui_inf](const text_block &pckt) { show_received_text(mp, pckt, ui_inf); });
+    ss_connect(&mp->router, conn->param_get_response_received, [mp, ui_inf](const text_block &pckt) { handle_received_get_params_response(mp, pckt, ui_inf); });
+
+    setup_input_actions(mp, ui_inf, conn, inp);
+
+    mp->view->SubscribeToEvent(urho::E_UPDATE, [mp, conn, ui_inf](urho::StringHash type, urho::VariantMap &ev_data) {
+        auto dt = ev_data[urho::Update::P_TIMESTEP].GetFloat();
+        map_panel_run_frame(mp, dt, ui_inf, conn);
     });
+
 }
 
 void map_clear_occ_grid(occ_grid_map *ocg)

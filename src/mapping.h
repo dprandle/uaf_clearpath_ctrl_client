@@ -1,5 +1,6 @@
 #pragma once
 
+#include "camera.h"
 #include "math_utils.h"
 #include "ss_router.h"
 
@@ -9,16 +10,26 @@
 
 namespace Urho3D
 {
+class UI;
+class XMLFile;
 class View3D;
 class BillboardSet;
+class Texture2D;
+class Image;
 class ListView;
 class Node;
 class Text;
 } // namespace Urho3D
 
-struct ui_info;
 struct net_connection;
 struct input_data;
+
+struct ui_info
+{
+    urho::UI * ui_sys {};
+    urho::XMLFile * style {};
+    float dev_pixel_ratio_inv {1.0};
+};
 
 struct updated_tform
 {
@@ -26,16 +37,6 @@ struct updated_tform
     quat orientation;
     bool dirty {false};
     float wait_timer {0.0f};
-};
-
-struct camera_move_control_widget
-{
-    urho::UIElement * widget;
-    urho::Button *forward;
-    urho::Button *back;
-    urho::Button *left;
-    urho::Button *right;
-    vec3 world_trans {};
 };
 
 enum text_notic_anim_state
@@ -58,21 +59,6 @@ struct text_notice_widget
     float cur_open_time {0.0f};
     float max_open_timer_time {5.0f};
     text_notic_anim_state anim_state {TEXT_NOTICE_ANIM_INACTIVE};
-};
-
-struct camera_move_zoom_widget
-{
-    urho::UIElement * widget;
-    urho::Button *zoom_in;
-    urho::Button *zoom_out;
-    vec3 loc_trans {};
-};
-
-struct cam_control_widget
-{
-    camera_move_control_widget cam_move_widget;
-    camera_move_zoom_widget cam_zoom_widget;
-    urho::UIElement * root_element;
 };
 
 struct accept_param_input_widget

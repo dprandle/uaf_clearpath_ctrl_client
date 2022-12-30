@@ -4,40 +4,12 @@
 #include <Urho3D/Core/Object.h>
 #include <Urho3D/Input/Input.h>
 #include <Urho3D/Math/Vector3.h>
-#include <vector>
 
-#include "Urho3D/Resource/XMLFile.h"
 #include "input.h"
-#include "ss_router.h"
 #include "typedefs.h"
 #include "network.h"
 #include "joystick.h"
 #include "mapping.h"
-
-namespace Urho3D
-{
-class Node;
-class Scene;
-class Sprite;
-class Button;
-class UI;
-}
-
-class Input_Map;
-struct Input_Context;
-
-struct ui_info
-{
-    urho::UI * ui_sys {};
-    urho::XMLFile * style {};
-    float dev_pixel_ratio_inv {1.0};
-};
-
-struct input_data
-{
-    input_context_stack dispatch;
-    input_keymap map;
-};
 
 struct jackal_control_ctxt
 {
