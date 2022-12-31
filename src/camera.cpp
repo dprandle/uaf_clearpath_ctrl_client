@@ -161,6 +161,8 @@ void cam_init(map_panel *mp, input_data *inp, const ui_info &ui_inf)
     auto uctxt = ui_inf.ui_sys->GetContext();
     auto cam_node = mp->view->GetCameraNode();
 
+    ilog("Initializing camera");
+
     setup_camera_controls(mp, cam_node, inp);
 
     mp->cam_cwidget.root_element = new urho::BorderImage(uctxt);
@@ -195,5 +197,5 @@ void cam_init(map_panel *mp, input_data *inp, const ui_info &ui_inf)
 
 void cam_term(map_panel *mp)
 {
-    ilog("Shutting down camera");
+    ilog("Terminating camera");
 }

@@ -310,6 +310,7 @@ intern void on_mouse_up(input_uevent_handlers *uh, Urho3D::StringHash event_type
 
 void input_init(input_context_stack *input, urho::Context *uctxt)
 {
+    ilog("Initializing input");
     input->event_handlers = new input_uevent_handlers(uctxt);
     input->event_handlers->ictxt = input;
     input->event_handlers->subscribe();
@@ -318,6 +319,7 @@ void input_init(input_context_stack *input, urho::Context *uctxt)
 
 void input_term(input_context_stack *input)
 {
+    ilog("Terminating input");
     input->event_handlers->unsubscribe();
     input->active_triggers.clear();
     input->vp_stack.clear();

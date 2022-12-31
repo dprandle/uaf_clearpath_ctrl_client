@@ -2,7 +2,7 @@
 
 #include "camera.h"
 #include "params.h"
-#include "math_utils.h"
+#include "toolbar.h"
 #include "ss_router.h"
 
 #include <string>
@@ -72,15 +72,6 @@ struct nav_goals
     vec3 cur_goal {};
     i32 cur_goal_status {-1};
     std::vector<vec3> queued_goals {};
-};
-
-struct toolbar_widget
-{
-    urho::UIElement * widget;
-    urho::Button *add_goal;
-    urho::Button *cancel_goal;
-    urho::Button *clear_maps;
-    urho::Button *set_params;
 };
 
 struct goal_marker_info

@@ -9,10 +9,12 @@ intern Urho3D::Log * logger {nullptr};
 void log_init(urho::Context* uctxt)
 {
     logger = uctxt->GetSubsystem<urho::Log>();
+    ilog("Initialized logging");
 }
 
 void log_term()
 {
+    ilog("Terminating logging");
     logger = nullptr;
 }
 

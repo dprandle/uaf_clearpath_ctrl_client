@@ -125,6 +125,8 @@ bool jctrl_init(jackal_control_ctxt *ctxt, const urho::StringVector & args)
     
     log_init(ctxt->urho_ctxt);
 
+    ilog("Initializing jackal control");
+
 #if defined(DEBUG_VERSION)
     log_set_level(urho::LOG_DEBUG);
 #else
@@ -176,6 +178,7 @@ void jctrl_exec(jackal_control_ctxt *ctxt)
 
 void jctrl_term(jackal_control_ctxt *ctxt)
 {
+    ilog("Terminating jackal control");
     net_disconnect(&ctxt->conn);
     input_term(&ctxt->inp.dispatch);
     joystick_panel_term(&ctxt->js_panel);

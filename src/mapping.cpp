@@ -1,5 +1,4 @@
 #include <Urho3D/Core/CoreEvents.h>
-
 #include <Urho3D/GraphicsAPI/Texture2D.h>
 #include "Urho3D/Graphics/Model.h"
 #include <Urho3D/Graphics/StaticModel.h>
@@ -10,7 +9,6 @@
 #include <Urho3D/Graphics/Camera.h>
 #include <Urho3D/Graphics/Zone.h>
 #include <Urho3D/Graphics/BillboardSet.h>
-
 #include <Urho3D/UI/UI.h>
 #include <Urho3D/UI/BorderImage.h>
 #include <Urho3D/UI/Button.h>
@@ -18,18 +16,14 @@
 #include <Urho3D/UI/UIEvents.h>
 #include <Urho3D/UI/View3D.h>
 #include <Urho3D/UI/ListView.h>
-
 #include <Urho3D/Resource/ResourceCache.h>
 #include "Urho3D/Resource/XMLFile.h"
 #include "Urho3D/UI/Font.h"
-
 #include <Urho3D/Scene/Scene.h>
 #include "Urho3D/Scene/Node.h"
 
 #include "input.h"
-#include "jackal_control.h"
 #include "mapping.h"
-#include "math_utils.h"
 #include "network.h"
 
 const std::string MAP{"map"};
@@ -50,8 +44,6 @@ const std::string FRONT_MOUNT{"front_mount"};
 const std::string FRONT_LASER_MOUNT{"front_laser_mount"};
 const std::string FRONT_LASER{"front_laser"};
 
-intern const float UI_ADDITIONAL_TOOLBAR_SCALING = 1.00f;
-intern const float CAM_CONTROL_DEFAULT_Y_ANCHOR = 0.01f;
 
 intern const ogmap_colors map_colors{.undiscovered{0, 0.7, 0.7, 1}};
 
@@ -509,57 +501,6 @@ intern void map_panel_run_frame(map_panel *mp, float dt, net_connection *conn)
     draw_nav_paths(mp, dbg);
 }
 
-intern void setup_toolbar_widget(map_panel *mp, const ui_info &ui_inf)
-{
-    auto uctxt = ui_inf.ui_sys->GetContext();
-    auto cache = uctxt->GetSubsystem<urho::ResourceCache>();
-
-    mp->toolbar.widget = new urho::BorderImage(uctxt);
-    ui_inf.ui_sys->GetRoot()->AddChild(mp->toolbar.widget);
-    mp->toolbar.widget->SetStyle("Toolbar", ui_inf.style);
-
-    mp->toolbar.add_goal = new urho::Button(uctxt);
-    mp->toolbar.widget->AddChild(mp->toolbar.add_goal);
-    mp->toolbar.add_goal->SetStyle("AddGoalButton", ui_inf.style);
-    auto offset = mp->toolbar.add_goal->GetImageRect().Size();
-    offset.x_ *= ui_inf.dev_pixel_ratio_inv * UI_ADDITIONAL_TOOLBAR_SCALING;
-    offset.y_ *= ui_inf.dev_pixel_ratio_inv * UI_ADDITIONAL_TOOLBAR_SCALING;
-    mp->toolbar.add_goal->SetMaxOffset(offset);
-
-    mp->toolbar.cancel_goal = new urho::Button(uctxt);
-    mp->toolbar.widget->AddChild(mp->toolbar.cancel_goal);
-    mp->toolbar.cancel_goal->SetStyle("CancelGoalsButton", ui_inf.style);
-    offset = mp->toolbar.cancel_goal->GetImageRect().Size();
-    offset.x_ *= ui_inf.dev_pixel_ratio_inv * UI_ADDITIONAL_TOOLBAR_SCALING;
-    offset.y_ *= ui_inf.dev_pixel_ratio_inv * UI_ADDITIONAL_TOOLBAR_SCALING;
-    mp->toolbar.cancel_goal->SetMaxOffset(offset);
-
-    mp->toolbar.clear_maps = new urho::Button(uctxt);
-    mp->toolbar.widget->AddChild(mp->toolbar.clear_maps);
-    mp->toolbar.clear_maps->SetStyle("ClearMapsButton", ui_inf.style);
-    offset = mp->toolbar.clear_maps->GetImageRect().Size();
-    offset.x_ *= ui_inf.dev_pixel_ratio_inv * UI_ADDITIONAL_TOOLBAR_SCALING;
-    offset.y_ *= ui_inf.dev_pixel_ratio_inv * UI_ADDITIONAL_TOOLBAR_SCALING;
-    mp->toolbar.clear_maps->SetMaxOffset(offset);
-    mp->toolbar.clear_maps->SetMinOffset({});
-
-    mp->toolbar.set_params = new urho::Button(uctxt);
-    mp->toolbar.widget->AddChild(mp->toolbar.set_params);
-    mp->toolbar.set_params->SetStyle("SetParamsButton", ui_inf.style);
-    offset = mp->toolbar.set_params->GetImageRect().Size();
-    offset.x_ *= ui_inf.dev_pixel_ratio_inv * UI_ADDITIONAL_TOOLBAR_SCALING;
-    offset.y_ *= ui_inf.dev_pixel_ratio_inv * UI_ADDITIONAL_TOOLBAR_SCALING;
-    mp->toolbar.set_params->SetMaxOffset(offset);
-
-    ivec2 tb_offset = {offset.x_, 0};
-    for (int i = 0; i < mp->toolbar.widget->GetNumChildren(); ++i)
-    {
-        auto child = mp->toolbar.widget->GetChild(i);
-        tb_offset.y_ += child->GetMaxOffset().y_ + 10;
-    }
-    mp->toolbar.widget->SetMaxOffset(tb_offset);
-}
-
 intern void setup_input_actions(map_panel *mp, const ui_info &ui_inf, net_connection *conn, input_data *inp)
 {
     auto cam_node = mp->view->GetCameraNode();
@@ -609,43 +550,9 @@ intern void setup_event_handlers(map_panel *mp, const ui_info &ui_inf, net_conne
 
     mp->toolbar.widget->SubscribeToEvent(urho::E_CLICKEND, [mp, conn](urho::StringHash type, urho::VariantMap &ev_data) {
         auto elem = (urho::UIElement *)ev_data[urho::ClickEnd::P_ELEMENT].GetPtr();
-
         cam_handle_click_end(mp, elem);
         param_handle_click_end(mp, elem, conn);
-
-        if (elem == mp->toolbar.add_goal)
-        {
-            auto r = mp->toolbar.add_goal->GetImageRect() + irect{128, 0, 128, 0};
-            mp->toolbar.add_goal->SetImageRect(r);
-            mp->toolbar.add_goal->SetEnabled(false);
-        }
-        else if (elem == mp->toolbar.cancel_goal)
-        {
-            if (!mp->toolbar.add_goal->IsEnabled())
-            {
-                auto r = mp->toolbar.add_goal->GetImageRect() + irect{-128, 0, -128, 0};
-                mp->toolbar.add_goal->SetImageRect(r);
-                mp->toolbar.add_goal->SetEnabled(true);
-            }
-            command_stop stop{};
-            mp->goals.queued_goals.clear();
-            net_tx(*conn, stop);
-        }
-        else if (elem == mp->toolbar.clear_maps)
-        {
-            if (!mp->toolbar.add_goal->IsEnabled())
-            {
-                auto r = mp->toolbar.add_goal->GetImageRect() + irect{-128, 0, -128, 0};
-                mp->toolbar.add_goal->SetImageRect(r);
-                mp->toolbar.add_goal->SetEnabled(true);
-            }
-            command_clear_maps cm{};
-            net_tx(*conn, cm);
-        }
-        else if (elem == mp->toolbar.set_params)
-        {
-            param_toggle_input_visible(mp);
-        }
+        toolbar_handle_click_end(mp, elem, conn);
     });
 }
 
@@ -653,12 +560,12 @@ void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, 
 {
     auto uctxt = ui_inf.ui_sys->GetContext();
     auto cache = uctxt->GetSubsystem<urho::ResourceCache>();
+    ilog("Initializing map panel");
 
     create_3dview(mp, cache, ui_inf.ui_sys->GetRoot(), uctxt);
     setup_scene(mp, cache, mp->view->GetScene(), uctxt);
 
-    setup_toolbar_widget(mp, ui_inf);
-
+    toolbar_init(mp, ui_inf);
     param_init(mp, conn, ui_inf);
     cam_init(mp, inp, ui_inf);
 
@@ -693,7 +600,8 @@ void map_clear_occ_grid(occ_grid_map *ocg)
 
 void map_panel_term(map_panel *mp)
 {
-    ilog("Shutting down map panel");
+    ilog("Terminating map panel");
     cam_term(mp);
     param_term(mp);
+    toolbar_term(mp);
 }

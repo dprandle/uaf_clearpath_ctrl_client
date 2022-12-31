@@ -194,6 +194,8 @@ intern void param_run_frame(map_panel *mp, float dt, const ui_info &ui_inf)
 
 void param_init(map_panel *mp, net_connection *conn, const ui_info &ui_inf)
 {
+    ilog("Initializing params");
+
     setup_accept_params_button(mp, ui_inf);
     setup_text_notice_widget(mp, ui_inf);
 
@@ -208,7 +210,7 @@ void param_init(map_panel *mp, net_connection *conn, const ui_info &ui_inf)
 
 void param_term(map_panel *mp)
 {
-    ilog("Shutting down params");
+    ilog("Terminating params");
 }
 
 void param_toggle_input_visible(map_panel *mp)
