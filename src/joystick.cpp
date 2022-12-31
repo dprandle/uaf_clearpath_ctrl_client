@@ -47,6 +47,17 @@ intern void handle_joystick_move_end(joystick_panel *jsp)
     jsp->cached_mouse_pos = {};
 }
 
+intern void joystick_panel_run_frame(joystick_panel*jspanel, net_connection * conn)
+{
+    if (!jspanel->js->GetEnableAnchor())
+    {
+        static command_velocity pckt {};
+        pckt.vinfo.linear = jspanel->velocity.y_;
+        pckt.vinfo.angular = jspanel->velocity.x_;
+        net_tx(*conn, pckt);
+    }
+}
+
 intern void setup_event_handlers(joystick_panel *jsp, const ui_info &ui_inf, net_connection *conn)
 {
     jsp->js->SubscribeToEvent(urho::E_DRAGMOVE, [jsp, ui_inf, conn](urho::StringHash type, urho::VariantMap &ev_data) {
@@ -112,15 +123,4 @@ void joystick_panel_term(joystick_panel *jsp)
     jsp->js->UnsubscribeFromAllEvents();
     jsp->cached_js_pos = {};
     jsp->cached_mouse_pos = {};
-}
-
-void joystick_panel_run_frame(joystick_panel*jspanel, net_connection * conn)
-{
-    if (!jspanel->js->GetEnableAnchor())
-    {
-        static command_velocity pckt {};
-        pckt.vinfo.linear = jspanel->velocity.y_;
-        pckt.vinfo.angular = jspanel->velocity.x_;
-        net_tx(*conn, pckt);
-    }
 }

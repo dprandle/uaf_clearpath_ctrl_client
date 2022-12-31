@@ -25,7 +25,6 @@ struct joystick_panel
     ss_signal<bool> in_use;
 };
 
-void joystick_panel_run_frame(joystick_panel*jspanel, net_connection * conn);
 void joystick_panel_init(joystick_panel*jspanel, const ui_info & ui_inf, net_connection * conn);
 void joystick_panel_term(joystick_panel*jspanel);
 

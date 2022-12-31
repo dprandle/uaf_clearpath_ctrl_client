@@ -107,6 +107,12 @@ intern void parse_command_line_args(int *port, urho::String * ip, float *ui_scal
     }
 }
 
+intern void jctrl_run_frame(jackal_control_ctxt *ctxt)
+{
+    net_rx(&ctxt->conn);
+    ctxt->urho_engine->RunFrame();
+}
+
 bool jctrl_init(jackal_control_ctxt *ctxt, const urho::StringVector & args)
 {
     ctxt->urho_engine = new urho::Engine(ctxt->urho_ctxt);
@@ -175,10 +181,4 @@ void jctrl_term(jackal_control_ctxt *ctxt)
     joystick_panel_term(&ctxt->js_panel);
     map_panel_term(&ctxt->mpanel);
     log_term();
-}
-
-void jctrl_run_frame(jackal_control_ctxt *ctxt)
-{
-    net_rx(&ctxt->conn);
-    ctxt->urho_engine->RunFrame();
 }

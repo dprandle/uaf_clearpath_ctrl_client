@@ -38,4 +38,6 @@ struct input_data;
 struct ui_info;
 
 void cam_init(map_panel *mp, input_data *inp, const ui_info &ui_inf);
-void cam_run_frame(map_panel *mp, float dt);
+void cam_term(map_panel *mp);
+void cam_handle_click_end(map_panel *mp, urho::UIElement * elem);
+

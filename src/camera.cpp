@@ -137,6 +137,25 @@ intern void handle_press_event(map_panel *mp, urho::UIElement *elem)
     }
 }
 
+intern void cam_run_frame(map_panel *mp, float dt)
+{
+    if (mp->cam_cwidget.cam_move_widget.world_trans != vec3::ZERO)
+    {
+        mp->view->GetCameraNode()->Translate(mp->cam_cwidget.cam_move_widget.world_trans * dt * 10, Urho3D::TransformSpace::World);
+    }
+
+    if (mp->cam_cwidget.cam_zoom_widget.loc_trans != vec3::ZERO)
+    {
+        mp->view->GetCameraNode()->Translate(mp->cam_cwidget.cam_zoom_widget.loc_trans * dt * 20);
+    }
+}
+
+void cam_handle_click_end(map_panel *mp, urho::UIElement * elem)
+{
+    mp->cam_cwidget.cam_zoom_widget.loc_trans = {};
+    mp->cam_cwidget.cam_move_widget.world_trans = {};
+}
+
 void cam_init(map_panel *mp, input_data *inp, const ui_info &ui_inf)
 {
     auto uctxt = ui_inf.ui_sys->GetContext();
@@ -174,15 +193,7 @@ void cam_init(map_panel *mp, input_data *inp, const ui_info &ui_inf)
     });
 }
 
-void cam_run_frame(map_panel *mp, float dt)
+void cam_term(map_panel *mp)
 {
-    if (mp->cam_cwidget.cam_move_widget.world_trans != vec3::ZERO)
-    {
-        mp->view->GetCameraNode()->Translate(mp->cam_cwidget.cam_move_widget.world_trans * dt * 10, Urho3D::TransformSpace::World);
-    }
-
-    if (mp->cam_cwidget.cam_zoom_widget.loc_trans != vec3::ZERO)
-    {
-        mp->view->GetCameraNode()->Translate(mp->cam_cwidget.cam_zoom_widget.loc_trans * dt * 20);
-    }
+    ilog("Shutting down camera");
 }
