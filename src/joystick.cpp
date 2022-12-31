@@ -1,11 +1,11 @@
+#include <Urho3D/Core/CoreEvents.h>
 #include <Urho3D/UI/UI.h>
 #include <Urho3D/UI/BorderImage.h>
 #include <Urho3D/UI/Button.h>
 #include <Urho3D/UI/UIEvents.h>
-#include <Urho3D/Core/CoreEvents.h>
 
-#include "jackal_control.h"
 #include "joystick.h"
+#include "mapping.h"
 #include "network.h"
 
 intern void handle_jostick_move(const ivec2 &cur_mpos, joystick_panel *jspanel)

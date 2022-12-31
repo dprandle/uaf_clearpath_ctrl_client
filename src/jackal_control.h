@@ -1,15 +1,16 @@
 #pragma once
 
-#include <Urho3D/Engine/Application.h>
-#include <Urho3D/Core/Object.h>
-#include <Urho3D/Input/Input.h>
-#include <Urho3D/Math/Vector3.h>
-
 #include "input.h"
 #include "typedefs.h"
 #include "network.h"
 #include "joystick.h"
 #include "mapping.h"
+
+namespace Urho3D
+{
+class Context;
+class Engine;
+} // namespace Urho3D
 
 struct jackal_control_ctxt
 {

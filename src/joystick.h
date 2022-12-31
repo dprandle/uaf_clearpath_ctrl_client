@@ -1,8 +1,7 @@
 #pragma once
 
-#include "Urho3D/Core/Context.h"
-#include "Urho3D/UI/BorderImage.h"
 #include "math_utils.h"
+#include "ss_router.h"
 
 namespace Urho3D{
     class BorderImage;

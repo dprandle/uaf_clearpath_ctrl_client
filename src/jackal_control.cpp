@@ -1,25 +1,13 @@
+#include <Urho3D/Engine/Application.h>
+#include <Urho3D/Engine/EngineDefs.h>
 #include <Urho3D/Graphics/Graphics.h>
-#include <Urho3D/Graphics/Octree.h>
+#include <Urho3D/Resource/ResourceCache.h>
 #include <Urho3D/Graphics/Renderer.h>
-#include <Urho3D/Graphics/DebugRenderer.h>
-#include <Urho3D/Graphics/Camera.h>
 #include <Urho3D/Graphics/Zone.h>
 #include <Urho3D/UI/UI.h>
-#include <Urho3D/Resource/ResourceCache.h>
-#include <Urho3D/Engine/EngineDefs.h>
-#include <Urho3D/Engine/DebugHud.h>
-#include <Urho3D/Scene/Scene.h>
 
-#include "Urho3D/IO/Log.h"
-#include "input.h"
-#include "joystick.h"
-#include "logging.h"
-#include "mapping.h"
-#include "network.h"
-#include "ss_router.h"
-#include "typedefs.h"
-#include "math_utils.h"
 #include "jackal_control.h"
+#include "logging.h"
 
 #if defined(__EMSCRIPTEN__)
 #include <emscripten/emscripten.h>
