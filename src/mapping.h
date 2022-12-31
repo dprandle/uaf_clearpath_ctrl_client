@@ -3,6 +3,7 @@
 #include "camera.h"
 #include "params.h"
 #include "toolbar.h"
+#include "map_toggle_views.h"
 #include "ss_router.h"
 
 #include <string>
@@ -102,6 +103,7 @@ struct map_panel
     toolbar_widget toolbar{};
     accept_param_input_widget accept_inp{};
     text_notice_widget text_disp{};
+    map_toggle_views_panel views_panel{};
 
     urho::Node * front_laser {};
     urho::BillboardSet * scan_bb {};

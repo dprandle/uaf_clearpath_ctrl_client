@@ -1,35 +1,12 @@
 #pragma once
 
-#include "math_utils.h"
-
-namespace Urho3D
-{
-class UIElement;
-class Button;
-class Text;
-class ListView;
-} // namespace Urho3D
-
-enum text_notic_anim_state
-{
-    TEXT_NOTICE_ANIM_INACTIVE,
-    TEXT_NOTICE_ANIM_SHOW,
-    TEXT_NOTICE_ANIM_HIDE,
-};
+#include "animated_panel.h"
 
 struct text_notice_widget
 {
-    urho::UIElement * widget;
-    urho::ListView * sview;
-    urho::UIElement * hide_show_btn_bg;
-    urho::Button * hide_show_panel;
-    float max_y_anchor {};
-    float cur_anim_time {0.0f};
-    float max_anim_time {0.2f};
-
+    animated_panel apanel;
     float cur_open_time {0.0f};
     float max_open_timer_time {5.0f};
-    text_notic_anim_state anim_state {TEXT_NOTICE_ANIM_INACTIVE};
 };
 
 struct accept_param_input_widget

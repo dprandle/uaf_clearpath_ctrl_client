@@ -10,15 +10,11 @@
 #include <Urho3D/Graphics/Zone.h>
 #include <Urho3D/Graphics/BillboardSet.h>
 #include <Urho3D/UI/UI.h>
-#include <Urho3D/UI/BorderImage.h>
 #include <Urho3D/UI/Button.h>
-#include <Urho3D/UI/Text.h>
 #include <Urho3D/UI/UIEvents.h>
 #include <Urho3D/UI/View3D.h>
-#include <Urho3D/UI/ListView.h>
 #include <Urho3D/Resource/ResourceCache.h>
 #include "Urho3D/Resource/XMLFile.h"
-#include "Urho3D/UI/Font.h"
 #include <Urho3D/Scene/Scene.h>
 #include "Urho3D/Scene/Node.h"
 
@@ -553,6 +549,7 @@ intern void setup_event_handlers(map_panel *mp, const ui_info &ui_inf, net_conne
         cam_handle_click_end(mp, elem);
         param_handle_click_end(mp, elem, conn);
         toolbar_handle_click_end(mp, elem, conn);
+        map_toggle_views_handle_click_end(mp, elem);
     });
 }
 
@@ -568,6 +565,7 @@ void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, 
     toolbar_init(mp, ui_inf);
     param_init(mp, conn, ui_inf);
     cam_init(mp, inp, ui_inf);
+    map_toggle_views_init(mp, ui_inf);
 
     ss_connect(&mp->router, conn->scan_received, [mp](const sicklms_laser_scan &pckt) { update_scene_from_scan(mp, pckt); });
     ss_connect(&mp->router, conn->map_update_received, [mp](const occ_grid_update &pckt) { update_scene_map_from_occ_grid(&mp->map, pckt); });
@@ -604,4 +602,5 @@ void map_panel_term(map_panel *mp)
     cam_term(mp);
     param_term(mp);
     toolbar_term(mp);
+    map_toggle_views_term(mp);
 }
