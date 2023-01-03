@@ -429,14 +429,20 @@ intern float animate_marker_circles(goal_marker_info *gm, float dt)
 
 intern void draw_nav_paths(map_panel *mp, urho::DebugRenderer *dbg)
 {
-    for (int i = 1; i < mp->glob_npview.entry_count; ++i)
+    if (mp->glob_npview.enabled)
     {
-        dbg->AddLine(mp->glob_npview.path_entries[i - 1], mp->glob_npview.path_entries[i], mp->glob_npview.color);
+        for (int i = 1; i < mp->glob_npview.entry_count; ++i)
+        {
+            dbg->AddLine(mp->glob_npview.path_entries[i - 1], mp->glob_npview.path_entries[i], mp->glob_npview.color);
+        }
     }
 
-    for (int i = 1; i < mp->loc_npview.entry_count; ++i)
+    if (mp->loc_npview.enabled)
     {
-        dbg->AddLine(mp->loc_npview.path_entries[i - 1], mp->loc_npview.path_entries[i], mp->loc_npview.color);
+        for (int i = 1; i < mp->loc_npview.entry_count; ++i)
+        {
+            dbg->AddLine(mp->loc_npview.path_entries[i - 1], mp->loc_npview.path_entries[i], mp->loc_npview.color);
+        }
     }
 }
 

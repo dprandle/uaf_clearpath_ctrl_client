@@ -6,6 +6,7 @@ namespace Urho3D
 {
 class UIElement;
 class Button;
+class CheckBox;
 } // namespace Urho3D
 
 struct toolbar_widget
@@ -14,7 +15,9 @@ struct toolbar_widget
     urho::Button *add_goal;
     urho::Button *cancel_goal;
     urho::Button *clear_maps;
-    urho::Button *set_params;
+    urho::CheckBox *set_params;
+    urho::CheckBox *enable_follow;
+    urho::CheckBox *enable_measure;
 };
 
 struct map_panel;

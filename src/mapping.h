@@ -88,6 +88,7 @@ struct goal_marker_info
 struct nav_path_view
 {
     static constexpr sizet MAX_LINE_ENTRIES = 10000;
+    bool enabled{true};
     urho::Color color{0,0.6,0,1};
     goal_marker_info goal_marker;
     sizet entry_count;

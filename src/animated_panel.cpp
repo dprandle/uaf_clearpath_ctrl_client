@@ -48,10 +48,6 @@ bool animated_panel_run_frame(animated_panel *panel, float dt, const ui_info &ui
         set_anchor(panel, cur_anchor, get_anchor(panel).y_);
 
     panel->cur_anim_time += dt;
-    // ilog("Cur anchor: %f", cur_anchor);
-    // ilog("Set Point: %f", panel->anchor_set_point);
-    // ilog("Rest Point: %f", panel->anchor_rest_point);
-    // ilog("Mult: %f", mult);
 
     if (panel->cur_anim_time >= panel->max_anim_time)
     {

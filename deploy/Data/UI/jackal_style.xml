@@ -35,6 +35,15 @@
         <attribute name="Priority" value="3" />
         <attribute name="Enable Anchor" value="true" />
     </element>
+    <element type="CheckedButtonBI">
+        <attribute name="Texture" value="Texture2D;Textures/ui.png" />
+        <attribute name="Blend Mode" value="alpha" />
+        <attribute name="Focus Mode" value="NotFocusable" />
+        <attribute name="Border" value="0 0 0 0" />
+        <attribute name="Checked Image Offset" value="128 0" />
+        <attribute name="Priority" value="3" />
+        <attribute name="Enable Anchor" value="true" />
+    </element>
     <element type="ArrowButtonForward" style="ButtonBI">
         <attribute name="Image Rect" value="0 0 128 128" />
         <attribute name="Name" value="CamMoveForward" />
@@ -123,30 +132,27 @@
     <element type="AddGoalButton" style="ButtonBI">
         <attribute name="Name" value="SetGoalButton" />
         <attribute name="Image Rect" value="0 256 128 384" />
-        <attribute name="Min Anchor" value="0 0" />
-        <attribute name="Max Anchor" value="0 0" />
-        <attribute name="Pivot" value="0 0" />
     </element>
     <element type="CancelGoalsButton" style="ButtonBI">
         <attribute name="Name" value="CancelGoalButton" />
         <attribute name="Image Rect" value="256 256 384 384" />
-        <attribute name="Min Anchor" value="0 0.25" />
-        <attribute name="Max Anchor" value="0 0.25" />
-        <attribute name="Pivot" value="0 0" />
     </element>
     <element type="ClearMapsButton" style="ButtonBI">
         <attribute name="Name" value="ClearMapsButton" />
         <attribute name="Image Rect" value="512 256 640 384" />
-        <attribute name="Min Anchor" value="0 0.501" />
-        <attribute name="Max Anchor" value="0 0.501" />
-        <attribute name="Pivot" value="0 0" />
     </element>
-    <element type="SetParamsButton" style="ButtonBI">
+    <element type="SetParamsButton" style="CheckedButtonBI">
         <attribute name="Name" value="SetParamsButton" />
         <attribute name="Image Rect" value="768 256 896 384" />
-        <attribute name="Min Anchor" value="0 0.75" />
-        <attribute name="Max Anchor" value="0 0.75" />
-        <attribute name="Pivot" value="0 0" />
+    </element>
+    <element type="EnableFollow" style="CheckedButtonBI">
+        <attribute name="Name" value="EnableFollow" />
+        <attribute name="Is Checked" value="true" />
+        <attribute name="Image Rect" value="512 384 640 512" />
+    </element>
+    <element type="EnableMeasure" style="CheckedButtonBI">
+        <attribute name="Name" value="EnableMeasure" />
+        <attribute name="Image Rect" value="512 384 640 512" />
     </element>
     <element type="SendParamsGp">
         <attribute name="Priority" value="1" />
@@ -203,14 +209,14 @@
         <attribute name="Pivot" value="0 0.5" />
     </element>
     <element type="TextDispAnimatedPanel">
-        <attribute name="Priority" value="4" />
+        <attribute name="Priority" value="3" />
         <attribute name="Name" value="AnimatedPanel" />
         <attribute name="Enable Anchor" value="true" />
         <attribute name="Min Anchor" value="0.0 0.0" />
         <attribute name="Max Anchor" value="1.0 0.0" />
     </element>
     <element type="ViewToggleAnimatedPanel">
-        <attribute name="Priority" value="4" />
+        <attribute name="Priority" value="3" />
         <attribute name="Name" value="AnimatedPanel" />
         <attribute name="Enable Anchor" value="true" />
         <attribute name="Min Anchor" value="1.0 0.22" />
@@ -269,7 +275,7 @@
     </element>
     <element type="ViewToggleShow" style="ButtonBI">
         <attribute name="Name" value="ViewToggleHideShow" />
-        <attribute name="Image Rect" value="804 128 856 256" />
+        <attribute name="Image Rect" value="806 128 858 256" />
         <attribute name="Min Anchor" value="0 0" />
         <attribute name="Max Anchor" value="0 0" />
         <attribute name="Pivot" value="0 0" />
@@ -280,5 +286,29 @@
         <attribute name="Min Anchor" value="0 0" />
         <attribute name="Max Anchor" value="0 0" />
         <attribute name="Pivot" value="0 0" />
+    </element>
+    <element type="MapCheckBoxRoot">
+        <attribute name="Priority" value="2" />
+        <attribute name="Name" value="MapCheckBoxRoot" />
+        <attribute name="Layout Mode" value="Horizontal" />
+        <attribute name="Layout Border" value="20 10 10 10" />
+        <attribute name="Layout Spacing" value="20" />
+    </element>
+    <element type="MapCheckBox" style="ButtonBI">
+        <attribute name="Enable Anchor" value="false" />
+        <attribute name="Name" value="MapCheckBox" />
+        <attribute name="Image Rect" value="256 384 384 512" />
+        <attribute name="Checked Image Offset" value="128 0" />
+        <attribute name="Min Size" value="50 50" />
+        <attribute name="Max Size" value="50 50" />
+        <attribute name="Is Checked" value="true" />
+        <attribute name="Border" value="4 4 4 4" />
+    </element>
+    <element type="MapCheckBoxText">
+        <attribute name="Priority" value="3" />
+        <attribute name="Focus Mode" value="NotFocusable" />
+        <attribute name="Text Alignment" value="Left" />
+        <attribute name="Name" value="MapCheckBoxText" />
+        <attribute name="Font" value="Font;Fonts/Roboto-Medium.ttf" />
     </element>
 </elements>
