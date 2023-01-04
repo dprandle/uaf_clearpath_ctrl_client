@@ -226,6 +226,7 @@ struct node_transform
     packet_header header{"TFORM_PCKT_ID"};
     char parent_name[NODE_NAME_SIZE];
     char name[NODE_NAME_SIZE];
+    i8 conn_count;
     dvec3 pos;
     dquat orientation;
 };
@@ -250,6 +251,7 @@ pup_func(node_transform)
     pup_member(header);
     pup_member(parent_name);
     pup_member(name);
+    pup_member(conn_count);
     pup_member(pos);
     pup_member(orientation);
 }
@@ -346,6 +348,8 @@ struct net_rx_buffer
 struct net_connection
 {
     int socket_handle{0};
+    i8 connection_count{0};
+
     net_rx_buffer *rx_buf{};
     reusable_packets pckts{};
     bool can_control{true};
@@ -360,6 +364,7 @@ struct net_connection
     ss_signal<const current_goal_status &> goal_status_updated;
     ss_signal<const text_block &> param_set_response_received;
     ss_signal<const text_block &> param_get_response_received;
+    ss_signal<i8> connection_count_change;
 };
 
 void net_connect(net_connection *conn, const char *ip, int port, int max_timeout_ms = -1);

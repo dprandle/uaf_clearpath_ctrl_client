@@ -1,7 +1,9 @@
 #include <Urho3D/Core/CoreEvents.h>
 #include <Urho3D/UI/UI.h>
 #include <Urho3D/UI/ListView.h>
+#include <Urho3D/UI/ScrollBar.h>
 #include <Urho3D/UI/Button.h>
+#include <Urho3D/UI/CheckBox.h>
 #include <Urho3D/UI/Text.h>
 #include <Urho3D/UI/View3D.h>
 
@@ -87,12 +89,12 @@ intern void setup_accept_params_button(map_panel *mp, const ui_info &ui_inf)
     mp->accept_inp.get_btn_text = mp->accept_inp.get_btn->CreateChild<urho::Text>();
     mp->accept_inp.get_btn_text->SetStyle("GetParamsBtnText", ui_inf.style);
 
-    vec2 offset = vec2{270 * 2, 60} * ui_inf.dev_pixel_ratio_inv * UI_ADDITIONAL_BTN_SCALING;
+    vec2 offset = vec2{270 * 2, 80} * ui_inf.dev_pixel_ratio_inv * UI_ADDITIONAL_BTN_SCALING;
     ivec2 ioffset = ivec2(offset.x_, offset.y_);
     mp->accept_inp.widget->SetMaxOffset(ioffset);
 
-    double button_ratio = 60.0f / (float)mp->view->GetHeight();
-    mp->text_disp.apanel.anchor_set_point = 0.235 - button_ratio;
+    double button_ratio = 80.0f / (float)mp->view->GetHeight();
+    mp->text_disp.apanel.anchor_set_point = 0.20 - button_ratio;
 
     mp->accept_inp.send_btn_text->SetFontSize(24 * ui_inf.dev_pixel_ratio_inv);
     mp->accept_inp.get_btn_text->SetFontSize(24 * ui_inf.dev_pixel_ratio_inv);
@@ -106,14 +108,11 @@ intern void show_received_text(map_panel *mp, const text_block &tb, const ui_inf
 
     auto txt_elem = new urho::Text(mp->view->GetContext());
     txt_elem->SetStyle("AnimatedPanelText", ui_inf.style);
-    txt_elem->SetFontSize(20 * ui_inf.dev_pixel_ratio_inv);
+    txt_elem->SetFontSize(26 * ui_inf.dev_pixel_ratio_inv);
     urho::String str("> ");
     str += urho::String(txt);
     txt_elem->SetText(str);
     mp->text_disp.apanel.sview->AddItem(txt_elem);
-    mp->text_disp.apanel.sview->SetViewPosition(ivec2(0, -1));
-
-    ilog("Recieved text: %s", txt);
 
     if (mp->text_disp.apanel.anim_state != PANEL_ANIM_INACTIVE)
         return;
@@ -136,7 +135,6 @@ intern void handle_received_get_params_response(map_panel *mp, const text_block 
     txt[tb.txt_size] = '\0';
     ilog("Recieved text: %s", txt);
     mp->accept_inp.get_btn_text->SetText("Get Params");
-
     mp->accept_inp.widget->SetVisible(true);
 #if defined(__EMSCRIPTEN__)
     set_input_text(txt);
@@ -195,7 +193,7 @@ void param_handle_mouse_released(map_panel *mp, urho::UIElement *elem, net_conne
     else if (elem == mp->accept_inp.get_btn)
     {
         command_get_params cgp{};
-        mp->accept_inp.get_btn_text->SetText("Loading...");
+        mp->accept_inp.get_btn_text->SetText("Getting...");
         net_tx(*conn, cgp);
     }
     else if (elem == mp->accept_inp.send_btn || elem == mp->accept_inp.send_btn_text)
@@ -204,8 +202,6 @@ void param_handle_mouse_released(map_panel *mp, urho::UIElement *elem, net_conne
 
         // Get input from box and send it
 #if defined(__EMSCRIPTEN__)
-        toggle_input_visibility(mp->view->GetHeight() * 0.03, mp->view->GetWidth() * 0.08);
-
         char *txt = get_input_text();
         param_pckt.blob_size = strlen(txt);
         if (command_set_params::MAX_STR_SIZE < param_pckt.blob_size)
@@ -215,6 +211,6 @@ void param_handle_mouse_released(map_panel *mp, urho::UIElement *elem, net_conne
         free(txt);
         net_tx(*conn, param_pckt);
 #endif
-        mp->accept_inp.widget->SetVisible(!mp->accept_inp.widget->IsVisible());
+        mp->toolbar.set_params->SetChecked(false);
     }
 }

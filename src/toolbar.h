@@ -18,6 +18,7 @@ struct toolbar_widget
     urho::CheckBox *set_params{};
     urho::CheckBox *enable_follow{};
     urho::CheckBox *enable_measure{};
+    urho::Button *delete_measure{};
 };
 
 struct map_panel;

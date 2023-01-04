@@ -581,6 +581,13 @@ intern void resize_path_length_text(map_panel *mp, const ui_info &ui_inf)
     mp->mpoints.path_len_text->SetMinAnchor(0.01, y_anchor + y_norm_offset);
 }
 
+intern void setup_conn_text(map_panel *mp, const ui_info &ui_inf)
+{
+    mp->conn_text = mp->view->CreateChild<urho::Text>();
+    mp->conn_text->SetStyle("ConnText", ui_inf.style);
+    mp->conn_text->SetFontSize(40 * ui_inf.dev_pixel_ratio_inv);
+}
+
 intern void setup_path_length_text(map_panel *mp, const ui_info &ui_inf)
 {
     mp->mpoints.path_len_text = mp->view->CreateChild<urho::Text>();
@@ -621,6 +628,12 @@ intern void setup_event_handlers(map_panel *mp, const ui_info &ui_inf, net_conne
     });
 }
 
+intern void update_conn_count_text(map_panel *mp, i8 new_count)
+{
+    urho::String str;
+    str.AppendWithFormat("Connections: %d", new_count);
+    mp->conn_text->SetText(str);
+}
 
 void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, input_data *inp)
 {
@@ -635,6 +648,7 @@ void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, 
     param_init(mp, conn, ui_inf);
     cam_init(mp, inp, ui_inf);
     map_toggle_views_init(mp, ui_inf);
+    setup_conn_text(mp, ui_inf);
     setup_path_length_text(mp, ui_inf);
 
     ss_connect(&mp->router, conn->scan_received, [mp](const sicklms_laser_scan &pckt) { update_scene_from_scan(mp, pckt); });
@@ -645,9 +659,12 @@ void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, 
     ss_connect(&mp->router, conn->glob_nav_path_updated, [mp](const nav_path &pckt) { update_glob_nav_path(mp, pckt); });
     ss_connect(&mp->router, conn->loc_nav_path_updated, [mp](const nav_path &pckt) { update_loc_nav_path(mp, pckt); });
     ss_connect(&mp->router, conn->goal_status_updated, [mp](const current_goal_status &pckt) { update_cur_goal_status(mp, pckt); });
+    ss_connect(&mp->router, conn->connection_count_change, [mp](i8 nc) { update_conn_count_text(mp, nc); });
 
     setup_input_actions(mp, ui_inf, conn, inp);
     setup_event_handlers(mp, ui_inf, conn);
+
+    mp->mpoints.entry_count = 0;
 }
 
 void map_clear_occ_grid(occ_grid_map *ocg)

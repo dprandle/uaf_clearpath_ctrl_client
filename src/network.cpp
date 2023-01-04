@@ -428,6 +428,11 @@ intern void handle_goal_status_packet(binary_fixed_buffer_archive<net_rx_buffer:
 intern void handle_tform_packet(binary_fixed_buffer_archive<net_rx_buffer::MAX_PACKET_SIZE> &read_buf, net_connection *conn)
 {
     pack_unpack(read_buf, *conn->pckts.ntf, {});
+    if (conn->pckts.ntf->conn_count != conn->connection_count)
+    {
+        conn->connection_count = conn->pckts.ntf->conn_count;
+        conn->connection_count_change(0, i8(conn->connection_count));
+    }
     conn->transform_updated(0, *conn->pckts.ntf);
 }
 

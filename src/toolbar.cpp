@@ -43,6 +43,7 @@ void toolbar_init(map_panel *mp, const ui_info &ui_inf, bool can_control)
     }
 
     add_toolbar_button(&mp->toolbar.enable_measure, mp->toolbar.widget, uctxt, "EnableMeasure", ui_inf);
+    add_toolbar_button(&mp->toolbar.delete_measure, mp->toolbar.widget, uctxt, "DeleteMeasure", ui_inf);
 
     ivec2 tb_offset = {mp->toolbar.enable_follow->GetMaxOffset().x_, 0};
     float anchor_spacing = 1.0f / mp->toolbar.widget->GetNumChildren();
@@ -96,7 +97,6 @@ void toolbar_handle_toggle(map_panel *mp, urho::UIElement *elem)
         if (mp->toolbar.enable_measure->IsChecked())
         {
             mp->toolbar.add_goal->SetChecked(false);
-            mp->mpoints.entry_count = 0;
         }
     }
 }
@@ -125,5 +125,12 @@ void toolbar_handle_mouse_released(map_panel *mp, urho::UIElement *elem, net_con
         }
         command_clear_maps cm{};
         net_tx(*conn, cm);
+    }
+    else if (elem == mp->toolbar.delete_measure)
+    {
+        if (mp->mpoints.entry_count > 2)
+            --mp->mpoints.entry_count;
+        else
+            mp->mpoints.entry_count = 0;
     }
 }

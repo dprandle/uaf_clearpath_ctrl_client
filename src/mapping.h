@@ -131,6 +131,7 @@ struct map_panel
 
     urho::Node * base_link {};
     urho::Node * odom {};
+    urho::Text * conn_text {};
     ss_router router;
 
     std::unordered_map<std::string, urho::Node*> node_lut;
