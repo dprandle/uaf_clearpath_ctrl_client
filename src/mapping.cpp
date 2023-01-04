@@ -458,7 +458,7 @@ intern void draw_measure_path(const measure_points &mp, urho::DebugRenderer *dbg
         int inches = int(path_len*12.0);
 
         urho::String text;
-        text.AppendWithFormat("Path: %d'%d\"", feet, inches);
+        text.AppendWithFormat("%d'%d\"", feet, inches);
         mp.path_len_text->SetText(text);
     }
 }
