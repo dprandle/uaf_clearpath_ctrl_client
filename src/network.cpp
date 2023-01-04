@@ -75,6 +75,15 @@ EM_JS(char*, get_browser_url, (), {
     return str;
 });
 
+EM_JS(char*, get_browser_url_path, (), {
+    let path = window.location.pathname;
+    let length = lengthBytesUTF8(path) + 1;
+    let str = _malloc(length);
+    stringToUTF8(path, str, length);
+    console.log(`Should be returning  ${length} bytes for ${path}`);
+    return str;
+});
+
 /*
 #define EMSCRIPTEN_RESULT_NOT_SUPPORTED       -1
 #define EMSCRIPTEN_RESULT_FAILED_NOT_DEFERRED -2
@@ -185,6 +194,11 @@ intern void em_net_connect(net_connection *conn)
 
     char *url = get_browser_url();
     strncat(SERVER_URL, url, 64);
+    free(url);
+
+    char *url_path = get_browser_url_path();
+    conn->can_control = strncmp(url_path, "/control", 8) == 0;
+    ilog("URL PATH: %s", url_path);
     free(url);
 
     ilog("URL: %s", SERVER_URL);

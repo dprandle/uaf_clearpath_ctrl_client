@@ -62,6 +62,7 @@ using bbox = urho::BoundingBox;
 using quat = urho::Quaternion;
 
 inline constexpr float FLOAT_EPS = 0.001;
+inline constexpr float METERS_TO_FEET = 3.28084f;
 
 template<class T>
 T degrees(const T & val_)

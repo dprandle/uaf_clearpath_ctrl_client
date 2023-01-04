@@ -130,15 +130,15 @@ bool jctrl_init(jackal_control_ctxt *ctxt, const urho::StringVector & args)
     ctxt->inp.dispatch.inv_pixel_ratio = ctxt->ui_inf.dev_pixel_ratio_inv;
     ctxt->inp.dispatch.context_stack.push_back(&ctxt->inp.map);
 
+    net_connect(&ctxt->conn, ip.CString(), port);
+
     joystick_panel_init(&ctxt->js_panel, ctxt->ui_inf, &ctxt->conn);
     
     map_panel_init(&ctxt->mpanel, ctxt->ui_inf, &ctxt->conn, &ctxt->inp);
 
     ss_connect(&ctxt->router, ctxt->js_panel.in_use, [ctxt](bool in_use) {
         ctxt->mpanel.js_enabled = in_use;
-    });
-    
-    net_connect(&ctxt->conn, ip.CString(), port);
+    });    
 
     ilog("Device pixel ratio inverse: %f", ctxt->ui_inf.dev_pixel_ratio_inv);
     return true;

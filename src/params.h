@@ -25,4 +25,4 @@ struct net_connection;
 void param_init(map_panel * mp, net_connection * conn, const ui_info &ui_inf);
 void param_term(map_panel * mp);
 void param_toggle_input_visible(map_panel * mp);
-void param_handle_click_end(map_panel *mp, urho::UIElement * elem, net_connection *conn);
+void param_handle_mouse_released(map_panel *mp, urho::UIElement * elem, net_connection *conn);

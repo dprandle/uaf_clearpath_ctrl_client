@@ -135,6 +135,7 @@ intern void handle_received_get_params_response(map_panel *mp, const text_block 
     strncpy(txt, tb.text, tb.txt_size);
     txt[tb.txt_size] = '\0';
     ilog("Recieved text: %s", txt);
+    mp->accept_inp.get_btn_text->SetText("Get Params");
 
     mp->accept_inp.widget->SetVisible(true);
 #if defined(__EMSCRIPTEN__)
@@ -185,7 +186,7 @@ void param_toggle_input_visible(map_panel *mp)
     mp->accept_inp.widget->SetVisible(!mp->accept_inp.widget->IsVisible());
 }
 
-void param_handle_click_end(map_panel *mp, urho::UIElement *elem, net_connection *conn)
+void param_handle_mouse_released(map_panel *mp, urho::UIElement *elem, net_connection *conn)
 {
     if (elem == mp->text_disp.apanel.hide_show_panel)
     {
@@ -194,6 +195,7 @@ void param_handle_click_end(map_panel *mp, urho::UIElement *elem, net_connection
     else if (elem == mp->accept_inp.get_btn)
     {
         command_get_params cgp{};
+        mp->accept_inp.get_btn_text->SetText("Loading...");
         net_tx(*conn, cgp);
     }
     else if (elem == mp->accept_inp.send_btn || elem == mp->accept_inp.send_btn_text)

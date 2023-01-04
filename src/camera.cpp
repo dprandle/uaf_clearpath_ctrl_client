@@ -3,8 +3,10 @@
 #include <Urho3D/UI/UI.h>
 #include <Urho3D/UI/View3D.h>
 #include <Urho3D/UI/Button.h>
+#include <Urho3D/UI/CheckBox.h>
 #include <Urho3D/UI/UIEvents.h>
 #include "Urho3D/Scene/Node.h"
+#include "Urho3D/Scene/Scene.h"
 
 #include "camera.h"
 #include "input.h"
@@ -16,15 +18,17 @@ intern const float UI_ADDITIONAL_CAM_SCALING = 0.75f;
 intern void setup_camera_controls(map_panel *mp, urho::Node *cam_node, input_data *inp)
 {
     auto on_mouse_tilt = [cam_node, mp](const itrigger_event &tevent) {
-        if (!mp->toolbar.add_goal->IsEnabled() || mp->js_enabled || (mp->view != tevent.vp.element_under_mouse && tevent.vp.element_under_mouse->GetPriority() > 2))
+        if (mp->toolbar.enable_measure->IsChecked() || (mp->toolbar.add_goal && mp->toolbar.add_goal->IsChecked()) || mp->js_enabled || (mp->view != tevent.vp.element_under_mouse && tevent.vp.element_under_mouse->GetPriority() > 2))
+            return;
+
+        if (tevent.vp.vp_norm_mdelta.x_ > 0.1 || tevent.vp.vp_norm_mdelta.y_ > 0.1)
             return;
 
         auto rot_node = cam_node;
         auto parent = cam_node->GetParent();
-        if (parent)
+        if (parent != mp->view->GetScene())
             rot_node = parent;
-        if (tevent.vp.vp_norm_mdelta.x_ > 0.1 || tevent.vp.vp_norm_mdelta.y_ > 0.1)
-            return;
+        
         rot_node->Rotate(quat(tevent.vp.vp_norm_mdelta.y_ * 100.0f, {1, 0, 0}));
         rot_node->Rotate(quat(tevent.vp.vp_norm_mdelta.x_ * 100.0f, {0, 0, -1}), urho::TransformSpace::World);
     };
@@ -113,9 +117,9 @@ intern void handle_press_event(map_panel *mp, urho::UIElement *elem)
     auto trans = elem->GetVar("md").GetInt();
 
     if (elem == mp->cam_cwidget.cam_zoom_widget.zoom_in)
-        mp->cam_cwidget.cam_zoom_widget.loc_trans = mp->view->GetCameraNode()->GetDirection();
+        mp->cam_cwidget.cam_zoom_widget.world_trans = mp->view->GetCameraNode()->GetWorldDirection();
     else if (elem == mp->cam_cwidget.cam_zoom_widget.zoom_out)
-        mp->cam_cwidget.cam_zoom_widget.loc_trans = mp->view->GetCameraNode()->GetDirection() * -1;
+        mp->cam_cwidget.cam_zoom_widget.world_trans = mp->view->GetCameraNode()->GetWorldDirection() * -1;
     else if (trans == 0)
         return;
 
@@ -144,15 +148,15 @@ intern void cam_run_frame(map_panel *mp, float dt)
         mp->view->GetCameraNode()->Translate(mp->cam_cwidget.cam_move_widget.world_trans * dt * 10, Urho3D::TransformSpace::World);
     }
 
-    if (mp->cam_cwidget.cam_zoom_widget.loc_trans != vec3::ZERO)
+    if (mp->cam_cwidget.cam_zoom_widget.world_trans != vec3::ZERO)
     {
-        mp->view->GetCameraNode()->Translate(mp->cam_cwidget.cam_zoom_widget.loc_trans * dt * 20);
+        mp->view->GetCameraNode()->Translate(mp->cam_cwidget.cam_zoom_widget.world_trans * dt * 20, Urho3D::TransformSpace::World);
     }
 }
 
-void cam_handle_click_end(map_panel *mp, urho::UIElement * elem)
+void cam_handle_mouse_released(map_panel *mp, urho::UIElement * elem)
 {
-    mp->cam_cwidget.cam_zoom_widget.loc_trans = {};
+    mp->cam_cwidget.cam_zoom_widget.world_trans = {};
     mp->cam_cwidget.cam_move_widget.world_trans = {};
 }
 

@@ -16,9 +16,9 @@ intern void run_frame(map_panel *mp, float dt, const ui_info &ui_inf)
     animated_panel_run_frame(&mp->views_panel.apanel, dt, ui_inf, "ViewToggle");
 }
 
-intern vec2 get_required_panel_dims(map_toggle_views_panel * vp)
+intern vec2 get_required_panel_dims(map_toggle_views_panel *vp)
 {
-    vec2 ret {};
+    vec2 ret{};
     for (int i = 0; i < vp->elems.size(); ++i)
     {
         auto sz = vp->elems[i].widget->GetSize();
@@ -29,17 +29,25 @@ intern vec2 get_required_panel_dims(map_toggle_views_panel * vp)
     return ret;
 }
 
-intern check_box_text_element create_cbox_item(urho::ListView * lview, urho::Node * node, nav_path_view * npview, const urho::String &text, urho::Context * uctxt, const ui_info & ui_inf)
+intern check_box_text_element
+create_cbox_item(urho::ListView *lview, urho::Node *node, nav_path_view *npview, const urho::String &text, urho::Context *uctxt, const ui_info &ui_inf)
 {
     check_box_text_element ret;
     ret.widget = new urho::UIElement(uctxt);
-    ret.widget->SetStyle("MapCheckBoxRoot",ui_inf.style);
+    ret.widget->SetStyle("MapCheckBoxRoot", ui_inf.style);
+    vec4 r = vec4{20.0f, 10.0f, 20.0f, 10.0f}*ui_inf.dev_pixel_ratio_inv;
+    ret.widget->SetLayoutBorder({(int)r.x_, (int)r.y_, (int)r.z_, (int)r.w_});
+    ret.widget->SetLayoutSpacing(24.0f*ui_inf.dev_pixel_ratio_inv);
 
     ret.cb = ret.widget->CreateChild<urho::CheckBox>();
-    ret.cb->SetStyle("MapCheckBox",ui_inf.style);
+    ret.cb->SetStyle("MapCheckBox", ui_inf.style);
+    auto sz = vec2{64, 64}*ui_inf.dev_pixel_ratio_inv;
+    ivec2 szi = {(int)sz.x_, (int)sz.y_};
+    ret.cb->SetMinSize(szi);
+    ret.cb->SetMaxSize(szi);
 
     ret.txt = ret.widget->CreateChild<urho::Text>();
-    ret.txt->SetStyle("MapCheckBoxText",ui_inf.style);
+    ret.txt->SetStyle("MapCheckBoxText", ui_inf.style);
     ret.txt->SetFontSize(32 * ui_inf.dev_pixel_ratio_inv);
     ret.txt->SetText(text);
 
@@ -49,7 +57,7 @@ intern check_box_text_element create_cbox_item(urho::ListView * lview, urho::Nod
     return ret;
 }
 
-intern void setup_view_checkboxes(map_panel * mp, const ui_info & ui_inf)
+intern void setup_view_checkboxes(map_panel *mp, const ui_info &ui_inf)
 {
     static ivec2 cb_size = {64, 64};
     auto vp = &mp->views_panel;
@@ -73,8 +81,7 @@ intern void setup_view_checkboxes(map_panel * mp, const ui_info & ui_inf)
     vp->apanel.hide_show_btn_bg->SetMaxOffset(offset);
     vp->apanel.anim_dir = PANEL_ANIM_HORIZONTAL;
 
-    vp->apanel.anchor_set_point = 0.6f;
-    vp->apanel.anchor_rest_point = vp->apanel.widget->GetMaxAnchor().x_;
+    vp->apanel.anchor_rest_point = 1.0f;
 
     vp->elems.emplace_back(create_cbox_item(vp->apanel.sview, mp->map.node, nullptr, "Map", uctxt, ui_inf));
 
@@ -93,15 +100,20 @@ intern void setup_view_checkboxes(map_panel * mp, const ui_info & ui_inf)
     rect = vp->elems.back().widget->GetLayoutBorder();
     rect.bottom_ *= 2;
     vp->elems.back().widget->SetLayoutBorder(rect);
+    map_toggle_views_handle_resize(mp, ui_inf);
+}
 
+void map_toggle_views_handle_resize(map_panel *mp, const ui_info &ui_inf)
+{
+    auto vp = &mp->views_panel;
     vec2 needed_panel_size = get_required_panel_dims(vp);
     auto screen_dims = mp->view->GetSize();
-    vec2 normalized_size = needed_panel_size / vec2{screen_dims.x_, screen_dims.y_};
+    vec2 normalized_size = needed_panel_size / (vec2{screen_dims.x_, screen_dims.y_});
     vp->apanel.anchor_set_point = 1.0 - normalized_size.x_;
     vp->apanel.widget->SetMaxAnchor(1.0f, vp->apanel.widget->GetMinAnchor().y_ + normalized_size.y_);
 }
 
-void map_toggle_views_init(map_panel * mp, const ui_info & ui_inf)
+void map_toggle_views_init(map_panel *mp, const ui_info &ui_inf)
 {
     ilog("Initializing map toggle views");
 
@@ -113,29 +125,30 @@ void map_toggle_views_init(map_panel * mp, const ui_info & ui_inf)
     });
 }
 
-void map_toggle_views_term(map_panel * mp)
+void map_toggle_views_term(map_panel *mp)
 {
     ilog("Terminating map toggle views");
 }
 
-void map_toggle_views_handle_click_end(map_panel *mp, urho::UIElement * elem)
+void map_toggle_views_handle_toggle(map_panel *mp, urho::UIElement *elem)
+{
+    for (int i = 0; i < mp->views_panel.elems.size(); ++i)
+    {
+        auto cur_elem = &mp->views_panel.elems[i];
+        if (elem == cur_elem->cb)
+        {
+            if (cur_elem->node)
+                cur_elem->node->SetEnabled(cur_elem->cb->IsChecked());
+            else if (cur_elem->npview)
+                cur_elem->npview->enabled = cur_elem->cb->IsChecked();
+        }
+    }
+}
+
+void map_toggle_views_handle_mouse_released(map_panel *mp, urho::UIElement *elem)
 {
     if (elem == mp->views_panel.apanel.hide_show_panel)
     {
         animated_panel_hide_show_pressed(&mp->views_panel.apanel);
-    }
-    else
-    {
-        for (int i = 0; i < mp->views_panel.elems.size(); ++i)
-        {
-            auto cur_elem = &mp->views_panel.elems[i];
-            if (elem == cur_elem->cb)
-            {
-                if (cur_elem->node)
-                    cur_elem->node->SetEnabled(cur_elem->cb->IsChecked());
-                else if (cur_elem->npview)
-                    cur_elem->npview->enabled = cur_elem->cb->IsChecked();
-            }
-        }
     }
 }

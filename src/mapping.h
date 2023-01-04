@@ -95,6 +95,16 @@ struct nav_path_view
     vec3 path_entries[MAX_LINE_ENTRIES];
 };
 
+struct measure_points
+{
+    static constexpr sizet MAX_ENTRIES = 1000;
+    vec3 entries[MAX_ENTRIES];
+    float marker_rad {0.02f};
+    urho::Color color{0,0,1.0,1};
+    i16 entry_count {0};
+    urho::Text * path_len_text;
+};
+
 struct map_panel
 {
     bool js_enabled {false};
@@ -115,6 +125,7 @@ struct map_panel
 
     nav_path_view glob_npview{};
     nav_path_view loc_npview{};
+    measure_points mpoints{};
     
     nav_goals goals{};
 

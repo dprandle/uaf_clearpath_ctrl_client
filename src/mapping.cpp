@@ -11,6 +11,8 @@
 #include <Urho3D/Graphics/BillboardSet.h>
 #include <Urho3D/UI/UI.h>
 #include <Urho3D/UI/Button.h>
+#include <Urho3D/UI/Text.h>
+#include <Urho3D/UI/CheckBox.h>
 #include <Urho3D/UI/UIEvents.h>
 #include <Urho3D/UI/View3D.h>
 #include <Urho3D/Resource/ResourceCache.h>
@@ -39,7 +41,6 @@ const std::string REAR_MOUNT{"rear_mount"};
 const std::string FRONT_MOUNT{"front_mount"};
 const std::string FRONT_LASER_MOUNT{"front_laser_mount"};
 const std::string FRONT_LASER{"front_laser"};
-
 
 intern const ogmap_colors map_colors{.undiscovered{0, 0.7, 0.7, 1}};
 
@@ -199,7 +200,7 @@ intern void setup_scene(map_panel *mp, urho::ResourceCache *cache, urho::Scene *
     // Follow camera for the jackal
     auto jackal_follow_cam = mp->base_link->CreateChild("jackal_follow_cam");
     mp->view->GetCameraNode()->SetParent(jackal_follow_cam);
-    jackal_follow_cam->Rotate({90, {0, 0, -1}});
+    jackal_follow_cam->SetRotation({90, {0, 0, -1}});
 
     // Child of base link
     auto chassis_link = mp->base_link->CreateChild(CHASSIS_LINK.c_str());
@@ -427,22 +428,38 @@ intern float animate_marker_circles(goal_marker_info *gm, float dt)
     return rad;
 }
 
-intern void draw_nav_paths(map_panel *mp, urho::DebugRenderer *dbg)
+intern void draw_nav_path(const nav_path_view &np, urho::DebugRenderer *dbg)
 {
-    if (mp->glob_npview.enabled)
+    if (np.enabled)
     {
-        for (int i = 1; i < mp->glob_npview.entry_count; ++i)
-        {
-            dbg->AddLine(mp->glob_npview.path_entries[i - 1], mp->glob_npview.path_entries[i], mp->glob_npview.color);
-        }
+        for (int i = 1; i < np.entry_count; ++i)
+            dbg->AddLine(np.path_entries[i - 1], np.path_entries[i], np.color);
     }
+}
 
-    if (mp->loc_npview.enabled)
+intern void draw_measure_path(const measure_points &mp, urho::DebugRenderer *dbg)
+{
+    float path_len = 0.0f;
+    for (int i = 0; i < mp.entry_count; ++i)
     {
-        for (int i = 1; i < mp->loc_npview.entry_count; ++i)
+        if (i > 0)
         {
-            dbg->AddLine(mp->loc_npview.path_entries[i - 1], mp->loc_npview.path_entries[i], mp->loc_npview.color);
+            dbg->AddLine(mp.entries[i - 1], mp.entries[i], mp.color);
+            path_len += (mp.entries[i - 1]- mp.entries[i]).Length();
         }
+        dbg->AddCircle(mp.entries[i], {0,0,-1}, mp.marker_rad, mp.color);
+    }
+    mp.path_len_text->SetVisible(path_len > FLOAT_EPS);
+    if (path_len > FLOAT_EPS)
+    {
+        path_len *= METERS_TO_FEET;
+        int feet = int(path_len);
+        path_len -= feet;
+        int inches = int(path_len*12.0);
+
+        urho::String text;
+        text.AppendWithFormat("Path: %d'%d\"", feet, inches);
+        mp.path_len_text->SetText(text);
     }
 }
 
@@ -500,19 +517,20 @@ intern void map_panel_run_frame(map_panel *mp, float dt, net_connection *conn)
     auto dbg = mp->view->GetScene()->GetComponent<urho::DebugRenderer>();
     mark_transforms_for_update_if_needed(mp, dt);
     update_and_draw_nav_goals(mp, dt, dbg, conn);
-    draw_nav_paths(mp, dbg);
+    draw_nav_path(mp->glob_npview, dbg);
+    draw_nav_path(mp->loc_npview, dbg);
+    draw_measure_path(mp->mpoints, dbg);
 }
 
 intern void setup_input_actions(map_panel *mp, const ui_info &ui_inf, net_connection *conn, input_data *inp)
 {
     auto cam_node = mp->view->GetCameraNode();
     auto on_click = [cam_node, mp](const itrigger_event &tevent) {
-        if (mp->toolbar.add_goal->IsEnabled() || mp->js_enabled || (mp->view != tevent.vp.element_under_mouse && tevent.vp.element_under_mouse->GetPriority() > 2))
+        if (mp->js_enabled || (mp->view != tevent.vp.element_under_mouse && tevent.vp.element_under_mouse->GetPriority() > 2))
             return;
 
-        auto r = mp->toolbar.add_goal->GetImageRect() + irect{-128, 0, -128, 0};
-        mp->toolbar.add_goal->SetImageRect(r);
-        mp->toolbar.add_goal->SetEnabled(true);
+        if ((mp->toolbar.add_goal && !mp->toolbar.add_goal->IsChecked()) && !mp->toolbar.enable_measure->IsChecked())
+            return;
 
         auto camc = cam_node->GetComponent<urho::Camera>();
 
@@ -523,8 +541,19 @@ intern void setup_input_actions(map_panel *mp, const ui_info &ui_inf, net_connec
         if (dist < 1000)
         {
             auto pos = scrn_ray.origin_ + scrn_ray.direction_ * dist;
+            pos.z_ -= 0.05f; // No z fighting!
+
             // Place at the front
-            mp->goals.queued_goals.insert(mp->goals.queued_goals.begin(), pos);
+            if (mp->toolbar.add_goal && mp->toolbar.add_goal->IsChecked())
+            {
+                mp->goals.queued_goals.insert(mp->goals.queued_goals.begin(), pos);
+                mp->toolbar.add_goal->SetChecked(false);
+            }
+            else if (mp->toolbar.enable_measure->IsChecked())
+            {
+                mp->mpoints.entries[mp->mpoints.entry_count] = pos;
+                ++mp->mpoints.entry_count;
+            }
         }
     };
 
@@ -543,6 +572,23 @@ intern void setup_input_actions(map_panel *mp, const ui_info &ui_inf, net_connec
     inp->dispatch.vp_stack.emplace_back(vp);
 }
 
+intern void resize_path_length_text(map_panel *mp, const ui_info &ui_inf)
+{    
+    float y_anchor = mp->toolbar.widget->GetMinAnchor().y_;
+    float tb_height = mp->toolbar.widget->GetHeight();
+    float view_height = mp->view->GetHeight();
+    float y_norm_offset = tb_height / view_height;
+    mp->mpoints.path_len_text->SetMinAnchor(0.01, y_anchor + y_norm_offset);
+}
+
+intern void setup_path_length_text(map_panel *mp, const ui_info &ui_inf)
+{
+    mp->mpoints.path_len_text = mp->view->CreateChild<urho::Text>();
+    mp->mpoints.path_len_text->SetStyle("MeasurePathText", ui_inf.style);
+    mp->mpoints.path_len_text->SetFontSize(40 * ui_inf.dev_pixel_ratio_inv);
+    resize_path_length_text(mp, ui_inf);
+}
+
 intern void setup_event_handlers(map_panel *mp, const ui_info &ui_inf, net_connection *conn)
 {
     mp->view->SubscribeToEvent(urho::E_UPDATE, [mp, conn](urho::StringHash type, urho::VariantMap &ev_data) {
@@ -550,14 +596,31 @@ intern void setup_event_handlers(map_panel *mp, const ui_info &ui_inf, net_conne
         map_panel_run_frame(mp, dt, conn);
     });
 
-    mp->toolbar.widget->SubscribeToEvent(urho::E_CLICKEND, [mp, conn](urho::StringHash type, urho::VariantMap &ev_data) {
-        auto elem = (urho::UIElement *)ev_data[urho::ClickEnd::P_ELEMENT].GetPtr();
-        cam_handle_click_end(mp, elem);
-        param_handle_click_end(mp, elem, conn);
-        toolbar_handle_click_end(mp, elem, conn);
-        map_toggle_views_handle_click_end(mp, elem);
+    mp->view->SubscribeToEvent(urho::E_CLICKEND, [mp, conn](urho::StringHash type, urho::VariantMap &ev_data) {
+        auto elem = (urho::UIElement *)ev_data[urho::Pressed::P_ELEMENT].GetPtr();
+        cam_handle_mouse_released(mp, elem);
+        param_handle_mouse_released(mp, elem, conn);
+        toolbar_handle_mouse_released(mp, elem, conn);
+        map_toggle_views_handle_mouse_released(mp, elem);
+    });
+
+    mp->view->SubscribeToEvent(urho::E_RESIZED, [mp, ui_inf](urho::StringHash type, urho::VariantMap &ev_data) {
+        auto elem = (urho::UIElement *)ev_data[urho::Pressed::P_ELEMENT].GetPtr();
+        if (elem == mp->view)
+        {
+            resize_path_length_text(mp, ui_inf);
+            map_toggle_views_handle_resize(mp, ui_inf);
+            mp->map.rend_texture->SetData(mp->map.image);
+        }
+    });
+
+    mp->view->SubscribeToEvent(urho::E_TOGGLED, [mp, conn](urho::StringHash type, urho::VariantMap &ev_data) {
+        auto elem = (urho::UIElement *)ev_data[urho::Toggled::P_ELEMENT].GetPtr();
+        toolbar_handle_toggle(mp, elem);
+        map_toggle_views_handle_toggle(mp, elem);
     });
 }
+
 
 void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, input_data *inp)
 {
@@ -568,10 +631,11 @@ void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, 
     create_3dview(mp, cache, ui_inf.ui_sys->GetRoot(), uctxt);
     setup_scene(mp, cache, mp->view->GetScene(), uctxt);
 
-    toolbar_init(mp, ui_inf);
+    toolbar_init(mp, ui_inf, conn->can_control);
     param_init(mp, conn, ui_inf);
     cam_init(mp, inp, ui_inf);
     map_toggle_views_init(mp, ui_inf);
+    setup_path_length_text(mp, ui_inf);
 
     ss_connect(&mp->router, conn->scan_received, [mp](const sicklms_laser_scan &pckt) { update_scene_from_scan(mp, pckt); });
     ss_connect(&mp->router, conn->map_update_received, [mp](const occ_grid_update &pckt) { update_scene_map_from_occ_grid(&mp->map, pckt); });
@@ -581,7 +645,7 @@ void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, 
     ss_connect(&mp->router, conn->glob_nav_path_updated, [mp](const nav_path &pckt) { update_glob_nav_path(mp, pckt); });
     ss_connect(&mp->router, conn->loc_nav_path_updated, [mp](const nav_path &pckt) { update_loc_nav_path(mp, pckt); });
     ss_connect(&mp->router, conn->goal_status_updated, [mp](const current_goal_status &pckt) { update_cur_goal_status(mp, pckt); });
-    
+
     setup_input_actions(mp, ui_inf, conn, inp);
     setup_event_handlers(mp, ui_inf, conn);
 }

@@ -86,7 +86,7 @@ intern void setup_event_handlers(joystick_panel *jsp, const ui_info &ui_inf, net
     });
 }
 
-intern void create_joystick_ui(joystick_panel *jsp,const ui_info &ui_inf, urho::Context * uctxt)
+intern void create_joystick_ui(joystick_panel *jsp, const ui_info &ui_inf, urho::Context * uctxt)
 {
     jsp->frame = new urho::BorderImage(uctxt);
     jsp->outer_ring = new urho::BorderImage(uctxt);
@@ -114,9 +114,12 @@ void joystick_panel_init(joystick_panel *jsp, const ui_info &ui_inf, net_connect
 {
     auto uctxt = ui_inf.ui_sys->GetContext();
     ilog("Initializing joystick");
-
-    create_joystick_ui(jsp, ui_inf, uctxt);
-    setup_event_handlers(jsp, ui_inf, conn);
+    
+    if (conn->can_control)
+    {
+        create_joystick_ui(jsp, ui_inf, uctxt);
+        setup_event_handlers(jsp, ui_inf, conn);
+    }
 }
 
 void joystick_panel_term(joystick_panel *jsp)

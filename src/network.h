@@ -325,15 +325,15 @@ pup_func(current_goal_status)
 struct reusable_packets
 {
     // Packets for receiving
-    occ_grid_update *gu;
-    sicklms_laser_scan *scan;
-    node_transform *ntf;
-    nav_path *navp;
-    current_goal_status * cur_goal_stat;
-    text_block * txt;
+    occ_grid_update *gu{};
+    sicklms_laser_scan *scan{};
+    node_transform *ntf{};
+    nav_path *navp{};
+    current_goal_status * cur_goal_stat{};
+    text_block * txt{};
 
     // Packets for sending
-    command_set_params * cmdp;
+    command_set_params * cmdp{};
 };
 
 struct net_rx_buffer
@@ -348,6 +348,7 @@ struct net_connection
     int socket_handle{0};
     net_rx_buffer *rx_buf{};
     reusable_packets pckts{};
+    bool can_control{true};
 
     ss_signal<const sicklms_laser_scan &> scan_received;
     ss_signal<const occ_grid_update &> map_update_received;
