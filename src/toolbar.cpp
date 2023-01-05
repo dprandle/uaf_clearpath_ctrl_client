@@ -1,3 +1,6 @@
+#include <Urho3D/Core/Context.h>
+#include <Urho3D/Core/Timer.h>
+
 #include <Urho3D/UI/UI.h>
 #include <Urho3D/UI/Button.h>
 #include <Urho3D/UI/CheckBox.h>
@@ -65,8 +68,12 @@ void toolbar_term(map_panel *mp)
 
 void toolbar_handle_toggle(map_panel *mp, urho::UIElement *elem)
 {
+    auto ctxt = elem->GetContext();
+    auto time = ctxt->GetSubsystem<urho::Time>();
+
     if (elem == mp->toolbar.add_goal)
     {
+        mp->toolbar.last_frame_checked = time->GetFrameNumber();
         if (mp->toolbar.add_goal->IsChecked())
             mp->toolbar.enable_measure->SetChecked(false);
     }
@@ -94,6 +101,7 @@ void toolbar_handle_toggle(map_panel *mp, urho::UIElement *elem)
     }
     else if (elem == mp->toolbar.enable_measure)
     {
+        mp->toolbar.last_frame_checked = time->GetFrameNumber();
         if (mp->toolbar.enable_measure->IsChecked())
         {
             mp->toolbar.add_goal->SetChecked(false);
@@ -102,7 +110,7 @@ void toolbar_handle_toggle(map_panel *mp, urho::UIElement *elem)
 }
 
 void toolbar_handle_mouse_released(map_panel *mp, urho::UIElement *elem, net_connection *conn)
-{
+{    
     if (elem == mp->toolbar.cancel_goal)
     {
         if (!mp->toolbar.add_goal->IsEnabled())

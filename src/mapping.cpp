@@ -522,6 +522,7 @@ intern void map_panel_run_frame(map_panel *mp, float dt, net_connection *conn)
     draw_measure_path(mp->mpoints, dbg);
 }
 
+
 intern void setup_input_actions(map_panel *mp, const ui_info &ui_inf, net_connection *conn, input_data *inp)
 {
     auto cam_node = mp->view->GetCameraNode();
@@ -530,6 +531,12 @@ intern void setup_input_actions(map_panel *mp, const ui_info &ui_inf, net_connec
             return;
 
         if ((mp->toolbar.add_goal && !mp->toolbar.add_goal->IsChecked()) && !mp->toolbar.enable_measure->IsChecked())
+            return;
+
+        // Here is a hack for the phone to ignore the buggy press that happens on toggling a checkbox for the first time
+        auto ctxt = cam_node->GetContext();
+        auto time = ctxt->GetSubsystem<urho::Time>();
+        if (time->GetFrameNumber() == mp->toolbar.last_frame_checked)
             return;
 
         auto camc = cam_node->GetComponent<urho::Camera>();
@@ -542,6 +549,7 @@ intern void setup_input_actions(map_panel *mp, const ui_info &ui_inf, net_connec
         {
             auto pos = scrn_ray.origin_ + scrn_ray.direction_ * dist;
             pos.z_ -= 0.05f; // No z fighting!
+            dlog("CALLED with pos %f %f", pos.x_, pos.y_);
 
             // Place at the front
             if (mp->toolbar.add_goal && mp->toolbar.add_goal->IsChecked())
