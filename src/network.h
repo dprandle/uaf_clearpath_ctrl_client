@@ -13,6 +13,7 @@ inline const char *TFORM_PCKT_ID = "TFORM_PCKT_ID";
 inline const char *GLOB_NAVP_PCKT_ID = "GLOB_NAVP_PCKT_ID";
 inline const char *LOC_NAVP_PCKT_ID = "LOC_NAVP_PCKT_ID";
 inline const char *GOAL_STAT_PCKT_ID = "GOAL_STAT_PCKT_ID";
+inline const char *COMP_IMG_PCKT_ID = "COMP_IMG_PCKT_ID";
 inline const char *SET_PARAMS_RESP_CMD_PCKT_ID = "SET_PARAMS_RESP_CMD_PCKT_ID";
 inline const char *GET_PARAMS_RESP_CMD_PCKT_ID = "GET_PARAMS_RESP_CMD_PCKT_ID";
 
@@ -24,10 +25,9 @@ inline const char *SET_PARAMS_CMD_HEADER = "SET_PARAMS_CMD_PCKT_ID";
 inline const char *GET_PARAMS_CMD_HEADER = "GET_PARAMS_CMD_PCKT_ID";
 
 static constexpr int MAX_MAP_SIZE = 4000;
-
+static constexpr int MAX_IMAGE_SIZE = 1024;
 struct dvec3
 {
-    static constexpr int size = 24;
     double x{0.0};
     double y{0.0};
     double z{0.0};
@@ -42,7 +42,6 @@ pup_func(dvec3)
 
 struct dquat
 {
-    static constexpr int size = 32;
     double x{0.0};
     double y{0.0};
     double z{0.0};
@@ -231,6 +230,34 @@ struct node_transform
     dquat orientation;
 };
 
+struct compressed_image_meta
+{
+    u8 format; // This is really a placeholder in case the jackal uses a different format
+    u32 data_size;
+};
+
+pup_func(compressed_image_meta)
+{
+    pup_member(format);
+    pup_member(data_size);
+};
+
+struct compressed_image
+{
+    static constexpr int MAX_PIXEL_COUNT = MAX_IMAGE_SIZE * MAX_IMAGE_SIZE;
+    packet_header header{};
+    compressed_image_meta meta{};
+    u8 data[MAX_PIXEL_COUNT*2]; // max 2 bytes per pixel - if an image was basically uncompressable
+};
+
+pup_func(compressed_image)
+{
+    pup_member(header);
+    pup_member(meta);
+    pup_member_meta(data, pack_va_flags::FIXED_ARRAY_CUSTOM_SIZE, &val.meta.data_size);
+};
+
+
 struct text_block
 {
     static constexpr int MAX_TXT_SIZE = 30000;
@@ -258,7 +285,6 @@ pup_func(node_transform)
 
 struct occ_grid_meta
 {
-    static constexpr int size = 4 * 4 + dvec3::size + dquat::size;
     float resolution;
     u32 width;
     u32 height;
@@ -280,7 +306,6 @@ pup_func(occ_grid_meta)
 struct occ_grid_update
 {
     static constexpr int MAX_CHANGE_ELEMS = MAX_MAP_SIZE * MAX_MAP_SIZE;
-    static constexpr int size = packet_header::size + occ_grid_meta::size + MAX_CHANGE_ELEMS;
     packet_header header{};
     occ_grid_meta meta;
     u32 change_elems[MAX_CHANGE_ELEMS];
@@ -333,6 +358,7 @@ struct reusable_packets
     nav_path *navp{};
     current_goal_status * cur_goal_stat{};
     text_block * txt{};
+    compressed_image * img {};
 
     // Packets for sending
     command_set_params * cmdp{};
@@ -340,7 +366,7 @@ struct reusable_packets
 
 struct net_rx_buffer
 {
-    static constexpr int MAX_PACKET_SIZE = occ_grid_update::size + 1000;
+    static constexpr int MAX_PACKET_SIZE = occ_grid_update::MAX_CHANGE_ELEMS*4 + 1000;
     binary_fixed_buffer_archive<MAX_PACKET_SIZE> read_buf{PACK_DIR_IN};
     sizet available;
 };
@@ -364,6 +390,7 @@ struct net_connection
     ss_signal<const current_goal_status &> goal_status_updated;
     ss_signal<const text_block &> param_set_response_received;
     ss_signal<const text_block &> param_get_response_received;
+    ss_signal<const compressed_image &> image_update;
     ss_signal<i8> connection_count_change;
 };
 

@@ -12,50 +12,7 @@
 #include "logging.h"
 #include <poll.h>
 
-// #define SCAN_DEBUG
-// #define MAP_DEBUG
-// #define TFORM_DEBUG
 // #define PACKET_DEBUG
-
-#if defined(TFORM_DEBUG)
-#define tform_dlog dlog
-#define TFORM_PACK_LOG_ENABLE log_set_level(urho::LOG_TRACE);
-#define TFORM_PACK_LOG_DISABLE log_set_level(urho::LOG_DEBUG);
-#else
-#define tform_dlog(...)
-#define TFORM_PACK_LOG_ENABLE
-#define TFORM_PACK_LOG_DISABLE
-#endif
-
-#if defined(GLOB_CM_DEBUG)
-#define glob_cm_dlog dlog
-#define GLOB_CM_PACK_LOG_ENABLE log_set_level(urho::LOG_TRACE);
-#define GLOB_CM_PACK_LOG_DISABLE log_set_level(urho::LOG_DEBUG);
-#else
-#define glob_cm_dlog(...)
-#define GLOB_CM_PACK_LOG_ENABLE
-#define GLOB_CM_PACK_LOG_DISABLE
-#endif
-
-#if defined(MAP_DEBUG)
-#define map_dlog dlog
-#define MAP_PACK_LOG_ENABLE log_set_level(urho::LOG_TRACE);
-#define MAP_PACK_LOG_DISABLE log_set_level(urho::LOG_DEBUG);
-#else
-#define map_dlog(...)
-#define MAP_PACK_LOG_ENABLE
-#define MAP_PACK_LOG_DISABLE
-#endif
-
-#if defined(SCAN_DEBUG)
-#define scan_dlog dlog
-#define SCAN_PACK_LOG_ENABLE log_set_level(urho::LOG_TRACE);
-#define SCAN_PACK_LOG_DISABLE log_set_level(urho::LOG_DEBUG);
-#else
-#define scan_dlog(...)
-#define SCAN_PACK_LOG_ENABLE
-#define SCAN_PACK_LOG_DISABLE
-#endif
 
 #if defined(PACKET_DEBUG)
 #define packet_dlog dlog
@@ -233,7 +190,8 @@ intern void alloc_connection(net_connection *conn)
     conn->pckts.cur_goal_stat = (current_goal_status *)malloc(sizeof(current_goal_status));
     conn->pckts.txt = (text_block *)malloc(sizeof(text_block));
     conn->pckts.cmdp = (command_set_params *)malloc(sizeof(command_set_params));
-
+    conn->pckts.img = (compressed_image *)malloc(sizeof(compressed_image));
+    
     memset(conn->rx_buf, 0, sizeof(net_rx_buffer));
     memset(conn->pckts.scan, 0, sizeof(sicklms_laser_scan));
     memset(conn->pckts.ntf, 0, sizeof(node_transform));
@@ -242,6 +200,7 @@ intern void alloc_connection(net_connection *conn)
     memset(conn->pckts.cur_goal_stat, 0, sizeof(current_goal_status));
     memset(conn->pckts.txt, 0, sizeof(text_block));
     memset(conn->pckts.cmdp, 0, sizeof(command_set_params));
+    memset(conn->pckts.img, 0, sizeof(compressed_image));
 }
 
 intern void free_connection(net_connection *conn)
@@ -254,6 +213,7 @@ intern void free_connection(net_connection *conn)
     free(conn->pckts.cur_goal_stat);
     free(conn->pckts.txt);
     free(conn->pckts.cmdp);
+    free(conn->pckts.img);
 }
 
 void net_connect(net_connection *conn, const char *ip, int port, int max_timeout_ms)
@@ -418,6 +378,28 @@ intern void handle_text_block_packet(binary_fixed_buffer_archive<net_rx_buffer::
     }
 }
 
+
+intern void handle_comp_img_packet(binary_fixed_buffer_archive<net_rx_buffer::MAX_PACKET_SIZE> &read_buf, sizet available, sizet cached_offset, compressed_image * img, ss_signal<const compressed_image&> &sig)
+{    
+    pack_unpack(read_buf, img->header, {"header"});
+    pack_unpack(read_buf, img->meta, {"meta"});
+
+    sizet meta_and_header_size = read_buf.cur_offset - cached_offset;
+    sizet total_packet_size = img->meta.data_size + meta_and_header_size;
+
+    if (available >= total_packet_size)
+    {
+        pack_unpack(read_buf, img->data, {"data", {pack_va_flags::FIXED_ARRAY_CUSTOM_SIZE, &img->meta.data_size}});
+        sig(0, *img);
+    }
+    else
+    {
+        // Not all bytes have come in for packet - set back the cur_offset to what it was before reading the meta data
+        read_buf.cur_offset = cached_offset;
+    }
+}
+
+
 intern void handle_goal_status_packet(binary_fixed_buffer_archive<net_rx_buffer::MAX_PACKET_SIZE> &read_buf, net_connection *conn)
 {
     pack_unpack(read_buf, *conn->pckts.cur_goal_stat, {});
@@ -451,6 +433,7 @@ intern sizet matching_packet_size(u8 *data)
     static sizet nav_path_meta = sizeof(u32);
     static sizet goal_status = packed_sizeof<current_goal_status>();
     static sizet txt_block_sz = packed_sizeof<text_block>();
+    static sizet img_meta = packed_sizeof<compressed_image_meta>();
 
     if (matches_packet_id(SCAN_PACKET_ID, data))
     {
@@ -475,6 +458,10 @@ intern sizet matching_packet_size(u8 *data)
     else if (matches_packet_id(SET_PARAMS_RESP_CMD_PCKT_ID, data) || matches_packet_id(GET_PARAMS_RESP_CMD_PCKT_ID, data))
     {
         return txt_block_sz;
+    }
+    else if (matches_packet_id(COMP_IMG_PCKT_ID, data))
+    {
+        return img_meta;
     }
     return 0;
 }
@@ -521,6 +508,10 @@ intern sizet dispatch_received_packet(binary_fixed_buffer_archive<net_rx_buffer:
     else if (matches_packet_id(GET_PARAMS_RESP_CMD_PCKT_ID, read_buf.data + read_buf.cur_offset))
     {
         handle_text_block_packet(read_buf, available, cached_offset, conn->pckts.txt, conn->param_get_response_received);
+    }
+    else if (matches_packet_id(COMP_IMG_PCKT_ID, read_buf.data + read_buf.cur_offset))
+    {
+        handle_comp_img_packet(read_buf, available, cached_offset, conn->pckts.img, conn->image_update);
     }
     return read_buf.cur_offset - cached_offset;
 }

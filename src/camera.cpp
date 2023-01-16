@@ -169,8 +169,7 @@ void cam_init(map_panel *mp, input_data *inp, const ui_info &ui_inf)
 
     setup_camera_controls(mp, cam_node, inp);
 
-    mp->cam_cwidget.root_element = new urho::BorderImage(uctxt);
-    ui_inf.ui_sys->GetRoot()->AddChild(mp->cam_cwidget.root_element);
+    mp->cam_cwidget.root_element = mp->view->CreateChild<urho::BorderImage>();
     mp->cam_cwidget.root_element->SetStyle("CamControlButtonGroup", ui_inf.style);
 
     setup_cam_move_widget(mp, ui_inf);

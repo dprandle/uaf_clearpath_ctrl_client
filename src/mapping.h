@@ -21,10 +21,12 @@ class Image;
 class ListView;
 class Node;
 class Text;
+class Window;
 } // namespace Urho3D
 
 struct net_connection;
 struct input_data;
+struct jackal_control_ctxt;
 
 struct ui_info
 {
@@ -66,6 +68,13 @@ struct occ_grid_map
     ogmap_colors cols;
 
     int map_type {OCC_GRID_TYPE_MAP};
+};
+
+struct cam_image_view
+{
+    urho::Window * window{};
+    urho::BorderImage * texture_view {};
+    urho::Texture2D *rend_text{};
 };
 
 struct nav_goals
@@ -126,12 +135,15 @@ struct map_panel
     nav_path_view glob_npview{};
     nav_path_view loc_npview{};
     measure_points mpoints{};
+
+    cam_image_view cam_view {};
     
     nav_goals goals{};
 
     urho::Node * base_link {};
     urho::Node * odom {};
     urho::Text * conn_text {};
+    jackal_control_ctxt * ctxt{};
     ss_router router;
 
     std::unordered_map<std::string, urho::Node*> node_lut;

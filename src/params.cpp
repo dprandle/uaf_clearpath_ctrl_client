@@ -135,8 +135,8 @@ intern void handle_received_get_params_response(map_panel *mp, const text_block 
     txt[tb.txt_size] = '\0';
     ilog("Recieved text: %s", txt);
     mp->accept_inp.get_btn_text->SetText("Get Params");
-    mp->accept_inp.widget->SetVisible(true);
 #if defined(__EMSCRIPTEN__)
+    mp->toolbar.set_params->SetChecked(true);
     set_input_text(txt);
 #endif
 }

@@ -31,8 +31,7 @@ void toolbar_init(map_panel *mp, const ui_info &ui_inf, bool can_control)
     ilog("Initializing toolbar");
     auto uctxt = ui_inf.ui_sys->GetContext();
 
-    mp->toolbar.widget = new urho::BorderImage(uctxt);
-    ui_inf.ui_sys->GetRoot()->AddChild(mp->toolbar.widget);
+    mp->toolbar.widget = ui_inf.ui_sys->GetRoot()->CreateChild<urho::BorderImage>();
     mp->toolbar.widget->SetStyle("Toolbar", ui_inf.style);
 
     add_toolbar_button(&mp->toolbar.enable_follow, mp->toolbar.widget, uctxt, "EnableFollow", ui_inf);
@@ -56,7 +55,7 @@ void toolbar_init(map_panel *mp, const ui_info &ui_inf, bool can_control)
         child->SetMinAnchor(0, i*anchor_spacing);
         child->SetMaxAnchor(0, i*anchor_spacing);
         tb_offset.y_ += child->GetMaxOffset().y_ + 10;
-        ilog("Addijng offset for %s of %d (total now %d)", child->GetName().CString(), child->GetMaxOffset().y_ + 10, tb_offset.y_);
+        ilog("Adding offset for %s of %d (total now %d)", child->GetName().CString(), child->GetMaxOffset().y_ + 10, tb_offset.y_);
     }
     mp->toolbar.widget->SetMaxOffset(tb_offset);
 }
@@ -136,6 +135,9 @@ void toolbar_handle_mouse_released(map_panel *mp, urho::UIElement *elem, net_con
     }
     else if (elem == mp->toolbar.delete_measure)
     {
+        if (mp->mpoints.entry_count == 0)
+            mp->toolbar.enable_measure->SetChecked(false);
+        
         if (mp->mpoints.entry_count > 2)
             --mp->mpoints.entry_count;
         else

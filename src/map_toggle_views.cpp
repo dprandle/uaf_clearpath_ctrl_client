@@ -5,7 +5,9 @@
 #include <Urho3D/UI/Button.h>
 #include <Urho3D/UI/CheckBox.h>
 #include <Urho3D/UI/View3D.h>
+#include <Urho3D/UI/Window.h>
 
+#include <Urho3D/Scene/Scene.h>
 #include <Urho3D/Scene/Node.h>
 
 #include "map_toggle_views.h"
@@ -29,19 +31,24 @@ intern vec2 get_required_panel_dims(map_toggle_views_panel *vp)
     return ret;
 }
 
-intern check_box_text_element
-create_cbox_item(urho::ListView *lview, urho::Node *node, nav_path_view *npview, const urho::String &text, urho::Context *uctxt, const ui_info &ui_inf)
+intern check_box_text_element create_cbox_item(urho::ListView *lview,
+                                               urho::Node *node,
+                                               nav_path_view *npview,
+                                               urho::UIElement *elem,
+                                               const urho::String &text,
+                                               urho::Context *uctxt,
+                                               const ui_info &ui_inf)
 {
     check_box_text_element ret;
     ret.widget = new urho::UIElement(uctxt);
     ret.widget->SetStyle("MapCheckBoxRoot", ui_inf.style);
-    vec4 r = vec4{20.0f, 10.0f, 20.0f, 10.0f}*ui_inf.dev_pixel_ratio_inv;
+    vec4 r = vec4{20.0f, 10.0f, 20.0f, 10.0f} * ui_inf.dev_pixel_ratio_inv;
     ret.widget->SetLayoutBorder({(int)r.x_, (int)r.y_, (int)r.z_, (int)r.w_});
-    ret.widget->SetLayoutSpacing(24.0f*ui_inf.dev_pixel_ratio_inv);
+    ret.widget->SetLayoutSpacing(24.0f * ui_inf.dev_pixel_ratio_inv);
 
     ret.cb = ret.widget->CreateChild<urho::CheckBox>();
     ret.cb->SetStyle("MapCheckBox", ui_inf.style);
-    auto sz = vec2{64, 64}*ui_inf.dev_pixel_ratio_inv;
+    auto sz = vec2{64, 64} * ui_inf.dev_pixel_ratio_inv;
     ivec2 szi = {(int)sz.x_, (int)sz.y_};
     ret.cb->SetMinSize(szi);
     ret.cb->SetMaxSize(szi);
@@ -53,6 +60,7 @@ create_cbox_item(urho::ListView *lview, urho::Node *node, nav_path_view *npview,
 
     ret.node = node;
     ret.npview = npview;
+    ret.elem = elem;
     lview->AddItem(ret.widget);
     return ret;
 }
@@ -83,18 +91,21 @@ intern void setup_view_checkboxes(map_panel *mp, const ui_info &ui_inf)
 
     vp->apanel.anchor_rest_point = 1.0f;
 
-    vp->elems.emplace_back(create_cbox_item(vp->apanel.sview, mp->map.node, nullptr, "Map", uctxt, ui_inf));
+    vp->elems.emplace_back(create_cbox_item(vp->apanel.sview, mp->map.node, nullptr, nullptr, "Map", uctxt, ui_inf));
 
     // Set the first item to have a top border that's double so the spacing matches the in between spacing
     auto rect = vp->elems.back().widget->GetLayoutBorder();
     rect.top_ *= 2;
     vp->elems.back().widget->SetLayoutBorder(rect);
 
-    vp->elems.emplace_back(create_cbox_item(vp->apanel.sview, mp->front_laser, nullptr, "Laser Scan", uctxt, ui_inf));
-    vp->elems.emplace_back(create_cbox_item(vp->apanel.sview, mp->glob_cmap.node, nullptr, "Global Costmap", uctxt, ui_inf));
-    vp->elems.emplace_back(create_cbox_item(vp->apanel.sview, mp->loc_cmap.node, nullptr, "Local Costmap", uctxt, ui_inf));
-    vp->elems.emplace_back(create_cbox_item(vp->apanel.sview, nullptr, &mp->glob_npview, "Global Nav Path", uctxt, ui_inf));
-    vp->elems.emplace_back(create_cbox_item(vp->apanel.sview, nullptr, &mp->loc_npview, "Local Nav Path", uctxt, ui_inf));
+    vp->elems.emplace_back(create_cbox_item(vp->apanel.sview, nullptr, nullptr, mp->cam_view.window, "Live Cam", uctxt, ui_inf));
+    vp->elems.back().cb->SetChecked(false);
+
+    vp->elems.emplace_back(create_cbox_item(vp->apanel.sview, mp->front_laser, nullptr, nullptr, "Laser Scan", uctxt, ui_inf));
+    vp->elems.emplace_back(create_cbox_item(vp->apanel.sview, mp->glob_cmap.node, nullptr, nullptr, "Global Costmap", uctxt, ui_inf));
+    vp->elems.emplace_back(create_cbox_item(vp->apanel.sview, mp->loc_cmap.node, nullptr, nullptr, "Local Costmap", uctxt, ui_inf));
+    vp->elems.emplace_back(create_cbox_item(vp->apanel.sview, nullptr, &mp->glob_npview, nullptr, "Global Nav Path", uctxt, ui_inf));
+    vp->elems.emplace_back(create_cbox_item(vp->apanel.sview, nullptr, &mp->loc_npview, nullptr, "Local Nav Path", uctxt, ui_inf));
 
     // Set the last item to have a bottom border that's double so the spacing matches the in between spacing
     rect = vp->elems.back().widget->GetLayoutBorder();
@@ -139,8 +150,28 @@ void map_toggle_views_handle_toggle(map_panel *mp, urho::UIElement *elem)
         {
             if (cur_elem->node)
                 cur_elem->node->SetEnabled(cur_elem->cb->IsChecked());
-            else if (cur_elem->npview)
+            if (cur_elem->npview)
                 cur_elem->npview->enabled = cur_elem->cb->IsChecked();
+            if (cur_elem->elem)
+            {
+                auto cam_node = mp->view->GetCameraNode();
+                auto parent = cam_node->GetParent();
+                if (parent != mp->view->GetScene())
+                {
+                    auto cur_pos = cam_node->GetPosition();
+                    if (fequals(cur_pos.y_, 0.0f, 0.01f))
+                    {
+                        cur_pos.y_ = -1.0f;
+                        cam_node->SetPosition(cur_pos);
+                    }
+                    else if (fequals(cur_pos.y_, -1.0f, 0.01f))
+                    {
+                        cur_pos.y_ = 0.0f;
+                        cam_node->SetPosition(cur_pos);
+                    }
+                }
+                cur_elem->elem->SetVisible(cur_elem->cb->IsChecked());
+            }
         }
     }
 }

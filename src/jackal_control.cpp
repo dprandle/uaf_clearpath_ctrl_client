@@ -134,6 +134,7 @@ bool jctrl_init(jackal_control_ctxt *ctxt, const urho::StringVector & args)
 
     joystick_panel_init(&ctxt->js_panel, ctxt->ui_inf, &ctxt->conn);
     
+    ctxt->mpanel.ctxt = ctxt;
     map_panel_init(&ctxt->mpanel, ctxt->ui_inf, &ctxt->conn, &ctxt->inp);
 
     ss_connect(&ctxt->router, ctxt->js_panel.in_use, [ctxt](bool in_use) {

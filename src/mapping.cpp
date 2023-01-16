@@ -16,13 +16,18 @@
 #include <Urho3D/UI/UIEvents.h>
 #include <Urho3D/UI/View3D.h>
 #include <Urho3D/Resource/ResourceCache.h>
-#include "Urho3D/Resource/XMLFile.h"
+#include <Urho3D/Resource/XMLFile.h>
 #include <Urho3D/Scene/Scene.h>
-#include "Urho3D/Scene/Node.h"
+#include <Urho3D/Scene/Node.h>
+
+#include <GL/gl.h>
+#include <STB/stb_image.h>
 
 #include "input.h"
 #include "mapping.h"
 #include "network.h"
+#include "jackal_control.h"
+#include "joystick.h"
 
 const std::string MAP{"map"};
 const std::string ODOM{"odom"};
@@ -54,11 +59,10 @@ intern const ogmap_colors glob_cmc_colors{.lethal{1, 0, 1, 0.7}, .inscribed{0, 1
 intern void create_3dview(map_panel *mp, urho::ResourceCache *cache, urho::UIElement *root, urho::Context *uctxt)
 {
     auto rpath = cache->GetResource<urho::XMLFile>("RenderPaths/Forward.xml");
-    mp->view = new urho::View3D(uctxt);
     auto scene = new urho::Scene(uctxt);
     auto cam_node = new urho::Node(uctxt);
 
-    root->AddChild(mp->view);
+    mp->view = root->CreateChild<urho::View3D>();
     mp->view->SetEnableAnchor(true);
     mp->view->SetMinAnchor({0.0f, 0.0f});
     mp->view->SetMaxAnchor({1.0f, 1.0f});
@@ -238,6 +242,52 @@ intern void setup_scene(map_panel *mp, urho::ResourceCache *cache, urho::Scene *
     mp->node_lut[FRONT_LASER] = mp->front_laser;
 
     create_jackal(mp, cache);
+}
+
+intern void create_image_view(map_panel *mp, const ui_info &ui_inf)
+{
+    vec2 fcamview_size {vec2{640, 480} * ui_inf.dev_pixel_ratio_inv};
+    
+    ivec2 default_camview_size = {(int)fcamview_size.x_, (int)fcamview_size.y_};
+    int border = 40 * ui_inf.dev_pixel_ratio_inv;
+    irect resize_borders = {border, border, border, border};
+
+    mp->cam_view.window = mp->view->CreateChild<urho::Window>("jackal_cam");
+    mp->cam_view.texture_view = mp->cam_view.window->CreateChild<urho::BorderImage>("jackal_cam");
+    mp->cam_view.rend_text = new urho::Texture2D(ui_inf.ui_sys->GetContext());
+    mp->cam_view.rend_text->SetNumLevels(1);
+    mp->cam_view.rend_text->SetFilterMode(urho::FILTER_BILINEAR);
+    mp->cam_view.rend_text->SetAddressMode(urho::COORD_U, urho::ADDRESS_CLAMP);
+    mp->cam_view.rend_text->SetAddressMode(urho::COORD_V, urho::ADDRESS_CLAMP);
+
+    mp->cam_view.window->SetSize(default_camview_size.x_ + resize_borders.Width(), default_camview_size.y_ + resize_borders.Height());
+    mp->cam_view.window->SetColor({0,0,0,0.8f});
+    mp->cam_view.window->SetResizeBorder(resize_borders);
+    mp->cam_view.window->SetPriority(3);
+    mp->cam_view.window->SetResizable(true);
+    mp->cam_view.window->SetMovable(true);
+
+    mp->cam_view.texture_view->SetTexture(mp->cam_view.rend_text);
+    mp->cam_view.texture_view->SetFullImageRect();
+    mp->cam_view.texture_view->SetEnableAnchor(true);
+    mp->cam_view.texture_view->SetMinAnchor({0,0});
+    mp->cam_view.texture_view->SetMaxAnchor({1,1});
+    mp->cam_view.texture_view->SetMinOffset({resize_borders.left_, resize_borders.top_});
+    mp->cam_view.texture_view->SetMaxOffset({-resize_borders.right_, -resize_borders.bottom_});
+    
+    mp->cam_view.window->SetVisible(false);
+
+    // Put the cam view, by default, centered horizontally and a bit below the center vertically
+    auto view_size = mp->view->GetSize();
+    vec2 fvsize {vec2{view_size.x_, view_size.y_} * ui_inf.dev_pixel_ratio_inv};
+
+    auto js_size = mp->ctxt->js_panel.outer_ring->GetMaxOffset();    
+    auto js_anch = mp->ctxt->js_panel.outer_ring->GetMaxAnchor();
+    float y_pos = fvsize.y_ * js_anch.y_ - js_size.y_ - fcamview_size.y_ - 20.0f*ui_inf.dev_pixel_ratio_inv;
+
+    vec2 fpos {(fvsize.x_ - fcamview_size.x_)*0.5f, y_pos};
+    ivec2 pos = {(int)fpos.x_, (int)fpos.y_};
+    mp->cam_view.window->SetPosition(pos);
 }
 
 intern ivec2 index_to_texture_coords(u32 index, u32 row_width, u32 height)
@@ -445,9 +495,9 @@ intern void draw_measure_path(const measure_points &mp, urho::DebugRenderer *dbg
         if (i > 0)
         {
             dbg->AddLine(mp.entries[i - 1], mp.entries[i], mp.color);
-            path_len += (mp.entries[i - 1]- mp.entries[i]).Length();
+            path_len += (mp.entries[i - 1] - mp.entries[i]).Length();
         }
-        dbg->AddCircle(mp.entries[i], {0,0,-1}, mp.marker_rad, mp.color);
+        dbg->AddCircle(mp.entries[i], {0, 0, -1}, mp.marker_rad, mp.color);
     }
     mp.path_len_text->SetVisible(path_len > FLOAT_EPS);
     if (path_len > FLOAT_EPS)
@@ -455,7 +505,7 @@ intern void draw_measure_path(const measure_points &mp, urho::DebugRenderer *dbg
         path_len *= METERS_TO_FEET;
         int feet = int(path_len);
         path_len -= feet;
-        int inches = int(path_len*12.0);
+        int inches = int(path_len * 12.0);
 
         urho::String text;
         text.AppendWithFormat("%d'%d\"", feet, inches);
@@ -522,7 +572,6 @@ intern void map_panel_run_frame(map_panel *mp, float dt, net_connection *conn)
     draw_measure_path(mp->mpoints, dbg);
 }
 
-
 intern void setup_input_actions(map_panel *mp, const ui_info &ui_inf, net_connection *conn, input_data *inp)
 {
     auto cam_node = mp->view->GetCameraNode();
@@ -549,7 +598,6 @@ intern void setup_input_actions(map_panel *mp, const ui_info &ui_inf, net_connec
         {
             auto pos = scrn_ray.origin_ + scrn_ray.direction_ * dist;
             pos.z_ -= 0.05f; // No z fighting!
-            dlog("CALLED with pos %f %f", pos.x_, pos.y_);
 
             // Place at the front
             if (mp->toolbar.add_goal && mp->toolbar.add_goal->IsChecked())
@@ -581,7 +629,7 @@ intern void setup_input_actions(map_panel *mp, const ui_info &ui_inf, net_connec
 }
 
 intern void resize_path_length_text(map_panel *mp, const ui_info &ui_inf)
-{    
+{
     float y_anchor = mp->toolbar.widget->GetMinAnchor().y_;
     float tb_height = mp->toolbar.widget->GetHeight();
     float view_height = mp->view->GetHeight();
@@ -643,6 +691,23 @@ intern void update_conn_count_text(map_panel *mp, i8 new_count)
     mp->conn_text->SetText(str);
 }
 
+intern void update_image(map_panel * mp, const compressed_image &img)
+{
+    ivec2 sz {};
+    int channels {0};
+    u8 * converted_data = stbi_load_from_memory(img.data, img.meta.data_size, &sz.x_, &sz.y_, &channels, 3);
+
+    auto cur_sz = ivec2{mp->cam_view.rend_text->GetWidth(), mp->cam_view.rend_text->GetHeight()};
+    if (cur_sz != sz)
+    {
+        mp->cam_view.rend_text->SetSize(sz.x_, sz.y_, GL_RGB, urho::TEXTURE_DYNAMIC, 0, false);
+        mp->cam_view.texture_view->SetFullImageRect();
+        ilog("Resizing image to %dx%d",sz.x_, sz.y_);
+    }
+    mp->cam_view.rend_text->SetData(0, 0, 0, sz.x_, sz.y_, converted_data);
+    stbi_image_free(converted_data);
+}
+
 void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, input_data *inp)
 {
     auto uctxt = ui_inf.ui_sys->GetContext();
@@ -652,15 +717,22 @@ void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, 
     create_3dview(mp, cache, ui_inf.ui_sys->GetRoot(), uctxt);
     setup_scene(mp, cache, mp->view->GetScene(), uctxt);
 
+    // These must come before map toggle views as the pointers need to be valid
     toolbar_init(mp, ui_inf, conn->can_control);
     param_init(mp, conn, ui_inf);
     cam_init(mp, inp, ui_inf);
+    create_image_view(mp, ui_inf);
+
     map_toggle_views_init(mp, ui_inf);
     setup_conn_text(mp, ui_inf);
     setup_path_length_text(mp, ui_inf);
 
     ss_connect(&mp->router, conn->scan_received, [mp](const sicklms_laser_scan &pckt) { update_scene_from_scan(mp, pckt); });
-    ss_connect(&mp->router, conn->map_update_received, [mp](const occ_grid_update &pckt) { update_scene_map_from_occ_grid(&mp->map, pckt); });
+    
+    ss_connect(&mp->router, conn->map_update_received, [mp](const occ_grid_update &pckt) { 
+        update_scene_map_from_occ_grid(&mp->map, pckt);
+    });
+
     ss_connect(&mp->router, conn->glob_cm_update_received, [mp](const occ_grid_update &pckt) { update_scene_map_from_occ_grid(&mp->glob_cmap, pckt); });
     ss_connect(&mp->router, conn->loc_cm_update_received, [mp](const occ_grid_update &pckt) { update_scene_map_from_occ_grid(&mp->loc_cmap, pckt); });
     ss_connect(&mp->router, conn->transform_updated, [mp](const node_transform &pckt) { update_node_transform(mp, pckt); });
@@ -668,6 +740,8 @@ void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, 
     ss_connect(&mp->router, conn->loc_nav_path_updated, [mp](const nav_path &pckt) { update_loc_nav_path(mp, pckt); });
     ss_connect(&mp->router, conn->goal_status_updated, [mp](const current_goal_status &pckt) { update_cur_goal_status(mp, pckt); });
     ss_connect(&mp->router, conn->connection_count_change, [mp](i8 nc) { update_conn_count_text(mp, nc); });
+    ss_connect(&mp->router, conn->image_update, [mp](const compressed_image &img) { update_image(mp, img); });
+
 
     setup_input_actions(mp, ui_inf, conn, inp);
     setup_event_handlers(mp, ui_inf, conn);

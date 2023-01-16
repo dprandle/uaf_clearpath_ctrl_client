@@ -18,6 +18,7 @@ struct check_box_text_element
     urho::CheckBox *cb{};
     urho::Text *txt{};
     urho::Node *node{};
+    urho::UIElement *elem{};
     nav_path_view *npview{};
 };
 
