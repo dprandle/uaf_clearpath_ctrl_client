@@ -11,6 +11,7 @@ class CheckBox;
 struct nav_path_view;
 struct map_panel;
 struct ui_info;
+struct net_connection;
 
 struct check_box_text_element
 {
@@ -32,4 +33,4 @@ void map_toggle_views_init(map_panel *mp, const ui_info &ui_inf);
 void map_toggle_views_handle_resize(map_panel *mp, const ui_info &ui_inf);
 void map_toggle_views_term(map_panel *mp);
 void map_toggle_views_handle_mouse_released(map_panel *mp, urho::UIElement *elem);
-void map_toggle_views_handle_toggle(map_panel *mp, urho::UIElement *elem);
+void map_toggle_views_handle_toggle(map_panel *mp, urho::UIElement *elem, net_connection *conn);

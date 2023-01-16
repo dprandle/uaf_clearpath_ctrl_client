@@ -115,9 +115,10 @@ void joystick_panel_init(joystick_panel *jsp, const ui_info &ui_inf, net_connect
     auto uctxt = ui_inf.ui_sys->GetContext();
     ilog("Initializing joystick");
     
+    create_joystick_ui(jsp, ui_inf, uctxt);
+    jsp->frame->SetVisible(conn->can_control);
     if (conn->can_control)
     {
-        create_joystick_ui(jsp, ui_inf, uctxt);
         setup_event_handlers(jsp, ui_inf, conn);
     }
 }

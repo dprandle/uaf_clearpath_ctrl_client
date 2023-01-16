@@ -12,6 +12,7 @@
 
 #include "map_toggle_views.h"
 #include "mapping.h"
+#include "network.h"
 
 intern void run_frame(map_panel *mp, float dt, const ui_info &ui_inf)
 {
@@ -141,7 +142,7 @@ void map_toggle_views_term(map_panel *mp)
     ilog("Terminating map toggle views");
 }
 
-void map_toggle_views_handle_toggle(map_panel *mp, urho::UIElement *elem)
+void map_toggle_views_handle_toggle(map_panel *mp, urho::UIElement *elem, net_connection *conn)
 {
     for (int i = 0; i < mp->views_panel.elems.size(); ++i)
     {
@@ -154,6 +155,11 @@ void map_toggle_views_handle_toggle(map_panel *mp, urho::UIElement *elem)
                 cur_elem->npview->enabled = cur_elem->cb->IsChecked();
             if (cur_elem->elem)
             {
+                if (cur_elem->cb->IsChecked())
+                    net_tx(*conn, command_enable_image());
+                else
+                    net_tx(*conn, command_disable_image());
+
                 auto cam_node = mp->view->GetCameraNode();
                 auto parent = cam_node->GetParent();
                 if (parent != mp->view->GetScene())

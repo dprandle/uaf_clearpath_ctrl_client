@@ -9,6 +9,8 @@ inline const char *SCAN_PACKET_ID = "SCAN_PCKT_ID";
 inline const char *MAP_PCKT_ID = "MAP_PCKT_ID";
 inline const char *GLOB_CM_PCKT_ID = "GLOB_CM_PCKT_ID";
 inline const char *LOC_CM_PCKT_ID = "LOC_CM_PCKT_ID";
+inline const char *ENABLE_IMG_CMD_ID = "ENABLE_IMG_CMD_ID";
+inline const char *DISABLE_IMG_CMD_ID = "DISABLE_IMG_CMD_ID";
 inline const char *TFORM_PCKT_ID = "TFORM_PCKT_ID";
 inline const char *GLOB_NAVP_PCKT_ID = "GLOB_NAVP_PCKT_ID";
 inline const char *LOC_NAVP_PCKT_ID = "LOC_NAVP_PCKT_ID";
@@ -165,6 +167,25 @@ pup_func(command_get_params)
     pup_member(header);
 }
 
+struct command_enable_image
+{
+    packet_header header{"ENABLE_IMG_CMD_ID"};
+};
+
+pup_func(command_enable_image)
+{
+    pup_member(header);
+}
+
+struct command_disable_image
+{
+    packet_header header{"DISABLE_IMG_CMD_ID"};
+};
+
+pup_func(command_disable_image)
+{
+    pup_member(header);
+}
 
 struct command_set_params
 {

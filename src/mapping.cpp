@@ -244,6 +244,25 @@ intern void setup_scene(map_panel *mp, urho::ResourceCache *cache, urho::Scene *
     create_jackal(mp, cache);
 }
 
+intern void reposition_cam_view(map_panel *mp, const ui_info &ui_inf)
+{
+    auto cam_view_size = mp->cam_view.window->GetSize();
+    auto fcam_view_size = vec2{cam_view_size.x_, cam_view_size.y_};
+
+    // Put the cam view, by default, centered horizontally and a bit below the center vertically
+    auto view_size = mp->view->GetSize();
+
+    vec2 fvsize {view_size.x_, view_size.y_};
+
+    auto js_size = mp->ctxt->js_panel.outer_ring->GetMaxOffset();    
+    auto js_anch = mp->ctxt->js_panel.outer_ring->GetMaxAnchor();
+    float y_pos = fvsize.y_ * js_anch.y_ - js_size.y_ - fcam_view_size.y_ - 20.0f*ui_inf.dev_pixel_ratio_inv;
+
+    vec2 fpos {(fvsize.x_ - fcam_view_size.x_)*0.5f, y_pos};
+    ivec2 pos = {(int)fpos.x_, (int)fpos.y_};
+    mp->cam_view.window->SetPosition(pos);
+}
+
 intern void create_image_view(map_panel *mp, const ui_info &ui_inf)
 {
     vec2 fcamview_size {vec2{640, 480} * ui_inf.dev_pixel_ratio_inv};
@@ -276,18 +295,7 @@ intern void create_image_view(map_panel *mp, const ui_info &ui_inf)
     mp->cam_view.texture_view->SetMaxOffset({-resize_borders.right_, -resize_borders.bottom_});
     
     mp->cam_view.window->SetVisible(false);
-
-    // Put the cam view, by default, centered horizontally and a bit below the center vertically
-    auto view_size = mp->view->GetSize();
-    vec2 fvsize {vec2{view_size.x_, view_size.y_} * ui_inf.dev_pixel_ratio_inv};
-
-    auto js_size = mp->ctxt->js_panel.outer_ring->GetMaxOffset();    
-    auto js_anch = mp->ctxt->js_panel.outer_ring->GetMaxAnchor();
-    float y_pos = fvsize.y_ * js_anch.y_ - js_size.y_ - fcamview_size.y_ - 20.0f*ui_inf.dev_pixel_ratio_inv;
-
-    vec2 fpos {(fvsize.x_ - fcamview_size.x_)*0.5f, y_pos};
-    ivec2 pos = {(int)fpos.x_, (int)fpos.y_};
-    mp->cam_view.window->SetPosition(pos);
+    reposition_cam_view(mp, ui_inf);
 }
 
 intern ivec2 index_to_texture_coords(u32 index, u32 row_width, u32 height)
@@ -671,6 +679,7 @@ intern void setup_event_handlers(map_panel *mp, const ui_info &ui_inf, net_conne
         auto elem = (urho::UIElement *)ev_data[urho::Pressed::P_ELEMENT].GetPtr();
         if (elem == mp->view)
         {
+            reposition_cam_view(mp, ui_inf);
             resize_path_length_text(mp, ui_inf);
             map_toggle_views_handle_resize(mp, ui_inf);
             mp->map.rend_texture->SetData(mp->map.image);
@@ -680,7 +689,7 @@ intern void setup_event_handlers(map_panel *mp, const ui_info &ui_inf, net_conne
     mp->view->SubscribeToEvent(urho::E_TOGGLED, [mp, conn](urho::StringHash type, urho::VariantMap &ev_data) {
         auto elem = (urho::UIElement *)ev_data[urho::Toggled::P_ELEMENT].GetPtr();
         toolbar_handle_toggle(mp, elem);
-        map_toggle_views_handle_toggle(mp, elem);
+        map_toggle_views_handle_toggle(mp, elem, conn);
     });
 }
 
