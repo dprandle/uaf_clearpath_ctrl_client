@@ -5,6 +5,7 @@
 #include "toolbar.h"
 #include "map_toggle_views.h"
 #include "ss_router.h"
+#include "network.h"
 
 #include <string>
 #include <unordered_map>
@@ -24,7 +25,6 @@ class Text;
 class Window;
 } // namespace Urho3D
 
-struct net_connection;
 struct input_data;
 struct jackal_control_ctxt;
 
@@ -144,6 +144,7 @@ struct map_panel
     urho::Node * odom {};
     urho::Text * conn_text {};
     jackal_control_ctxt * ctxt{};
+    misc_stats cur_stats{};
     ss_router router;
 
     std::unordered_map<std::string, urho::Node*> node_lut;

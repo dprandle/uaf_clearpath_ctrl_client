@@ -191,6 +191,7 @@ intern void alloc_connection(net_connection *conn)
     conn->pckts.txt = (text_block *)malloc(sizeof(text_block));
     conn->pckts.cmdp = (command_set_params *)malloc(sizeof(command_set_params));
     conn->pckts.img = (compressed_image *)malloc(sizeof(compressed_image));
+    conn->pckts.ms = (misc_stats *)malloc(sizeof(misc_stats));
     
     memset(conn->rx_buf, 0, sizeof(net_rx_buffer));
     memset(conn->pckts.scan, 0, sizeof(sicklms_laser_scan));
@@ -201,6 +202,7 @@ intern void alloc_connection(net_connection *conn)
     memset(conn->pckts.txt, 0, sizeof(text_block));
     memset(conn->pckts.cmdp, 0, sizeof(command_set_params));
     memset(conn->pckts.img, 0, sizeof(compressed_image));
+    memset(conn->pckts.ms, 0, sizeof(misc_stats));
 }
 
 intern void free_connection(net_connection *conn)
@@ -214,6 +216,7 @@ intern void free_connection(net_connection *conn)
     free(conn->pckts.txt);
     free(conn->pckts.cmdp);
     free(conn->pckts.img);
+    free(conn->pckts.ms);
 }
 
 void net_connect(net_connection *conn, const char *ip, int port, int max_timeout_ms)
@@ -410,12 +413,13 @@ intern void handle_goal_status_packet(binary_fixed_buffer_archive<net_rx_buffer:
 intern void handle_tform_packet(binary_fixed_buffer_archive<net_rx_buffer::MAX_PACKET_SIZE> &read_buf, net_connection *conn)
 {
     pack_unpack(read_buf, *conn->pckts.ntf, {});
-    if (conn->pckts.ntf->conn_count != conn->connection_count)
-    {
-        conn->connection_count = conn->pckts.ntf->conn_count;
-        conn->connection_count_change(0, i8(conn->connection_count));
-    }
     conn->transform_updated(0, *conn->pckts.ntf);
+}
+
+intern void handle_misc_stats(binary_fixed_buffer_archive<net_rx_buffer::MAX_PACKET_SIZE> &read_buf, net_connection *conn)
+{
+    pack_unpack(read_buf, *conn->pckts.ms, {});
+    conn->meta_stats_update(0, *conn->pckts.ms);
 }
 
 intern bool matches_packet_id(const char *packet_id, const u8 *data)
@@ -434,6 +438,7 @@ intern sizet matching_packet_size(u8 *data)
     static sizet goal_status = packed_sizeof<current_goal_status>();
     static sizet txt_block_sz = packed_sizeof<text_block>();
     static sizet img_meta = packed_sizeof<compressed_image_meta>();
+    static sizet mstats = packed_sizeof<misc_stats>();
 
     if (matches_packet_id(SCAN_PACKET_ID, data))
     {
@@ -463,6 +468,10 @@ intern sizet matching_packet_size(u8 *data)
     {
         return img_meta;
     }
+    else if (matches_packet_id(MISC_STATS_PCKT_ID, data))
+    {
+        return mstats;
+    }
     return 0;
 }
 
@@ -476,6 +485,10 @@ intern sizet dispatch_received_packet(binary_fixed_buffer_archive<net_rx_buffer:
     else if (matches_packet_id(TFORM_PCKT_ID, read_buf.data + read_buf.cur_offset))
     {
         handle_tform_packet(read_buf, conn);
+    }
+    else if (matches_packet_id(MISC_STATS_PCKT_ID, read_buf.data + read_buf.cur_offset))
+    {
+        handle_misc_stats(read_buf, conn);
     }
     else if (matches_packet_id(GOAL_STAT_PCKT_ID, read_buf.data + read_buf.cur_offset))
     {

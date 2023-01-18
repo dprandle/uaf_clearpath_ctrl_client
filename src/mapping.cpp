@@ -252,21 +252,21 @@ intern void reposition_cam_view(map_panel *mp, const ui_info &ui_inf)
     // Put the cam view, by default, centered horizontally and a bit below the center vertically
     auto view_size = mp->view->GetSize();
 
-    vec2 fvsize {view_size.x_, view_size.y_};
+    vec2 fvsize{view_size.x_, view_size.y_};
 
-    auto js_size = mp->ctxt->js_panel.outer_ring->GetMaxOffset();    
+    auto js_size = mp->ctxt->js_panel.outer_ring->GetMaxOffset();
     auto js_anch = mp->ctxt->js_panel.outer_ring->GetMaxAnchor();
-    float y_pos = fvsize.y_ * js_anch.y_ - js_size.y_ - fcam_view_size.y_ - 20.0f*ui_inf.dev_pixel_ratio_inv;
+    float y_pos = fvsize.y_ * js_anch.y_ - js_size.y_ - fcam_view_size.y_ - 20.0f * ui_inf.dev_pixel_ratio_inv;
 
-    vec2 fpos {(fvsize.x_ - fcam_view_size.x_)*0.5f, y_pos};
+    vec2 fpos{(fvsize.x_ - fcam_view_size.x_) * 0.5f, y_pos};
     ivec2 pos = {(int)fpos.x_, (int)fpos.y_};
     mp->cam_view.window->SetPosition(pos);
 }
 
 intern void create_image_view(map_panel *mp, const ui_info &ui_inf)
 {
-    vec2 fcamview_size {vec2{640, 480} * ui_inf.dev_pixel_ratio_inv};
-    
+    vec2 fcamview_size{vec2{640, 480} * ui_inf.dev_pixel_ratio_inv};
+
     ivec2 default_camview_size = {(int)fcamview_size.x_, (int)fcamview_size.y_};
     int border = 40 * ui_inf.dev_pixel_ratio_inv;
     irect resize_borders = {border, border, border, border};
@@ -280,7 +280,7 @@ intern void create_image_view(map_panel *mp, const ui_info &ui_inf)
     mp->cam_view.rend_text->SetAddressMode(urho::COORD_V, urho::ADDRESS_CLAMP);
 
     mp->cam_view.window->SetSize(default_camview_size.x_ + resize_borders.Width(), default_camview_size.y_ + resize_borders.Height());
-    mp->cam_view.window->SetColor({0,0,0,0.8f});
+    mp->cam_view.window->SetColor({0, 0, 0, 0.8f});
     mp->cam_view.window->SetResizeBorder(resize_borders);
     mp->cam_view.window->SetPriority(3);
     mp->cam_view.window->SetResizable(true);
@@ -289,11 +289,11 @@ intern void create_image_view(map_panel *mp, const ui_info &ui_inf)
     mp->cam_view.texture_view->SetTexture(mp->cam_view.rend_text);
     mp->cam_view.texture_view->SetFullImageRect();
     mp->cam_view.texture_view->SetEnableAnchor(true);
-    mp->cam_view.texture_view->SetMinAnchor({0,0});
-    mp->cam_view.texture_view->SetMaxAnchor({1,1});
+    mp->cam_view.texture_view->SetMinAnchor({0, 0});
+    mp->cam_view.texture_view->SetMaxAnchor({1, 1});
     mp->cam_view.texture_view->SetMinOffset({resize_borders.left_, resize_borders.top_});
     mp->cam_view.texture_view->SetMaxOffset({-resize_borders.right_, -resize_borders.bottom_});
-    
+
     mp->cam_view.window->SetVisible(false);
     reposition_cam_view(mp, ui_inf);
 }
@@ -693,25 +693,38 @@ intern void setup_event_handlers(map_panel *mp, const ui_info &ui_inf, net_conne
     });
 }
 
-intern void update_conn_count_text(map_panel *mp, i8 new_count)
+intern void update_meta_stats(map_panel *mp, const misc_stats &updated_stats)
 {
-    urho::String str;
-    str.AppendWithFormat("Connections: %d", new_count);
-    mp->conn_text->SetText(str);
+    if (updated_stats.conn_count != mp->cur_stats.conn_count || !fequals(updated_stats.cur_bw_mbps, mp->cur_stats.cur_bw_mbps, 0.01f) ||
+        !fequals(updated_stats.avg_bw_mbps, mp->cur_stats.avg_bw_mbps, 0.01f))
+    {
+        mp->cur_stats = updated_stats;
+
+        int cur_bw(mp->cur_stats.cur_bw_mbps), avg_bw(mp->cur_stats.avg_bw_mbps);
+        float fcur_bw_100 = (mp->cur_stats.cur_bw_mbps - cur_bw)*10.0f;
+        float favg_bw_100 = (mp->cur_stats.avg_bw_mbps - avg_bw)*10.0f;
+        int cur_bw_100(fcur_bw_100), avg_bw_100(favg_bw_100);
+        int cur_bw_10((fcur_bw_100 - cur_bw_100)*10.0f), avg_bw_10((favg_bw_100 - avg_bw_100)*10.0f);
+
+        urho::String str;
+        str.AppendWithFormat("Clients: %d    BW:%d.%d%d (%d.%d%d avg) Mbps", mp->cur_stats.conn_count, cur_bw, cur_bw_100, cur_bw_10, avg_bw, avg_bw_100, avg_bw_10);
+        mp->conn_text->SetText(str);
+        ilog("Got str %s", str.CString());
+    }
 }
 
-intern void update_image(map_panel * mp, const compressed_image &img)
+intern void update_image(map_panel *mp, const compressed_image &img)
 {
-    ivec2 sz {};
-    int channels {0};
-    u8 * converted_data = stbi_load_from_memory(img.data, img.meta.data_size, &sz.x_, &sz.y_, &channels, 3);
+    ivec2 sz{};
+    int channels{0};
+    u8 *converted_data = stbi_load_from_memory(img.data, img.meta.data_size, &sz.x_, &sz.y_, &channels, 3);
 
     auto cur_sz = ivec2{mp->cam_view.rend_text->GetWidth(), mp->cam_view.rend_text->GetHeight()};
     if (cur_sz != sz)
     {
         mp->cam_view.rend_text->SetSize(sz.x_, sz.y_, GL_RGB, urho::TEXTURE_DYNAMIC, 0, false);
         mp->cam_view.texture_view->SetFullImageRect();
-        ilog("Resizing image to %dx%d",sz.x_, sz.y_);
+        ilog("Resizing image to %dx%d", sz.x_, sz.y_);
     }
     mp->cam_view.rend_text->SetData(0, 0, 0, sz.x_, sz.y_, converted_data);
     stbi_image_free(converted_data);
@@ -737,10 +750,8 @@ void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, 
     setup_path_length_text(mp, ui_inf);
 
     ss_connect(&mp->router, conn->scan_received, [mp](const sicklms_laser_scan &pckt) { update_scene_from_scan(mp, pckt); });
-    
-    ss_connect(&mp->router, conn->map_update_received, [mp](const occ_grid_update &pckt) { 
-        update_scene_map_from_occ_grid(&mp->map, pckt);
-    });
+
+    ss_connect(&mp->router, conn->map_update_received, [mp](const occ_grid_update &pckt) { update_scene_map_from_occ_grid(&mp->map, pckt); });
 
     ss_connect(&mp->router, conn->glob_cm_update_received, [mp](const occ_grid_update &pckt) { update_scene_map_from_occ_grid(&mp->glob_cmap, pckt); });
     ss_connect(&mp->router, conn->loc_cm_update_received, [mp](const occ_grid_update &pckt) { update_scene_map_from_occ_grid(&mp->loc_cmap, pckt); });
@@ -748,9 +759,9 @@ void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, 
     ss_connect(&mp->router, conn->glob_nav_path_updated, [mp](const nav_path &pckt) { update_glob_nav_path(mp, pckt); });
     ss_connect(&mp->router, conn->loc_nav_path_updated, [mp](const nav_path &pckt) { update_loc_nav_path(mp, pckt); });
     ss_connect(&mp->router, conn->goal_status_updated, [mp](const current_goal_status &pckt) { update_cur_goal_status(mp, pckt); });
-    ss_connect(&mp->router, conn->connection_count_change, [mp](i8 nc) { update_conn_count_text(mp, nc); });
     ss_connect(&mp->router, conn->image_update, [mp](const compressed_image &img) { update_image(mp, img); });
-
+    ss_connect(&mp->router, conn->image_update, [mp](const compressed_image &img) { update_image(mp, img); });
+    ss_connect(&mp->router, conn->meta_stats_update, [mp](const misc_stats &ms) { update_meta_stats(mp, ms); });
 
     setup_input_actions(mp, ui_inf, conn, inp);
     setup_event_handlers(mp, ui_inf, conn);

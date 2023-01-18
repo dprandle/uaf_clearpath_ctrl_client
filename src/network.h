@@ -16,6 +16,8 @@ inline const char *GLOB_NAVP_PCKT_ID = "GLOB_NAVP_PCKT_ID";
 inline const char *LOC_NAVP_PCKT_ID = "LOC_NAVP_PCKT_ID";
 inline const char *GOAL_STAT_PCKT_ID = "GOAL_STAT_PCKT_ID";
 inline const char *COMP_IMG_PCKT_ID = "COMP_IMG_PCKT_ID";
+inline const char *MISC_STATS_PCKT_ID = "MISC_STATS_PCKT_ID";
+
 inline const char *SET_PARAMS_RESP_CMD_PCKT_ID = "SET_PARAMS_RESP_CMD_PCKT_ID";
 inline const char *GET_PARAMS_RESP_CMD_PCKT_ID = "GET_PARAMS_RESP_CMD_PCKT_ID";
 
@@ -228,7 +230,7 @@ pup_func(sicklms_laser_scan_meta)
 struct sicklms_laser_scan
 {
     static constexpr int MAX_SCAN_POINTS = 1000;
-    packet_header header{"SCAN_PCKT_ID"};
+    packet_header header{};
     sicklms_laser_scan_meta meta;
     float ranges[MAX_SCAN_POINTS];
 };
@@ -240,16 +242,40 @@ pup_func(sicklms_laser_scan)
     pup_member(ranges);
 }
 
+struct misc_stats
+{
+    packet_header header{};
+    u8 conn_count {0};
+    float cur_bw_mbps {};
+    float avg_bw_mbps {};
+};
+
+pup_func(misc_stats)
+{
+    pup_member(header);
+    pup_member(conn_count);
+    pup_member(cur_bw_mbps);
+    pup_member(avg_bw_mbps);
+}
+
 struct node_transform
 {
     static constexpr int NODE_NAME_SIZE = 32;
-    packet_header header{"TFORM_PCKT_ID"};
+    packet_header header{};
     char parent_name[NODE_NAME_SIZE];
     char name[NODE_NAME_SIZE];
-    i8 conn_count;
     dvec3 pos;
     dquat orientation;
 };
+
+pup_func(node_transform)
+{
+    pup_member(header);
+    pup_member(parent_name);
+    pup_member(name);
+    pup_member(pos);
+    pup_member(orientation);
+}
 
 struct compressed_image_meta
 {
@@ -292,16 +318,6 @@ pup_func(text_block)
     pup_member(header);
     pup_member(txt_size);
     pup_member_meta(text, pack_va_flags::FIXED_ARRAY_CUSTOM_SIZE, &val.txt_size);
-}
-
-pup_func(node_transform)
-{
-    pup_member(header);
-    pup_member(parent_name);
-    pup_member(name);
-    pup_member(conn_count);
-    pup_member(pos);
-    pup_member(orientation);
 }
 
 struct occ_grid_meta
@@ -380,6 +396,7 @@ struct reusable_packets
     current_goal_status * cur_goal_stat{};
     text_block * txt{};
     compressed_image * img {};
+    misc_stats * ms{};
 
     // Packets for sending
     command_set_params * cmdp{};
@@ -395,7 +412,6 @@ struct net_rx_buffer
 struct net_connection
 {
     int socket_handle{0};
-    i8 connection_count{0};
 
     net_rx_buffer *rx_buf{};
     reusable_packets pckts{};
@@ -412,7 +428,7 @@ struct net_connection
     ss_signal<const text_block &> param_set_response_received;
     ss_signal<const text_block &> param_get_response_received;
     ss_signal<const compressed_image &> image_update;
-    ss_signal<i8> connection_count_change;
+    ss_signal<const misc_stats &> meta_stats_update;
 };
 
 void net_connect(net_connection *conn, const char *ip, int port, int max_timeout_ms = -1);
