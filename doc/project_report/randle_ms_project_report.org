@@ -2,18 +2,30 @@
 
 * Introduction
 ** Background
-Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.
+UAF purchased the Clearpath Jackal and Husky as assets to aid in mining emergency operations. Pogo Mine expressed interest in 
+unmanned exploration and mapping facilities and Clearpath provided these plaftorms as turn key solutions. Several graduate students worked alongside ACUASI to further develop the platforms for UAF specific use, and to integrate UAS (unmanned ariel systems).
 
-Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum. Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever
+The Jackal and Husky provided many untapped capabilities largely due to inconvenient user interface and out-of-date software. The platforms utilize Robot Operating System (ROS) for communication and control. ROS versions are linked to specific versions of linux distrobutions - this is problematic and becomes more problematic as time goes by; a computer with with that specific linux distrobution must be on hand to utilize ROS visualization and command capabilities (outside of using the hard-linked driving controller). Without these features, the Clearpath robots are of little value; they cannot be driven out of visual range and their included sensors are unusable.
 
-** Project Plan
-Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum. Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever
+The platforms also include base station tripod wifi extenders and long range wifi antennas mounted on the robots in order to provide extended wifi network range. In the original configuration, the clearpath robots combine with the base stations to create an adhoc wifi network. The robots and base stations make use of Ubiquiti Bullet M2 extended range routers; the firmware on several of these routers had been overwritten by OpenWRT firmware rendering them useless, and the remaining routers were configured incorrectly. Also The base station extenders were missing batteries and no longer operational.
+
+Finally, the Husky was no longer operational. The included controller no longer worked, and both clearpath robots are out of warranty.
+
+** Scope Statement
+Restore clearpath platforms to a working state. Upgrade the Jackal/Husky with the latest Clearpath linux distrobutions and ROS packages. Restore the base stations and setup/configure the Bullet M2 routers, along with the Jackal/Husky network cards using linux netplan. Document the process of restoral, setup, and configuration.
+
+Create a web app to provide visualization and control of the Jackal/Husky, with a user interface tuned for both smart phone and desktop through a web browser. Provide different end points for full control/visualization and visualization only to allow participants to view data in read only fashion - make endpoints available to anyone connected to the Clearpath wifi network. Allow driving the Husky/Jackal through the control endpoint without disabling control through the wireless controller. Show a two-dimensional map with the robot and obstacles localized on the map, and provide an interface for setting autonomous navigation goals. Provide a way to reset the map without requiring robot restart.
 
 ** Related Works
-Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum. Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever
+There are several web and smart phone apps which provide ROS interfaces, allowing remote robot visualization and control. 
+Foxglove
+rosbridge
+ROSControlCenter
+ROSweb
+ROSboard
 
 * System Overview
-Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum. Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever
+
 
 * Robot Operating System (ROS)
 Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum. Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever
@@ -83,6 +95,7 @@ The client app is written in c/c++ and uses emscripten to cross compile to WebAs
 
 ** Setup and Build
 To build the client app, cmake is required along with tools sourced from build-essentials linux package.
+\cite{1}
 
 *** Emscripten
 We are like writing stuff here. Its really cool.
@@ -204,3 +217,5 @@ Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem
 ** Final Remarks
 Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum. Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever
 
+\bibliographystyle{plain}
+\bibliography{./randle_ms_project_report}
