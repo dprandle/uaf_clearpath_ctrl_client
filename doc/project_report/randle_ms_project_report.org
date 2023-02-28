@@ -17,7 +17,7 @@ The platforms also include base station tripod WiFi extenders and long range WiF
 
 Finally, the Husky was no longer operational. The included controller no longer worked, and both clearpath robots are out of warranty.
 
-** Scope Statement
+** Project Scope
 Restore clearpath platforms to a working state. Upgrade the Jackal/Husky with the latest Clearpath linux distributions and ROS packages. Restore the base stations and setup/configure the Bullet M2 routers, along with the Jackal/Husky network cards using linux netplan. Document the process of restore, setup, and configuration.
 
 Create a web app to provide visualization and control of the Jackal/Husky, with a user interface tuned for both smart phone and desktop through a web browser. Provide different end points for full control/visualization and visualization only to allow participants to view data in read only fashion - make endpoints available to anyone
@@ -144,11 +144,13 @@ This particular message is used to convey driving velocity commands - the linear
 Topics are named destinations for certain message types. By sending and receiving messages to/from topics rather than to/from nodes directly, nodes require no direct information about other nodes - they only require the string names and message types of topic of interest. As mentioned earlier, the rosmaster process is in charge of establishing connections between nodes who publish/subscribe to the same topic.
 
 A topic is created by publishing a message to the topic - this can be done in c++ or python code within a node, or using the rostopic pub command. Once a message is published to a topic for the first time, the topic is linked to that message type and ROS logs errors if other message types are published to that topic. The rostopic list command can be used to get a complete list of the current topics:
+
 #+begin_src bash
     $ rostopic list
   /rosout
   /rosout_agg
 #+end_src
+
 This message/topic system is the most fundemental thing that makes ROS useful. For example, a vendor can build a LIDAR device any way they want; to make it ROS compatible the vendor would write a node which publishes sensor_msgs/LaserScan messages to the scan topic. Usually there is a way to configure which topic the message would publish to, in case there are multiple LIDARs or scan is being used for something else. One way to provide a customization point is through parameters.
 
 As part of roscore, ROS starts a parameter server. The server provides an API for nodes to register variables that are customizable and stores these variables and their values as a dictionary. Parameters can be set and retreived via c++ and python API, as well as through the command line tool rosparam. What paremeters do exactly is node dependent, but usually they provide a way to alter the node's behaviour at runtime. The navigation stack, for example, makes use of parameters to configure things like which navigation algorithm should be used, or how often should the pathfinding loop execute. Parameters can also be set for nodes using launch files, but only on node startup.
@@ -156,10 +158,71 @@ As part of roscore, ROS starts a parameter server. The server provides an API fo
 While nodes can use messages to communicate with eachother, messages tend to be used for active dynamic data while parameters are used for more static node configuration.
 
 ** Driving
-Both the Jackal and Husky include wireless controllers which directly drive the robots. To accomplish this, the controllers 
+Both the Jackal and Husky include wireless controllers which directly drive the robots. In each robot there is an ROS node called bluetooth_teleop/joy_node which reads the joystick device file at /dev/js and converts this to a sensor_msgs/Joy message:
 
-** Transform Tree
-Text
+#+begin_src python
+    Header header           # timestamp in the header is the time the data is received from the joystick
+    float32[] axes          # the axes measurements from a joystick
+    int32[] buttons         # the buttons measurements from a joystick
+#+end_src
+
+The message is posted to the topic /bluetooth_teleop/joy, which another node called /bluetooth_teleop/teleop_twist_joy subscribes to. This node translates the buttons and axis from the controller message to velocity drive commands and posts geometry_msgs/Twist messages containing these commands to the /bluetooth_teleop/cmd_vel topic.
+
+There is a node called /twist_mux which is responsible for multiplexing the velocity command messages from the controller nodes with velocity commands from other sources. For example, using an ROS tool called RViz \cite{4}, it is possible to drive the Jackal/Husky by dragging drive arrows with the mouse. On dragging, RViz sends forward/back/left/right/rotate commands to the node /twist_marker_server which translates these commands to geometry_msgs/Twist messages and publishes these messages to the /twist_marker_server/cmd_vel topic. The /twist_mux node subscribes to all /cmd_vel topics and produces a single geometry_msgs/Twist message which is published to /jackal_velocity_controller/cmd_vel. The motor control board (or gazebo if simulating) then directly controls the jackals drive motors based on this message.
+
+#+caption: Node/topic layout - nodes in ovals topics and namespaces in rectangles
+#+name:   fig:drive-topics
+#+attr_org: :width 1200px
+#+attr_latex: :width 6in
+[[./images/rqt_graph.png]]
+
+The link from /twist_mux to /jackal_velocity_controller/cmd_vel is removed for clarity. The easiest way to drive the Jackal and Husky programatically is to publish geometry_msgs/Twist messages to one of the /cmd_vel topics. This can be done directly using rostopic pub:
+
+#+begin_src bash
+$ rostopic pub -r 10 /cmd_vel geometry_msgs/Twist  '{linear:  {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0,y: 0.0,z: 0.3}}'
+#+end_src
+
+This spins the Husky or Jackal around at 0.3 rads per second. Since the jackal can only drive forward/backward and rotate, y and z do nothing in linear portion of the message and x and y do nothing in the angular portion of the message. Linear x (+/-) is used to drive forward and backward, and to turn left/right angular x (+/-) is used.
+
+** Transform Heirarchy
+ROS represents 6 DOF geometric items' positions and orientations as transforms from parent to child coordinate frames. The parent/child relationship of transformations forms a heirarchy where each frame is a node in the world graph - this is identical to a scene graph in rendering libraries. A frame's position and orientation is always releative to it's parent frame, with the root frame having no parent.
+
+Frames can be added to the heirarchy by publishing tf2_msgs/TFMessage to the /tf or /tf_static topic. The /tf_static topic can be used to publish transforms that don't change - all tf_static transforms are broadcast to subscribers only once when the nodes first subscribe. The format for the message is (all different message types shown in block for convenience):
+
+#+begin_src python
+  # tf2_msgs/TFMessage
+  geometry_msgs/TransformStamped[] transforms;
+
+  # geometry_msgs/TransformStamped
+  Header header
+  string child_frame_id # the frame id of the child frame
+  geometry_msgs/Transform transform
+
+  #std_msgs/Header
+  uint32 seq
+  time stamp
+  string frame_id
+
+  # geometry_msgs/Transform
+  geometry_msgs/Vector3 translation # This is already shown above
+  geometry_msgs/Quaternion rotation
+
+  # geometry_msgs/Quaternion
+  float64 x
+  float64 y
+  float64 z
+  float64 w
+#+end_src
+
+The frame_id in the header is the parent frame, as the transform is giving the translation and rotation of child_frame_id in relation to frame_id. 
+
+The jackal relies on a node called /robot_state_publisher
+#+caption: Transform heirarchy for the jackal
+#+name:   fig:drive-topics
+#+attr_org: :width 1200px
+#+attr_latex: :width 6in
+[[./images/transform.png]]
+
 
 ** Navigation Stack
 Text
