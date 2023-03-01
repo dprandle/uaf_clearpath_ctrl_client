@@ -4,6 +4,7 @@
 #+LaTeX_HEADER: \usepackage[backend=biber, style=apa]{biblatex}
 #+LaTeX_HEADER: \addbibresource{randle_ms_project_report.bib}
 #+LaTeX_HEADER: \usepackage{xcolor}
+#+LaTeX_HEADER: \usepackage{amsmath}
 * Abstract
 
 * Introduction
@@ -214,15 +215,137 @@ Frames can be added to the heirarchy by publishing tf2_msgs/TFMessage to the /tf
   float64 w
 #+end_src
 
-The frame_id in the header is the parent frame, as the transform is giving the translation and rotation of child_frame_id in relation to frame_id. 
+The frame_id in the header is the parent frame; the transform is giving the translation and rotation of child_frame_id in relation to frame_id. To work out the orientation and position of child frames in the root coordinate frame (or what some libraries would call "world coordinates"), we start at the root coordinate frame and build a four by four transformation matrix from the root frame orientation and position, which for the root frame is equal to the translation and rotation.
 
-The jackal relies on a node called /robot_state_publisher
+Using row major matrix layout, the transform matrix is created by first creating a rotation matrix from the quaternion orientation as shown in equation (1) [5] (with x y z and w from the quaternion message above), and using the rotation matrix as the basis for the 4x4 matrix. The 3D position is then set as the last column in the 4x4 matrix, with 1 left as the last element in the column.
+
+\begin{gather}
+  Rot_{3x3} = 
+  \begin{bmatrix}
+    1-2y^{2}-2z^{2} & 2xy+2wz & 2xz-2wy\\
+    2xy-2wz & 1-2x^{2}-2z^{2} & 2yz+2wx\\
+    2xz+2wy & 2yz-2wx & 1-2x^{2}-2y^{2}
+  \end{bmatrix}
+\end{gather}
+
+The following C/C++ code creates a 4x4 transformation matrix given the translation vector and rotation quaternion of a frame:
+
+#+begin_src cpp
+  struct quaternion
+  {
+      float x;
+      float y;
+      float z;
+      float w;
+  };
+
+  struct vector3
+  {
+      float x;
+      float y;
+      float z;
+  };
+
+  struct matrix4
+  {
+      float data[4][4];
+  };
+
+  matrix4 create_transform(const quaternion &rotation, const vector3 &translation)
+  {
+    matrix4 ret {};
+
+    // Build the rotation basis from the passed in rotation quaternion
+    ret.data[0][0] = 1 - 2 * (rotation.y * rotation.y + rotation.z * rotation.z);
+    ret.data[0][1] = 2 * (rotation.x * rotation.y - rotation.z * rotation.w);
+    ret.data[0][2] = 2 * (rotation.x * rotation.z + rotation.y * rotation.w);
+
+    ret.data[1][0] = 2 * (rotation.x * rotation.y + rotation.z * rotation.w);
+    ret.data[1][1] = 1 - 2 * (rotation.x * rotation.x + rotation.z * rotation.z);
+    ret.data[1][2] = 2 * (rotation.y * rotation.z - rotation.x * rotation.w);
+
+    ret.data[2][0] = 2 * (rotation.x * rotation.z - rotation.y * rotation.w);
+    ret.data[2][1] = 2 * (rotation.y * rotation.z + rotation.x * rotation.w);
+    ret.data[2][2] = 1 - 2 * (rotation.x * rotation.x + rotation.y * rotation.y);
+
+    // Add the translation vector as the last column
+    ret.data[3][0] = translation.x;
+    ret.data[3][1] = translation.y;
+    ret.data[3][2] = translation.z;
+
+    // Finally leave 1 in the last matrix position (m44) from the identity
+    ret.data[3][3] = 1.0f;
+    return ret;
+  }
+#+end_src
+
+With the root node transform ready, we iterate over all child frames and build a transform as we did for the root frame. We then multiply the parent frame by the child frame as shown in (2) to get the child frame's world transform - which can be used to determine the child frame position and orientation in the same coordinates as the root frame.
+
+\begin{gather}
+  Transform_{world} = Transform_{parent} \times Transform_{child}
+\end{gather}
+
+Getting the position from the matrix is easy - its the first three elements of the last column. The derivation for getting the orientation as a quaternion from the matrix is a bit more complicated but is detailed in [6], along with the coordinate transformation process. The code below shows an example of grabbing it:
+
+#+begin_src cpp
+  quaternion orientation(const matrix3 &rotation)
+  {
+      quaternion ret; 
+      float tr = rotation.data[0][0] + rotation.data[1][1] + rotation.data[2][2], s;
+
+      if (tr > 0)
+      {
+          s = sqrt(tr + 1.0) * 2;
+          ret.w = 0.25 * s;
+          ret.x = (rotation.data[2][1] - rotation.data[1][2]) / s;
+          ret.y = (rotation.data[0][2] - rotation.data[2][0]) / s;
+          ret.z = (rotation.data[1][0] - rotation.data[0][1]) / s;
+      }
+      else if ((rotation.data[0][0] > rotation.data[1][1]) & (rotation.data[0][0] > rotation.data[2][2]))
+      {
+          s = sqrt(1.0 + rotation.data[0][0] - rotation.data[1][1] - rotation.data[2][2]) * 2;
+          ret.w = (rotation.data[2][1] - rotation.data[1][2]) / s;
+          ret.x = 0.25 * s;
+          ret.y = (rotation.data[0][1] + rotation.data[1][0]) / s;
+          ret.z = (rotation.data[0][2] + rotation.data[2][0]) / s;
+      }
+      else if (rotation.data[1][1] > rotation.data[2][2])
+      {
+          s = sqrt(1.0 + rotation.data[1][1] - rotation.data[0][0] - rotation.data[2][2]) * 2;
+          ret.w = (rotation.data[0][2] - rotation.data[2][0]) / s;
+          ret.x = (rotation.data[0][1] + rotation.data[1][0]) / s;
+          ret.y = 0.25 * s;
+          ret.z = (rotation.data[1][2] + rotation.data[2][1]) / s;
+      }
+      else
+      {
+          s = sqrt(1.0 + rotation.data[2][2] - rotation.data[0][0] - rotation.data[1][1]) * 2;
+          ret.w = (rotation.data[1][0] - rotation.data[0][1]) / s;
+          ret.x = (rotation.data[0][2] + rotation.data[2][0]) / s;
+          ret.y = (rotation.data[1][2] + rotation.data[2][1]) / s;
+          ret.z = 0.25 * s;
+      }
+      return ret;
+  }
+#+end_src
+
+The transform heirarchy is crucial for mapping, localization, and navigation. Even without any simultaneous localization and mapping (SLAM) nodes enabled, the Jackal and Husky use odometry and the IMU information along with the transform heirarchy to produce an estimate as to where it is in the world. The root level frame in this case is called "odom" - its position and orientation are calculated by the ekf localization node as shown below:
+
+#+caption: ekf_localization node publishing odom transform frame to /tf based on multiple inputs
+#+name:   fig:ekf_localization
+#+attr_org: :width 1200px
+#+attr_latex: :width 4in
+[[./images/ekf_localization_node.png]]
+
+The complete jackal heirarchy without any SLAM nodes running is shown in [[fig:transform-heirarchy]]. The husky is nearly identical - but has a few different leaf nodes for its sensors and geometry.
+
 #+caption: Transform heirarchy for the jackal
-#+name:   fig:drive-topics
+#+name:   fig:transform-heirarchy
 #+attr_org: :width 1200px
 #+attr_latex: :width 6in
 [[./images/transform.png]]
 
+Most of the transform frames shown are published by the /robot_state_publisher node. This node reads in a URDF file from the parameter server and publishes transforms to /tf based on the contents of the URDF file. URDF is a file format that lists robot joints and links; links correspond to frames, and joints list the parent/child relationships between frames - there are several tutorials here [7].
 
 ** Navigation Stack
 Text
