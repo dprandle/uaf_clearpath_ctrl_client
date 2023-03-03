@@ -1,36 +1,36 @@
-@online{1,
-  author = {Open Robotics}
-  title = {Documentation},
-  year = 2022,
-  url = {http://wiki.ros.org},
-  urldate = {2023-02-14}
+@online{rosmain,
+author = {Open Robotics},
+title = {Documentation},
+year = {2022},
+url = {http://wiki.ros.org},
+urldate = {2023-02-14}
 }
 
-@online{2,
-  author = {Open Robotics}
-  title = {Ubuntu install of ROS Noetic},
-  year = 2022,
-  url = {http://wiki.ros.org/noetic/Installation/Ubuntu},
-  urldate = {2023-02-14}
+@online{rosinstall,
+author = {Open Robotics},
+title = {Ubuntu install of ROS Noetic},
+year = {2022},
+url = {http://wiki.ros.org/noetic/Installation/Ubuntu},
+urldate = {2023-02-14}
 }
 
-@online{3,
+@online{cmake,
   title = {Build with CMake},
-  author = {Kitware}
-  year = 2023,
+  author = {Kitware},
+  year = {2023},
   url = {https://cmake.org/},
   urldate = {2023-02-18}
 }
 
-@online{4,
-  title = {RVIZ},
-  author = {Kitware}
-  year = 2023,
-  url = {https://cmake.org/},
+@online{rviz,
+  title = {rviz},
+  author = {Hershberger, Dave and Gossow, David and Faust, Josh and Woodall, William},
+  year = {2023},
+  url = {http://wiki.ros.org/rviz},
   urldate = {2023-02-18}
 }
 
-@article{5,
+@article{quatrot,
 author = {Shoemake, Ken},
 title = {Animating Rotation with Quaternion Curves},
 year = {1985},
@@ -44,13 +44,13 @@ url = {https://doi.org/10.1145/325165.325242},
 doi = {10.1145/325165.325242},
 abstract = {Solid bodies roll and tumble through space. In computer animation, so do cameras. The rotations of these objects are best described using a four coordinate system, quaternions, as is shown in this paper. Of all quaternions, those on the unit sphere are most suitable for animation, but the question of how to construct curves on spheres has not been much explored. This paper gives one answer by presenting a new kind of spline curve, created on a sphere, suitable for smoothly in-betweening (i.e. interpolating) sequences of arbitrary rotations. Both theory and experiment show that the motion generated is smooth and natural, without quirks found in earlier methods.},
 journal = {SIGGRAPH Comput. Graph.},
-month = {jul},
+month = {7},
 pages = {245–254},
 numpages = {10},
 keywords = {animation, spline, approximation, B\'{e}zier curve, B-spline, rotation, spherical geometry, in-betweening, interpolation, quaternion}
 }
 
-@article{6,
+@article{tform_matrix,
   title={Representing attitude: Euler angles, unit quaternions, and rotation vectors},
   author={Diebel, James and others},
   journal={Matrix},
@@ -61,11 +61,44 @@ keywords = {animation, spline, approximation, B\'{e}zier curve, B-spline, rotati
   publisher={Citeseer}
 }
 
-
-@online{3,
+@online{urdf,
   title = {URDF Tutorials},
-  author = {Open Robotics}
-  year = 2016,
+  author = {Open Robotics},
+  year = {2016},
   url = {http://wiki.ros.org/urdf/Tutorials},
   urldate = {2023-02-18}
+}
+
+@online{nav_stack,
+  title = {Setup and Configuration of the Navigation Stack on a Robot},
+  author = {Open Robotics},
+  year = {2018},
+  url = {http://wiki.ros.org/navigation/Tutorials/RobotSetup},
+  urldate = {2023-03-01}
+}
+
+@article{gmapping,
+  author={Grisetti, Giorgio and Stachniss, Cyrill and Burgard, Wolfram},
+  journal={IEEE Transactions on Robotics}, 
+  title={Improved Techniques for Grid Mapping With Rao-Blackwellized Particle Filters}, 
+  year={2007},
+  volume={23},
+  number={1},
+  pages={34-46},
+  doi={10.1109/TRO.2006.889486}}
+
+@online{open_slam_gmapping,
+  title = {GMapping},
+  author = {Grisetti, Giorgio and Stachniss, Cyrill and Burgard, Wolfram},
+  year = {2007},
+  url = {https://openslam-org.github.io/gmapping},
+  urldate = {2023-03-02}
+}
+
+@online{gmapping_package,
+  title = {gmapping},
+  author = {Gerkey, Brian},
+  year = {2020},
+  url = {http://wiki.ros.org/gmapping?distro=noetic},
+  urldate = {2023-03-02}
 }

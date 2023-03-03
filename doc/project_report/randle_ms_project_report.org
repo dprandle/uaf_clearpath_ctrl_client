@@ -1,10 +1,16 @@
 #+LATEX_CLASS: article
-#+LaTeX_HEADER: \usepackage[a4paper, total={6in, 8in}]{geometry}
+#+LaTeX_HEADER: \usepackage[a4paper, total={7in, 10in}]{geometry}
 #+LaTeX_HEADER: \usepackage{minted}
-#+LaTeX_HEADER: \usepackage[backend=biber, style=apa]{biblatex}
+#+LaTeX_HEADER: \usepackage[backend=biber, style=numeric]{biblatex}
 #+LaTeX_HEADER: \addbibresource{randle_ms_project_report.bib}
 #+LaTeX_HEADER: \usepackage{xcolor}
 #+LaTeX_HEADER: \usepackage{amsmath}
+#+LaTeX_HEADER: \usepackage{caption}
+#+LaTeX_HEADER: \usepackage[parfill]{parskip}
+#+LaTeX_HEADER: \captionsetup[figure]{font=footnotesize,labelfont={bf,footnotesize}}
+#+LaTeX_HEADER: \usepackage{xcolor}
+#+LaTeX_HEADER: \hypersetup{colorlinks, citecolor={blue!50!black}, linkcolor={blue!35!black}, urlcolor={blue!80!black}}
+#+LaTeX_HEADER: \usepackage[section]{placeins}
 * Abstract
 
 * Introduction
@@ -36,12 +42,12 @@ ROSboard
 Each Clearpath robot is configured to connect or establish a Wifi hostspt with SSID "clearpath". When the base stations are powered up, they connect and extend the clearpath network
 
 * Robot Operating System (ROS)
-From the front page of ros.org, ROS is "a set of software libraries and tools that help you build robot applications". There are tutorials and explanations on how every part of ROS works available here \autocite{1}, but here we summarize the parts of ROS utilized in this project.
+From the front page of ros.org, ROS is "a set of software libraries and tools that help you build robot applications". There are tutorials and explanations on how every part of ROS works available here \autocite{rosmain}, but here we summarize the parts of ROS utilized in this project.
 
 Just like an operating system provides a standard platform/environment for applications to run, ROS provides a standard platform/environment for robot applications. All ROS tools run on top of a linux distribution, and are invoked with CLI (command line interface) just like native GNU tools (such as a C compiler, or grep). That begs the question - why not just use linux executables? That is basically what ROS is - except that it standardizes and abstracts inter-process and inter-machine communication. It does this mainly through nodes, topics, and messages.
 
 ** Setup
-If using a compatible linux distrobution (currently Ubuntu 20.04 is the latest supported version) ROS can be installed using apt package manager \autocite{2}. ROS Noetic was installed on the development machine using:
+If using a compatible linux distrobution (currently Ubuntu 20.04 is the latest supported version) ROS can be installed using apt package manager \autocite{rosinstall}. ROS Noetic was installed on the development machine using:
 #+begin_src bash
   $ sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list'
   $ sudo apt install curl
@@ -76,7 +82,7 @@ To choose which machine just comment out the appropriate line - commenting both 
 ** Nodes, Packages, and Launch Files
 A node is a process which is started by running an executable file on disk (or forked from another process) just like any other system process. In order for an executable to qualify as a node, when its built it must link with the ROS library and register itself (with ROS master process) on startup. ROS nodes can be built using c++ or python; if using c++ the node must link with roscpp and if using python it must link with rospy. Once a node is installed (either through apt or by building from source) it can be started in a terminal by using "rosrun node_name".
 
-The easist way to create a ROS node is by creating a package and placing the node source in the created package. Packages are the basic "project" unit in ROS - the most simple package would be a folder containing a file named package.xml and CMakeLists.txt. The xml file specifies package dependencies, name, author, and other such meta information. The CMakeLists.txt file is a file specifying how to build the project using cmake [3]. To build a node with c++, configure the CMakeLists.txt to point to the source code and build the project with catkin.
+The easist way to create a ROS node is by creating a package and placing the node source in the created package. Packages are the basic "project" unit in ROS - the most simple package would be a folder containing a file named package.xml and CMakeLists.txt. The xml file specifies package dependencies, name, author, and other such meta information. The CMakeLists.txt file is a file specifying how to build the project using CMake \autocite{cmake}. To build a node with c++, configure the CMakeLists.txt to point to the source code and build the project with catkin.
 
 ROS ships with a tool called catkin for creating the boiler plate code needed for a package, and for building one or many packages at once. Catkin calls in to CMake, and so uses CMakeLists.txt files for building. To use catkin, create a catkin workspace and place each package under a subfolder in the workspace called src. A typical workspace would look like:
 #+begin_src bash
@@ -127,20 +133,20 @@ To build an ROS package with catkin, the package must first be added to the catk
 Once the setup.bash script in the devel (or install) subfolder of the workspace is sourced, all ROS commands will work with any of the built packages as if they were installed with the package manager. It makes sense, then, to also add lines to .bashrc file to source any workspaces used for ROS package development.
 
 ** Topics, Messages, and Parameters
-ROS nodes communicate with eachother through topics and messages. Messages are data schemas - similar to a struct in C or a table in SQL. The basic building block data types can be found in the package std_msgs - but custom messages can be composed by using any other message as members. For example, and important message in this project:
+ROS nodes communicate with eachother through topics and messages. Messages are data schemas - similar to a struct in C or a table in SQL. The basic building block data types can be found in the package std_msgs - but custom messages can be composed by using any other message as members. For example, a couple of important messages in this project:
+
 #+begin_src python
-  # geometry_msgs/Twist
+  ## geometry_msgs/Twist
   Vector3  linear
   Vector3  angular
-#+end_src
-which is composed of:
-#+begin_src python
-  # geometry_msgs/Vector3
+
+  ## geometry_msgs/Vector3
   float64 x
   float64 y
   float64 z
 #+end_src
-This particular message is used to convey driving velocity commands - the linear describes velocity along each axis while the angular describes velocity about each axis. The values don't have any direct relation to units - each robot chooses min/max values and correlates them to driving motor speeds.
+
+The Twist message is used to convey driving velocity commands - the linear describes velocity along each axis while the angular describes velocity about each axis. The values don't have any direct relation to units - each robot chooses min/max values and correlates them to driving motor speeds.
 
 Topics are named destinations for certain message types. By sending and receiving messages to/from topics rather than to/from nodes directly, nodes require no direct information about other nodes - they only require the string names and message types of topic of interest. As mentioned earlier, the rosmaster process is in charge of establishing connections between nodes who publish/subscribe to the same topic.
 
@@ -152,32 +158,40 @@ A topic is created by publishing a message to the topic - this can be done in c+
   /rosout_agg
 #+end_src
 
-This message/topic system is the most fundemental thing that makes ROS useful. For example, a vendor can build a LIDAR device any way they want; to make it ROS compatible the vendor would write a node which publishes sensor_msgs/LaserScan messages to the scan topic. Usually there is a way to configure which topic the message would publish to, in case there are multiple LIDARs or scan is being used for something else. One way to provide a customization point is through parameters.
+This message/topic system is the most fundemental thing that makes ROS useful. For example, a vendor can build a LIDAR device any way they want; to make it ROS compatible the vendor would write a node which publishes LaserScan messages to the scan topic. Usually there is a way to configure which topic the message would publish to, in case there are multiple LIDARs or scan is being used for something else. One way to provide a customization point is through parameters.
 
 As part of roscore, ROS starts a parameter server. The server provides an API for nodes to register variables that are customizable and stores these variables and their values as a dictionary. Parameters can be set and retreived via c++ and python API, as well as through the command line tool rosparam. What paremeters do exactly is node dependent, but usually they provide a way to alter the node's behaviour at runtime. The navigation stack, for example, makes use of parameters to configure things like which navigation algorithm should be used, or how often should the pathfinding loop execute. Parameters can also be set for nodes using launch files, but only on node startup.
 
 While nodes can use messages to communicate with eachother, messages tend to be used for active dynamic data while parameters are used for more static node configuration.
 
 ** Driving
-Both the Jackal and Husky include wireless controllers which directly drive the robots. In each robot there is an ROS node called bluetooth_teleop/joy_node which reads the joystick device file at /dev/js and converts this to a sensor_msgs/Joy message:
+Both the Jackal and Husky include wireless controllers which directly drive the robots. In each robot there is an ROS node called bluetooth_teleop/joy_node which reads the joystick device file at /dev/js and converts this to a Joy message:
 
 #+begin_src python
-    Header header           # timestamp in the header is the time the data is received from the joystick
-    float32[] axes          # the axes measurements from a joystick
-    int32[] buttons         # the buttons measurements from a joystick
+    Header header   # timestamp in the header is the time the data is received from the joystick
+    float32[] axes  # the axes measurements from a joystick
+    int32[] buttons # the buttons measurements from a joystick
 #+end_src
 
-The message is posted to the topic /bluetooth_teleop/joy, which another node called /bluetooth_teleop/teleop_twist_joy subscribes to. This node translates the buttons and axis from the controller message to velocity drive commands and posts geometry_msgs/Twist messages containing these commands to the /bluetooth_teleop/cmd_vel topic.
+The message is posted to the topic /bluetooth_teleop/joy, which another node called /bluetooth_teleop/teleop_twist_joy subscribes to. This node translates the buttons and axis from the controller message to velocity drive commands and posts Twist messages containing these commands to the /bluetooth_teleop/cmd_vel topic.
 
-There is a node called /twist_mux which is responsible for multiplexing the velocity command messages from the controller nodes with velocity commands from other sources. For example, using an ROS tool called RViz \cite{4}, it is possible to drive the Jackal/Husky by dragging drive arrows with the mouse. On dragging, RViz sends forward/back/left/right/rotate commands to the node /twist_marker_server which translates these commands to geometry_msgs/Twist messages and publishes these messages to the /twist_marker_server/cmd_vel topic. The /twist_mux node subscribes to all /cmd_vel topics and produces a single geometry_msgs/Twist message which is published to /jackal_velocity_controller/cmd_vel. The motor control board (or gazebo if simulating) then directly controls the jackals drive motors based on this message.
+There is a node called /twist_mux which is responsible for multiplexing the velocity command messages from the controller nodes with velocity commands from other sources. For example, using an ROS tool called rviz \autocite{rviz}, it is possible to drive the Jackal/Husky by dragging drive arrows shown in figure [[fig:jackal_rviz]] with the mouse.
+
+#+caption: Jackal in rviz with driving controls
+#+name:   fig:jackal_rviz
+#+attr_latex: :width 5in
+[[./images/jackal_rviz.png]]
+\FloatBarrier
+
+On dragging, RViz sends forward/back/left/right/rotate commands to the node /twist_marker_server which translates these commands to Twist messages and publishes these messages to the /twist_marker_server/cmd_vel topic. The /twist_mux node subscribes to all /cmd_vel topics and produces a single Twist message which is published to /jackal_velocity_controller/cmd_vel. The motor control board (or gazebo if simulating) then directly controls the jackals drive motors based on this message.
 
 #+caption: Node/topic layout - nodes in ovals topics and namespaces in rectangles
 #+name:   fig:drive-topics
-#+attr_org: :width 1200px
-#+attr_latex: :width 6in
+#+attr_latex: :width 7in
 [[./images/rqt_graph.png]]
+\FloatBarrier
 
-The link from /twist_mux to /jackal_velocity_controller/cmd_vel is removed for clarity. The easiest way to drive the Jackal and Husky programatically is to publish geometry_msgs/Twist messages to one of the /cmd_vel topics. This can be done directly using rostopic pub:
+The link from /twist_mux to /jackal_velocity_controller/cmd_vel is removed for clarity. The easiest way to drive the Jackal and Husky programatically is to publish Twist messages to one of the /cmd_vel topics. This can be done directly using rostopic pub:
 
 #+begin_src bash
 $ rostopic pub -r 10 /cmd_vel geometry_msgs/Twist  '{linear:  {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0,y: 0.0,z: 0.3}}'
@@ -188,27 +202,27 @@ This spins the Husky or Jackal around at 0.3 rads per second. Since the jackal c
 ** Transform Heirarchy
 ROS represents 6 DOF geometric items' positions and orientations as transforms from parent to child coordinate frames. The parent/child relationship of transformations forms a heirarchy where each frame is a node in the world graph - this is identical to a scene graph in rendering libraries. A frame's position and orientation is always releative to it's parent frame, with the root frame having no parent.
 
-Frames can be added to the heirarchy by publishing tf2_msgs/TFMessage to the /tf or /tf_static topic. The /tf_static topic can be used to publish transforms that don't change - all tf_static transforms are broadcast to subscribers only once when the nodes first subscribe. The format for the message is (all different message types shown in block for convenience):
+Frames can be added to the heirarchy by publishing TFMessage to the /tf or /tf_static topic. The /tf_static topic can be used to publish transforms that don't change - all tf_static transforms are broadcast to subscribers only once when the nodes first subscribe. The format for the message is (all different message types shown in block for convenience):
 
 #+begin_src python
-  # tf2_msgs/TFMessage
+  ## tf2_msgs/TFMessage
   geometry_msgs/TransformStamped[] transforms;
 
-  # geometry_msgs/TransformStamped
+  ## geometry_msgs/TransformStamped
   Header header
   string child_frame_id # the frame id of the child frame
   geometry_msgs/Transform transform
 
-  #std_msgs/Header
+  ## std_msgs/Header
   uint32 seq
   time stamp
   string frame_id
 
-  # geometry_msgs/Transform
+  ## geometry_msgs/Transform
   geometry_msgs/Vector3 translation # This is already shown above
   geometry_msgs/Quaternion rotation
 
-  # geometry_msgs/Quaternion
+  ## geometry_msgs/Quaternion
   float64 x
   float64 y
   float64 z
@@ -217,7 +231,7 @@ Frames can be added to the heirarchy by publishing tf2_msgs/TFMessage to the /tf
 
 The frame_id in the header is the parent frame; the transform is giving the translation and rotation of child_frame_id in relation to frame_id. To work out the orientation and position of child frames in the root coordinate frame (or what some libraries would call "world coordinates"), we start at the root coordinate frame and build a four by four transformation matrix from the root frame orientation and position, which for the root frame is equal to the translation and rotation.
 
-Using row major matrix layout, the transform matrix is created by first creating a rotation matrix from the quaternion orientation as shown in equation (1) [5] (with x y z and w from the quaternion message above), and using the rotation matrix as the basis for the 4x4 matrix. The 3D position is then set as the last column in the 4x4 matrix, with 1 left as the last element in the column.
+Using row major matrix layout, the transform matrix is created by first creating a rotation matrix from the quaternion orientation as shown in equation (1) \autocite{quatrot} (with x y z and w from the quaternion message above), and using the rotation matrix as the basis for the 4x4 matrix. The 3D position is then set as the last column in the 4x4 matrix, with 1 left as the last element in the column.
 
 \begin{gather}
   Rot_{3x3} = 
@@ -279,13 +293,13 @@ The following C/C++ code creates a 4x4 transformation matrix given the translati
   }
 #+end_src
 
-With the root node transform ready, we iterate over all child frames and build a transform as we did for the root frame. We then multiply the parent frame by the child frame as shown in (2) to get the child frame's world transform - which can be used to determine the child frame position and orientation in the same coordinates as the root frame.
+With the root node transform ready, we iterate over all child frames and build a transform as we did for the root frame. We then multiply the parent frame by the child frame as shown in equation 2 to get the child frame's world transform - which can be used to determine the child frame position and orientation in the same coordinates as the root frame.
 
 \begin{gather}
   Transform_{world} = Transform_{parent} \times Transform_{child}
 \end{gather}
 
-Getting the position from the matrix is easy - its the first three elements of the last column. The derivation for getting the orientation as a quaternion from the matrix is a bit more complicated but is detailed in [6], along with the coordinate transformation process. The code below shows an example of grabbing it:
+Getting the position from the matrix is easy - its the first three elements of the last column. The derivation for getting the orientation as a quaternion from the matrix is a bit more complicated but is detailed in \autocite{tform_matrix}, along with the coordinate transformation process. The code below shows an example of grabbing it:
 
 #+begin_src cpp
   quaternion orientation(const matrix3 &rotation)
@@ -329,38 +343,79 @@ Getting the position from the matrix is easy - its the first three elements of t
   }
 #+end_src
 
-The transform heirarchy is crucial for mapping, localization, and navigation. Even without any simultaneous localization and mapping (SLAM) nodes enabled, the Jackal and Husky use odometry and the IMU information along with the transform heirarchy to produce an estimate as to where it is in the world. The root level frame in this case is called "odom" - its position and orientation are calculated by the ekf localization node as shown below:
+The transform heirarchy is crucial for mapping, localization, and navigation. Even without any simultaneous localization and mapping (SLAM) nodes enabled, the Jackal and Husky use odometry and the IMU information along with the transform heirarchy to produce an estimate as to where it is in the world. The root level frame in this case is called odom. The ekf localization node calculates the base_link rotation/translation (as relative to odom) and publishes the odom frame with the base_link as the child frame as shown in figure [[fig:ekf-localization]].
 
-#+caption: ekf_localization node publishing odom transform frame to /tf based on multiple inputs
-#+name:   fig:ekf_localization
-#+attr_org: :width 1200px
-#+attr_latex: :width 4in
+#+caption: ekf_localization node publishing edits to base_link odom transform frame to /tf based on multiple inputs
+#+name:   fig:ekf-localization
+#+attr_latex: :width 3in
 [[./images/ekf_localization_node.png]]
+\FloatBarrier
 
-The complete jackal heirarchy without any SLAM nodes running is shown in [[fig:transform-heirarchy]]. The husky is nearly identical - but has a few different leaf nodes for its sensors and geometry.
+The complete jackal heirarchy without any SLAM nodes running is shown in figure [[fig:transform-heirarchy]]. The husky is nearly identical - but has a few different leaf nodes for its sensors and geometry. Most of the transform frames are published by the /robot_state_publisher node. This node reads in a URDF file from the parameter server and publishes transforms to /tf based on the contents of the URDF file. URDF is a file format that lists robot joints and links; links correspond to frames, and joints list the parent/child relationships between frames - there are several tutorials here \autocite{urdf}.
 
 #+caption: Transform heirarchy for the jackal
 #+name:   fig:transform-heirarchy
-#+attr_org: :width 1200px
-#+attr_latex: :width 6in
+#+attr_latex: :width 7in
 [[./images/transform.png]]
+\FloatBarrier
 
-Most of the transform frames shown are published by the /robot_state_publisher node. This node reads in a URDF file from the parameter server and publishes transforms to /tf based on the contents of the URDF file. URDF is a file format that lists robot joints and links; links correspond to frames, and joints list the parent/child relationships between frames - there are several tutorials here [7].
+** SLAM GMapping
+Simultaneous Localization and Mapping, or SLAM, refers to the process of reading in sensor data over time, using the changing sensor data to find landmarks and build a map, and then using the landmarks and map to localize the robot. One of the most widely used algorithms to do SLAM with two-dimensional planar LIDAR data is gmapping. The gmapping SLAM algorithm, as proposed in \autocite{gmapping}, is implemented on OpenSLAM \autocite{open_slam_gmapping}, and ported to ROS as a package \autocite{gmapping_package}. The package launches a node called slam_gmapping which subscribes to /front/scan and /tf, performs SLAM using the data on those topics, and publishes the resulting map as an OccupancyGrid to the /map topic as shown in figure [[fig:gmapping_graph]]. 
+
+#+caption: GMapping package node and updated transform tree
+#+name:   fig:gmapping_graph
+#+attr_latex: :width 6in
+[[./images/gmapping_graph.png]]
+\FloatBarrier
+
+A new transform frame called map is also published to the /tf topic as shown in figure [[fig:gmapping_graph]]. The slam_gmapping node performs localization by calculating the odom translation/rotation (as relative to the map using gmapping SLAM algorithm) and publishing the map frame to /tf with the odom frame as its child. In the complete picture, ekf_localization updates the relative transform of base_link to odom by using the IMU/odometry, and slam_gmapping updates the relative transform of odom to map by using SLAM based on the LIDAR scan data.
+
+The OccupancyGrid message format is:
+#+begin_src python
+  ## nav_msgs/OccupancyGrid
+  std_msgs/Header header
+  nav_msgs/MapMetaData info
+  # The map data, in row-major order, starting with (0,0).
+  # Occupancy probabilities are in the range [0,100].  Unknown is -1.
+  int8[] data
+
+  ## nav_msgs/MapMetaData
+  time map_load_time
+  # The map resolution [m/cell]
+  float32 resolution
+  # Map width [cells]
+  uint32 width
+  # Map height [cells]
+  uint32 height
+  # The origin of the map [m, m, rad].  This is the real-world pose of the
+  # cell (0,0) in the map.
+  geometry_msgs/Pose origin
+
+  ## geometry_msgs/Pose
+  Point position
+  Quaternion orientation
+
+  ## geometry_msgs/Point
+  float64 x
+  float64 y
+  float64 z
+#+end_src
+
+This message type is used for costmaps in addition to maps. For maps, the values in data are either 0, 100, or -1; not the full range of [0-100]. With a map available, the navigation stack can run and create costmaps and use those costmaps to create drive paths.
 
 ** Navigation Stack
-Text
+The navigation stack on ROS refers to the move_base node, the plugins the move_base node uses, and all the topics published by move_base. Figure [[fig:nav_stack]] shows an overview of the node/topic relationship \autocite{nav_stack}. The move_base node is configurable; the ovals inside of the mov_base rectangle indicate parts of the node which run using plugins - this means the user can create a shared library and, with some configuration, move_base will use the shared library in place of the default behaviour.
 
-** Nodes of Interest
-Text
+#+caption: Navigation stack overview
+#+name:   fig:nav_stack
+#+attr_latex: :width 6in
+[[./images/overview_tf_small.png]]
+\FloatBarrier
 
-*** Jackal/Husky
-Text
+*** Costmaps
+Both the local and the global costmaps contain data about nearby obstacles - the difference between the costmaps is in the configuration. The global costmap is usually configured be much larger 
 
-*** Jackal Only
-Text
-
-*** Husky Only
-Text
+By default, the Jackal and Husky do not start with any navigation stack nodes running. On ROS Noetic, there is a package for the Jackal called jackal_navigation and for the Husky called husky_navigation which start all /move_base nodes to build a navigation stack. 
 
 ** Simulation
 Text
