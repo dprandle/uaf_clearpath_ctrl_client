@@ -473,7 +473,27 @@ By default, the Jackal and Husky do not start with any navigation stack nodes ru
 The local planner uses odometry and the local costmap to try and direct the robot along the path dictated by the global planner. It  
 
 ** Simulation
-Text
+Simulating the Jackal and Husky is easy as Clearpath authored packages which launch and set up ROS' simulation tool, Gazebo \autocite{gazebo}, with everything needed to simulate the robots. The simulation is somewhat limited with sensor nodes and data, but it does simulate laser scan data and driving which was enough to get the server/client app up and running. To simulate the Jackal and Husky, first install the correct packages:
+
+ #+begin_src bash
+ $ sudo apt-get install ros-noetic-jackal-simulator ros-noetic-jackal-desktop # Replace jackal with husky for the husky
+ #+end_src
+
+And to start the simulation with the laser scan enabled:
+
+#+begin_src bash
+$ roslaunch jackal_gazebo jackal_world.launch config:=front_laser # Again, replace jackal with husky for the husky
+#+end_src
+
+The default jackal_world.launch creates the world shown in [[fig:jackal_world]]. The default world can be edited; its possible to create new geometry or load in models created by other Gazebo users. The model database contains tons of content, including complete office buildings! For this project, we stuck with the default world as the scope of the project didn't require anything else.
+
+#+caption: Jackal default simulation world.
+#+name:   fig:jackal_world
+#+attr_latex: :width 6in
+[[./images/overview_tf_small.png]]
+\FloatBarrier
+
+It is worth mentioning, before launching Gazebo, the machine running the simulation must be configured as the ROS master with roscore running.
 
 * Clearpath Robot Configuration
 Text
