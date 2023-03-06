@@ -31,23 +31,23 @@ urldate = {2023-02-14}
 }
 
 @article{quatrot,
-author = {Shoemake, Ken},
-title = {Animating Rotation with Quaternion Curves},
-year = {1985},
-issue_date = {Jul. 1985},
-publisher = {Association for Computing Machinery},
-address = {New York, NY, USA},
-volume = {19},
-number = {3},
-issn = {0097-8930},
-url = {https://doi.org/10.1145/325165.325242},
-doi = {10.1145/325165.325242},
-abstract = {Solid bodies roll and tumble through space. In computer animation, so do cameras. The rotations of these objects are best described using a four coordinate system, quaternions, as is shown in this paper. Of all quaternions, those on the unit sphere are most suitable for animation, but the question of how to construct curves on spheres has not been much explored. This paper gives one answer by presenting a new kind of spline curve, created on a sphere, suitable for smoothly in-betweening (i.e. interpolating) sequences of arbitrary rotations. Both theory and experiment show that the motion generated is smooth and natural, without quirks found in earlier methods.},
-journal = {SIGGRAPH Comput. Graph.},
-month = {7},
-pages = {245–254},
-numpages = {10},
-keywords = {animation, spline, approximation, B\'{e}zier curve, B-spline, rotation, spherical geometry, in-betweening, interpolation, quaternion}
+  author = {Shoemake, Ken},
+  title = {Animating Rotation with Quaternion Curves},
+  year = {1985},
+  issue_date = {Jul. 1985},
+  publisher = {Association for Computing Machinery},
+  address = {New York, NY, USA},
+  volume = {19},
+  number = {3},
+  issn = {0097-8930},
+  url = {https://doi.org/10.1145/325165.325242},
+  doi = {10.1145/325165.325242},
+  abstract = {Solid bodies roll and tumble through space. In computer animation, so do cameras. The rotations of these objects are best described using a four coordinate system, quaternions, as is shown in this paper. Of all quaternions, those on the unit sphere are most suitable for animation, but the question of how to construct curves on spheres has not been much explored. This paper gives one answer by presenting a new kind of spline curve, created on a sphere, suitable for smoothly in-betweening (i.e. interpolating) sequences of arbitrary rotations. Both theory and experiment show that the motion generated is smooth and natural, without quirks found in earlier methods.},
+  journal = {SIGGRAPH Comput. Graph.},
+  month = {7},
+  pages = {245–254},
+  numpages = {10},
+  keywords = {animation, spline, approximation, B\'{e}zier curve, B-spline, rotation, spherical geometry, in-betweening, interpolation, quaternion}
 }
 
 @article{tform_matrix,
@@ -85,12 +85,13 @@ keywords = {animation, spline, approximation, B\'{e}zier curve, B-spline, rotati
   volume={23},
   number={1},
   pages={34-46},
-  doi={10.1109/TRO.2006.889486}}
+  doi={10.1109/TRO.2006.889486}
+}
 
 @online{open_slam_gmapping,
-  title = {GMapping},
-  author = {Grisetti, Giorgio and Stachniss, Cyrill and Burgard, Wolfram},
-  year = {2007},
+  title = {gmapping},
+  author = {Gerkey, Brian},
+  year = {2019},
   url = {https://openslam-org.github.io/gmapping},
   urldate = {2023-03-02}
 }
@@ -104,8 +105,41 @@ keywords = {animation, spline, approximation, B\'{e}zier curve, B-spline, rotati
 }
 
 @online{gazebo,
-  title = {Gazebo; Robot simulation made easy},
+  title = {costmap_2d},
+  author = {Open Source Robotics},
+  year = {2018},
+  url = {https://classic.gazebosim.org/},
+  urldate = {2023-03-04}
+}
+
+@online{costmap_spec,
+  title = {costmap_2d},
   author = {Open Source Robotics},
   year = {2019},
-  url = {https://classic.gazebosim.org/},
-  urldate = {2023-03-04}}
+  url = {http://wiki.ros.org/costmap_2d},
+  urldate = {2023-03-05}
+}
+
+@online{local_planner,
+  title = {base_local_planner},
+  author = {Open Source Robotics},
+  year = {2019},
+  url = {http://wiki.ros.org/base_local_planner},
+  urldate = {2023-03-05}
+}
+
+@inproceedings{trajectory_rollout,
+  title={Planning and Control in Unstructured Terrain},
+  author={Brian P. Gerkey},
+  year={2008}
+}
+
+@article{dwa,
+  author={Fox, D. and Burgard, W. and Thrun, S.},
+  journal={IEEE Robotics & Automation Magazine}, 
+  title={The dynamic window approach to collision avoidance}, 
+  year={1997},
+  volume={4},
+  number={1},
+  pages={23-33},
+  doi={10.1109/100.580977}}

@@ -12,7 +12,7 @@
 #include "logging.h"
 #include <poll.h>
 
-// #define PACKET_DEBUG
+//#define PACKET_DEBUG
 
 #if defined(PACKET_DEBUG)
 #define packet_dlog dlog
@@ -504,6 +504,7 @@ intern sizet dispatch_received_packet(binary_fixed_buffer_archive<net_rx_buffer:
     }
     else if (matches_packet_id(MAP_PCKT_ID, read_buf.data + read_buf.cur_offset))
     {
+        ilog("Got map");
         handle_occ_grid_pckt(read_buf, available, cached_offset, conn->pckts.gu, conn->map_update_received);
     }
     else if (matches_packet_id(LOC_NAVP_PCKT_ID, read_buf.data + read_buf.cur_offset))
@@ -617,7 +618,7 @@ void net_rx(net_connection *conn)
     if (conn->rx_buf->available == 0)
     {
         conn->rx_buf->read_buf.cur_offset = 0;
-        packet_dlog("Read all available data on channel - moving pointer to buffer start");
+        //packet_dlog("Read all available data on channel - moving pointer to buffer start");
     }
 }
 
