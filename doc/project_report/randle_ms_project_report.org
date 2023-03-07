@@ -499,10 +499,10 @@ The global planner takes in the global costmap and a goal and produces a path fr
 };  // namespace nav_core
 #+end_src
 
-The makePlan function, which must be implemented by every global planner do to it being a pure virtual function, takes a starting pose and goal and must fill in plan which is a reference to a vector of poses. The worst planner, for example, could just add the starting pose and goal pose to plan and return - this would likely get the robot stuck. The package global_planner provides implementations of A* and Dijkstra's path planning algorithms (as well as a few others), which are selectable via parameters. Navfn only provides A*.
+The makePlan function, which must be implemented by every global planner (pure virtual), takes a starting pose and goal and must fill in plan which is a reference to a vector of poses. The worst planner, for example, could add the starting pose and goal pose to plan and return which would likely get the robot stuck. The package global_planner provides implementations of A* and Dijkstra's path planning algorithms (as well as a few others), which are selectable via parameters. Navfn only provides A*.
 
 ** Simulation
-Simulating the Jackal and Husky is easy as Clearpath authored packages which launch and set up ROS' simulation tool, Gazebo \autocite{gazebo}, with everything needed to simulate the robots. The simulation is somewhat limited with sensor nodes and data, but it does simulate laser scan data and driving which was enough to get the server/client app up and running. To simulate the Jackal and Husky, first install the correct packages:
+Simulating the Jackal and Husky is easy; Clearpath provides packages which launch and set up the ROS simulation tool, Gazebo \autocite{gazebo}, with everything needed to simulate the robots. The simulation is somewhat limited with sensor nodes and data, but it simulates laser scan data and driving which is enough for most development work on our app. To simulate the Jackal and Husky, first install the correct packages:
 
 #+begin_src bash
 $ sudo apt-get install ros-noetic-jackal-simulator ros-noetic-jackal-desktop # Replace jackal with husky for the husky
@@ -514,12 +514,12 @@ And to start the simulation with the laser scan enabled:
 $ roslaunch jackal_gazebo jackal_world.launch config:=front_laser # Again, replace jackal with husky for the husky
 #+end_src
 
-The default jackal_world.launch creates the world shown in [[fig:jackal_world]]. The default world can be edited; its possible to create new geometry or load in models created by other Gazebo users. The model database contains tons of content, including complete office buildings! For this project, we stuck with the default world as the scope of the project didn't require anything else.
+The default jackal_world.launch and husky_playground.launch files create the worlds shown in [[fig:jackal_husky_sim]]. The default worlds can be edited; its possible to create new geometry or load in models created by other Gazebo users. The model database contains tons of content, including complete office buildings! For this project, we stuck with the default worlds as the scope of the project didn't require anything else.
 
-#+caption: Jackal default simulation world.
-#+name:   fig:jackal_world
+#+caption: Jackal and Husky default simulation worlds
+#+name:   fig:jackal_husky_sim
 #+attr_latex: :width 6in
-[[./images/overview_tf_small.png]]
+[[./images/jackal_husky_sim.png]]
 \FloatBarrier
 
 It is worth mentioning, before launching Gazebo, the machine running the simulation must be configured as the ROS master with roscore running.
@@ -564,7 +564,7 @@ Text
 Text
 
 * Client Server App
-The client app is written in c/c++ and uses emscripten to cross compile to WebAssembly.
+The client app is written in c/c++ and uses Emscripten \autocite{emscripten} to cross compile to WebAssembly. Urho3D \autocite{urho3d} is used for rendering, user interface, and user input processing; Urho3D is also cross compiled to WebAssembly using Emscripten. Building the client app produces four files; 
 
 ** Setup and Build
 To build the client app, cmake is required along with tools sourced from build-essentials linux package.
