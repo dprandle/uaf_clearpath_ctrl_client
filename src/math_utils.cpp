@@ -1,6 +1,5 @@
 #include "math_utils.h"
 
-
 mat4 perspective_from(float near_left, float near_right, float near_top, float near_bottom, float z_near, float z_far)
 {
     mat4 ret;
@@ -26,7 +25,6 @@ mat4 perspective_from(float fov_, float aspect_ratio_, float z_near_, float z_fa
     return perspective_from(-near_x, near_x, near_y, -near_y, z_near_, z_far_);
 }
 
-
 mat4 ortho_from(float left_, float right_, float top_, float bottom_, float near_, float far_)
 {
     mat4 ret;
@@ -39,8 +37,13 @@ mat4 ortho_from(float left_, float right_, float top_, float bottom_, float near
     float y = (top_ + bottom_) / h;
     float z = (far_ + near_) / p;
 
-    ret.m00_ = 2.0f / w; ret.m11_ = 2.0f / h; ret.m22_ = -2.0f / p;
-    ret.m03_ = -x; ret.m13_ = -y; ret.m23_ = -z; ret.m33_ = 1.0f;
+    ret.m00_ = 2.0f / w;
+    ret.m11_ = 2.0f / h;
+    ret.m22_ = -2.0f / p;
+    ret.m03_ = -x;
+    ret.m13_ = -y;
+    ret.m23_ = -z;
+    ret.m33_ = 1.0f;
     return ret;
 }
 

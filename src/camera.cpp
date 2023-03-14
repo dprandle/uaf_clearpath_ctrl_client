@@ -18,7 +18,9 @@ intern const float UI_ADDITIONAL_CAM_SCALING = 0.75f;
 intern void setup_camera_controls(map_panel *mp, urho::Node *cam_node, input_data *inp)
 {
     auto on_mouse_tilt = [cam_node, mp](const itrigger_event &tevent) {
-        if (mp->toolbar.enable_measure->IsChecked() || (mp->toolbar.add_goal && mp->toolbar.add_goal->IsChecked()) || mp->js_enabled || (mp->view != tevent.vp.element_under_mouse && tevent.vp.element_under_mouse->GetPriority() > 2))
+        if (mp->toolbar.enable_measure->IsChecked() || (mp->toolbar.add_goal && mp->toolbar.add_goal->IsChecked()) ||
+            mp->js_enabled ||
+            (mp->view != tevent.vp.element_under_mouse && tevent.vp.element_under_mouse->GetPriority() > 2))
             return;
 
         if (tevent.vp.vp_norm_mdelta.x_ > 0.1 || tevent.vp.vp_norm_mdelta.y_ > 0.1)
@@ -28,7 +30,7 @@ intern void setup_camera_controls(map_panel *mp, urho::Node *cam_node, input_dat
         auto parent = cam_node->GetParent();
         if (parent != mp->view->GetScene())
             rot_node = parent;
-        
+
         rot_node->Rotate(quat(tevent.vp.vp_norm_mdelta.y_ * 100.0f, {1, 0, 0}));
         rot_node->Rotate(quat(tevent.vp.vp_norm_mdelta.x_ * 100.0f, {0, 0, -1}), urho::TransformSpace::World);
     };
@@ -114,7 +116,7 @@ intern void setup_cam_move_widget(map_panel *mp, const ui_info &ui_inf)
 
 intern void handle_press_event(map_panel *mp, urho::UIElement *elem)
 {
-    auto trans = elem->GetVar("md").GetInt();
+    auto trans = elem->GetVar("md").GetI32();
 
     if (elem == mp->cam_cwidget.cam_zoom_widget.zoom_in)
         mp->cam_cwidget.cam_zoom_widget.world_trans = mp->view->GetCameraNode()->GetWorldDirection();
@@ -127,14 +129,12 @@ intern void handle_press_event(map_panel *mp, urho::UIElement *elem)
     auto world_right = cam_node->GetWorldRight().Normalized();
     auto world_up = cam_node->GetWorldUp().Normalized();
     float angle = std::abs(world_up.Angle({0, 0, 1}) - 90.0f);
-    if (std::abs(angle) > 70)
-    {
+    if (std::abs(angle) > 70) {
         mp->cam_cwidget.cam_move_widget.world_trans = vec3(0, 0, -trans);
         if (std::abs(trans) == 2)
             mp->cam_cwidget.cam_move_widget.world_trans = world_right * trans / 2;
     }
-    else
-    {
+    else {
         mp->cam_cwidget.cam_move_widget.world_trans = vec3(world_up.x_, world_up.y_, 0.0) * trans;
         if (std::abs(trans) == 2)
             mp->cam_cwidget.cam_move_widget.world_trans = world_right * trans / 2;
@@ -143,18 +143,18 @@ intern void handle_press_event(map_panel *mp, urho::UIElement *elem)
 
 intern void cam_run_frame(map_panel *mp, float dt)
 {
-    if (mp->cam_cwidget.cam_move_widget.world_trans != vec3::ZERO)
-    {
-        mp->view->GetCameraNode()->Translate(mp->cam_cwidget.cam_move_widget.world_trans * dt * 10, Urho3D::TransformSpace::World);
+    if (mp->cam_cwidget.cam_move_widget.world_trans != vec3::ZERO) {
+        mp->view->GetCameraNode()->Translate(mp->cam_cwidget.cam_move_widget.world_trans * dt * 10,
+                                             Urho3D::TransformSpace::World);
     }
 
-    if (mp->cam_cwidget.cam_zoom_widget.world_trans != vec3::ZERO)
-    {
-        mp->view->GetCameraNode()->Translate(mp->cam_cwidget.cam_zoom_widget.world_trans * dt * 20, Urho3D::TransformSpace::World);
+    if (mp->cam_cwidget.cam_zoom_widget.world_trans != vec3::ZERO) {
+        mp->view->GetCameraNode()->Translate(mp->cam_cwidget.cam_zoom_widget.world_trans * dt * 20,
+                                             Urho3D::TransformSpace::World);
     }
 }
 
-void cam_handle_mouse_released(map_panel *mp, urho::UIElement * elem)
+void cam_handle_mouse_released(map_panel *mp, urho::UIElement *elem)
 {
     mp->cam_cwidget.cam_zoom_widget.world_trans = {};
     mp->cam_cwidget.cam_move_widget.world_trans = {};
@@ -176,8 +176,7 @@ void cam_init(map_panel *mp, input_data *inp, const ui_info &ui_inf)
     setup_cam_zoom_widget(mp, ui_inf);
 
     ivec2 child_offsets = {};
-    for (int i = 0; i < mp->cam_cwidget.root_element->GetNumChildren(); ++i)
-    {
+    for (int i = 0; i < mp->cam_cwidget.root_element->GetNumChildren(); ++i) {
         auto child = mp->cam_cwidget.root_element->GetChild(i);
         auto coffset = child->GetMaxOffset();
         child_offsets.x_ += coffset.x_ + 20;
@@ -192,10 +191,11 @@ void cam_init(map_panel *mp, input_data *inp, const ui_info &ui_inf)
         cam_run_frame(mp, dt);
     });
 
-    mp->cam_cwidget.cam_move_widget.widget->SubscribeToEvent(urho::E_PRESSED, [mp](urho::StringHash type, urho::VariantMap &ev_data) {
-        auto elem = (urho::UIElement *)ev_data[urho::ClickEnd::P_ELEMENT].GetPtr();
-        handle_press_event(mp, elem);
-    });
+    mp->cam_cwidget.cam_move_widget.widget->SubscribeToEvent(
+        urho::E_PRESSED, [mp](urho::StringHash type, urho::VariantMap &ev_data) {
+            auto elem = (urho::UIElement *)ev_data[urho::ClickEnd::P_ELEMENT].GetPtr();
+            handle_press_event(mp, elem);
+        });
 }
 
 void cam_term(map_panel *mp)

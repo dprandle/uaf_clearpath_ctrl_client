@@ -1,5 +1,7 @@
 .vscode/
 .emacs/
+CMakeCache.txt
+*.*~
 *.bbl
 *.tex
 randle_ms_project_report.pdf

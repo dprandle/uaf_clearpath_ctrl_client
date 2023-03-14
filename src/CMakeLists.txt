@@ -1,4 +1,4 @@
-set(TARGET_NAME jackal_ctrl)
+set(TARGET_NAME uaf_clearpath_ctrl)
 
 # Define source files
 define_source_files ()

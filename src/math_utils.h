@@ -65,13 +65,13 @@ inline constexpr float FLOAT_EPS = 0.001;
 inline constexpr float METERS_TO_FEET = 3.28084f;
 
 template<class T>
-T degrees(const T & val_)
+T degrees(const T &val_)
 {
     return (180 / PI) * val_;
 }
 
 template<class T>
-T radians(const T & val_)
+T radians(const T &val_)
 {
     return (PI / 180) * val_;
 }
@@ -84,12 +84,7 @@ bool fequals(T left, T right, T eps = FLOAT_EPS)
 
 mat4 perspective_from(float fov_, float aspect_ratio_, float z_near_, float z_far_);
 
-mat4 perspective_from(float near_left,
-                       float near_right,
-                       float near_top,
-                       float near_bottom,
-                       float z_near,
-                       float z_far);
+mat4 perspective_from(float near_left, float near_right, float near_top, float near_bottom, float z_near, float z_far);
 
 mat4 ortho_from(float left_, float right_, float top_, float bottom_, float near_, float far_);
 

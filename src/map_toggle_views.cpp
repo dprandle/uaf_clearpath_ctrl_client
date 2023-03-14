@@ -22,8 +22,7 @@ intern void run_frame(map_panel *mp, float dt, const ui_info &ui_inf)
 intern vec2 get_required_panel_dims(map_toggle_views_panel *vp)
 {
     vec2 ret{};
-    for (int i = 0; i < vp->elems.size(); ++i)
-    {
+    for (int i = 0; i < vp->elems.size(); ++i) {
         auto sz = vp->elems[i].widget->GetSize();
         if (sz.x_ > ret.x_)
             ret.x_ = sz.x_;
@@ -99,14 +98,20 @@ intern void setup_view_checkboxes(map_panel *mp, const ui_info &ui_inf)
     rect.top_ *= 2;
     vp->elems.back().widget->SetLayoutBorder(rect);
 
-    vp->elems.emplace_back(create_cbox_item(vp->apanel.sview, nullptr, nullptr, mp->cam_view.window, "Live Cam", uctxt, ui_inf));
+    vp->elems.emplace_back(
+        create_cbox_item(vp->apanel.sview, nullptr, nullptr, mp->cam_view.window, "Live Cam", uctxt, ui_inf));
     vp->elems.back().cb->SetChecked(false);
 
-    vp->elems.emplace_back(create_cbox_item(vp->apanel.sview, mp->front_laser, nullptr, nullptr, "Laser Scan", uctxt, ui_inf));
-    vp->elems.emplace_back(create_cbox_item(vp->apanel.sview, mp->glob_cmap.node, nullptr, nullptr, "Global Costmap", uctxt, ui_inf));
-    vp->elems.emplace_back(create_cbox_item(vp->apanel.sview, mp->loc_cmap.node, nullptr, nullptr, "Local Costmap", uctxt, ui_inf));
-    vp->elems.emplace_back(create_cbox_item(vp->apanel.sview, nullptr, &mp->glob_npview, nullptr, "Global Nav Path", uctxt, ui_inf));
-    vp->elems.emplace_back(create_cbox_item(vp->apanel.sview, nullptr, &mp->loc_npview, nullptr, "Local Nav Path", uctxt, ui_inf));
+    vp->elems.emplace_back(
+        create_cbox_item(vp->apanel.sview, mp->front_laser, nullptr, nullptr, "Laser Scan", uctxt, ui_inf));
+    vp->elems.emplace_back(
+        create_cbox_item(vp->apanel.sview, mp->glob_cmap.node, nullptr, nullptr, "Global Costmap", uctxt, ui_inf));
+    vp->elems.emplace_back(
+        create_cbox_item(vp->apanel.sview, mp->loc_cmap.node, nullptr, nullptr, "Local Costmap", uctxt, ui_inf));
+    vp->elems.emplace_back(
+        create_cbox_item(vp->apanel.sview, nullptr, &mp->glob_npview, nullptr, "Global Nav Path", uctxt, ui_inf));
+    vp->elems.emplace_back(
+        create_cbox_item(vp->apanel.sview, nullptr, &mp->loc_npview, nullptr, "Local Nav Path", uctxt, ui_inf));
 
     // Set the last item to have a bottom border that's double so the spacing matches the in between spacing
     rect = vp->elems.back().widget->GetLayoutBorder();
@@ -131,10 +136,11 @@ void map_toggle_views_init(map_panel *mp, const ui_info &ui_inf)
 
     setup_view_checkboxes(mp, ui_inf);
 
-    mp->views_panel.apanel.widget->SubscribeToEvent(urho::E_UPDATE, [mp, ui_inf](urho::StringHash type, urho::VariantMap &ev_data) {
-        auto dt = ev_data[urho::Update::P_TIMESTEP].GetFloat();
-        run_frame(mp, dt, ui_inf);
-    });
+    mp->views_panel.apanel.widget->SubscribeToEvent(urho::E_UPDATE,
+                                                    [mp, ui_inf](urho::StringHash type, urho::VariantMap &ev_data) {
+                                                        auto dt = ev_data[urho::Update::P_TIMESTEP].GetFloat();
+                                                        run_frame(mp, dt, ui_inf);
+                                                    });
 }
 
 void map_toggle_views_term(map_panel *mp)
@@ -144,17 +150,14 @@ void map_toggle_views_term(map_panel *mp)
 
 void map_toggle_views_handle_toggle(map_panel *mp, urho::UIElement *elem, net_connection *conn)
 {
-    for (int i = 0; i < mp->views_panel.elems.size(); ++i)
-    {
+    for (int i = 0; i < mp->views_panel.elems.size(); ++i) {
         auto cur_elem = &mp->views_panel.elems[i];
-        if (elem == cur_elem->cb)
-        {
+        if (elem == cur_elem->cb) {
             if (cur_elem->node)
                 cur_elem->node->SetEnabled(cur_elem->cb->IsChecked());
             if (cur_elem->npview)
                 cur_elem->npview->enabled = cur_elem->cb->IsChecked();
-            if (cur_elem->elem)
-            {
+            if (cur_elem->elem) {
                 if (cur_elem->cb->IsChecked())
                     net_tx(*conn, command_enable_image());
                 else
@@ -162,16 +165,13 @@ void map_toggle_views_handle_toggle(map_panel *mp, urho::UIElement *elem, net_co
 
                 auto cam_node = mp->view->GetCameraNode();
                 auto parent = cam_node->GetParent();
-                if (parent != mp->view->GetScene())
-                {
+                if (parent != mp->view->GetScene()) {
                     auto cur_pos = cam_node->GetPosition();
-                    if (fequals(cur_pos.y_, 0.0f, 0.01f))
-                    {
+                    if (fequals(cur_pos.y_, 0.0f, 0.01f)) {
                         cur_pos.y_ = -1.0f;
                         cam_node->SetPosition(cur_pos);
                     }
-                    else if (fequals(cur_pos.y_, -1.0f, 0.01f))
-                    {
+                    else if (fequals(cur_pos.y_, -1.0f, 0.01f)) {
                         cur_pos.y_ = 0.0f;
                         cam_node->SetPosition(cur_pos);
                     }
@@ -184,8 +184,7 @@ void map_toggle_views_handle_toggle(map_panel *mp, urho::UIElement *elem, net_co
 
 void map_toggle_views_handle_mouse_released(map_panel *mp, urho::UIElement *elem)
 {
-    if (elem == mp->views_panel.apanel.hide_show_panel)
-    {
+    if (elem == mp->views_panel.apanel.hide_show_panel) {
         animated_panel_hide_show_pressed(&mp->views_panel.apanel);
     }
 }

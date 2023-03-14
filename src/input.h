@@ -44,10 +44,11 @@ struct input_action_trigger
     u32 name;
     i32 tstate;
     input_trigger_cond cond; // Here for convenience
-    i32 mb_req;     // 0 is no button
-    i32 qual_req;   // 0 is no keyboard qualifier
-    i32 mb_allowed;      // If MOUSEB_ANY is included int the mouse_buttons, these mouse buttons will cause the state to end or not begin
-    i32 qual_allowed;    // Same thing as above with QUAL_ANY for key qualifiers
+    i32 mb_req;              // 0 is no button
+    i32 qual_req;            // 0 is no keyboard qualifier
+    i32 mb_allowed; // If MOUSEB_ANY is included int the mouse_buttons, these mouse buttons will cause the state to end
+                    // or not begin
+    i32 qual_allowed; // Same thing as above with QUAL_ANY for key qualifiers
 };
 
 inline bool operator==(const input_action_trigger &lhs, const input_action_trigger &rhs)
@@ -93,13 +94,13 @@ struct itrigger_event
 struct input_uevent_handlers : public Urho3D::Object
 {
     URHO3D_OBJECT(input_uevent_handlers, urho::Object)
-    input_uevent_handlers(urho::Context * ctxt);
+    input_uevent_handlers(urho::Context *ctxt);
 
-    input_context_stack * ictxt {};
+    input_context_stack *ictxt{};
 
     void subscribe();
     void unsubscribe();
-    
+
     void handle_key_down(Urho3D::StringHash event_type, Urho3D::VariantMap &event_data);
     void handle_key_up(Urho3D::StringHash event_type, Urho3D::VariantMap &event_data);
     void handle_mouse_down(Urho3D::StringHash event_type, Urho3D::VariantMap &event_data);
@@ -111,13 +112,13 @@ struct input_uevent_handlers : public Urho3D::Object
 // Keep track of current modifier state etc?
 struct input_context_stack
 {
-    std::vector<input_keymap*> context_stack;
+    std::vector<input_keymap *> context_stack;
     std::vector<input_action_trigger> active_triggers;
     std::vector<viewport_element> vp_stack;
-    double inv_pixel_ratio {0.0};
+    double inv_pixel_ratio{0.0};
     vec2 current_norm_mpos;
-    input_uevent_handlers * event_handlers {};
-    ss_signal<const itrigger_event&> trigger {};
+    input_uevent_handlers *event_handlers{};
+    ss_signal<const itrigger_event &> trigger{};
 };
 
 struct input_data
@@ -126,10 +127,10 @@ struct input_data
     input_keymap map;
 };
 
-void input_init(input_context_stack * input, urho::Context * uctxt);
-void input_term(input_context_stack * input);
+void input_init(input_context_stack *input, urho::Context *uctxt);
+void input_term(input_context_stack *input);
 
-itrigger_range input_find_triggers(input_keymap * kmap, const input_trigger_cond &cond);
-void input_add_trigger(input_keymap * kmap, const input_action_trigger & trigger);
-bool input_remove_trigger(input_keymap * kmap, const input_action_trigger & triggger);
-int input_remove_triggers(input_keymap * kmap, const input_trigger_cond &cond);
+itrigger_range input_find_triggers(input_keymap *kmap, const input_trigger_cond &cond);
+void input_add_trigger(input_keymap *kmap, const input_action_trigger &trigger);
+bool input_remove_trigger(input_keymap *kmap, const input_action_trigger &triggger);
+int input_remove_triggers(input_keymap *kmap, const input_trigger_cond &cond);

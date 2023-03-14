@@ -54,7 +54,10 @@ intern const ogmap_colors loc_cmc_colors{.lethal{1, 0, 0.7, 0.7},
                                          .possibly_circumscribed{0.7, 0, 0, 0.7},
                                          .no_collision{0, 0.7, 0, 0.7}};
 
-intern const ogmap_colors glob_cmc_colors{.lethal{1, 0, 1, 0.7}, .inscribed{0, 1, 1, 0.7}, .possibly_circumscribed{1, 0, 0, 0.7}, .no_collision{0, 1, 0, 0.7}};
+intern const ogmap_colors glob_cmc_colors{.lethal{1, 0, 1, 0.7},
+                                          .inscribed{0, 1, 1, 0.7},
+                                          .possibly_circumscribed{1, 0, 0, 0.7},
+                                          .no_collision{0, 1, 0, 0.7}};
 
 intern void create_3dview(map_panel *mp, urho::ResourceCache *cache, urho::UIElement *root, urho::Context *uctxt)
 {
@@ -144,7 +147,11 @@ intern void create_jackal(map_panel *mp, urho::ResourceCache *cache)
     rr_wheel_node->Rotate({90, {-1, 0, 0}});
 }
 
-intern void setup_occ_grid_map(occ_grid_map *map, const char *node_name, urho::ResourceCache *cache, urho::Scene *scene, urho::Context *uctxt)
+intern void setup_occ_grid_map(occ_grid_map *map,
+                               const char *node_name,
+                               urho::ResourceCache *cache,
+                               urho::Scene *scene,
+                               urho::Context *uctxt)
 {
     auto occ_mat = cache->GetResource<urho::Material>("Materials/" + urho::String(node_name) + "_billboard.xml");
 
@@ -279,7 +286,8 @@ intern void create_image_view(map_panel *mp, const ui_info &ui_inf)
     mp->cam_view.rend_text->SetAddressMode(urho::COORD_U, urho::ADDRESS_CLAMP);
     mp->cam_view.rend_text->SetAddressMode(urho::COORD_V, urho::ADDRESS_CLAMP);
 
-    mp->cam_view.window->SetSize(default_camview_size.x_ + resize_borders.Width(), default_camview_size.y_ + resize_borders.Height());
+    mp->cam_view.window->SetSize(default_camview_size.x_ + resize_borders.Width(),
+                                 default_camview_size.y_ + resize_borders.Height());
     mp->cam_view.window->SetColor({0, 0, 0, 0.8f});
     mp->cam_view.window->SetResizeBorder(resize_borders);
     mp->cam_view.window->SetPriority(3);
@@ -315,12 +323,14 @@ intern void update_scene_map_from_occ_grid(occ_grid_map *map, const occ_grid_upd
     while (resized.y_ / 2 > grid.meta.height)
         resized.y_ /= 2;
 
-    if (resized != ivec2{map->image->GetWidth(), map->image->GetHeight()} || grid.meta.reset_map == 1)
-    {
-        ilog("Map resized texture to %d by %d (actual map size %d %d)", resized.x_, resized.y_, grid.meta.width, grid.meta.height);
+    if (resized != ivec2{map->image->GetWidth(), map->image->GetHeight()} || grid.meta.reset_map == 1) {
+        ilog("Map resized texture to %d by %d (actual map size %d %d)",
+             resized.x_,
+             resized.y_,
+             grid.meta.width,
+             grid.meta.height);
         map->image->Resize(resized.x_, resized.y_);
-        for (int y = 0; y < resized.y_; ++y)
-        {
+        for (int y = 0; y < resized.y_; ++y) {
             for (int x = 0; x < resized.x_; ++x)
                 map->image->SetPixel(x, y, map->cols.undiscovered);
         }
@@ -337,48 +347,38 @@ intern void update_scene_map_from_occ_grid(occ_grid_map *map, const occ_grid_upd
     billboard->enabled_ = true;
 
     // Go through and use the arriving delta packet to set the current map values
-    for (int i = 0; i < grid.meta.change_elem_count; ++i)
-    {
+    for (int i = 0; i < grid.meta.change_elem_count; ++i) {
         u32 map_ind = (grid.change_elems[i] >> 8);
         u8 prob = (u8)grid.change_elems[i];
         ivec2 tex_coods = index_to_texture_coords(map_ind, grid.meta.width, map->image->GetHeight());
 
-        if (map->map_type == OCC_GRID_TYPE_MAP)
-        {
-            if (prob <= 100)
-            {
+        if (map->map_type == OCC_GRID_TYPE_MAP) {
+            if (prob <= 100) {
                 float fprob = 1.0 - (float)prob * 0.01;
                 map->image->SetPixel(tex_coods.x_, tex_coods.y_, {fprob, fprob, fprob, 1.0});
             }
-            else
-            {
+            else {
                 map->image->SetPixel(tex_coods.x_, tex_coods.y_, map->cols.undiscovered);
             }
         }
-        else
-        {
-            if (prob == 100)
-            {
+        else {
+            if (prob == 100) {
                 map->image->SetPixel(tex_coods.x_, tex_coods.y_, map->cols.lethal);
             }
-            else if (prob == 99)
-            {
+            else if (prob == 99) {
                 map->image->SetPixel(tex_coods.x_, tex_coods.y_, map->cols.inscribed);
             }
-            else if (prob <= 98 && prob >= 50)
-            {
+            else if (prob <= 98 && prob >= 50) {
                 auto col = map->cols.possibly_circumscribed;
                 col.a_ -= -(1.0 - (prob - 50.0) / (98.0 - 50.0)) * 0.4;
                 map->image->SetPixel(tex_coods.x_, tex_coods.y_, col);
             }
-            else if (prob <= 50 && prob >= 1)
-            {
+            else if (prob <= 50 && prob >= 1) {
                 auto col = map->cols.no_collision;
                 col.a_ -= (1.0 - (prob - 1.0) / (50.0 - 1.0)) * 0.4;
                 map->image->SetPixel(tex_coods.x_, tex_coods.y_, col);
             }
-            else
-            {
+            else {
                 map->image->SetPixel(tex_coods.x_, tex_coods.y_, map->cols.free_space);
             }
         }
@@ -398,14 +398,12 @@ intern void update_scene_from_scan(map_panel *mp, const sicklms_laser_scan &pack
 
     {
         auto bb = mp->scan_bb->GetBillboard(i);
-        if (packet.ranges[i] < packet.meta.range_max && packet.ranges[i] > packet.meta.range_min)
-        {
+        if (packet.ranges[i] < packet.meta.range_max && packet.ranges[i] > packet.meta.range_min) {
             bb->position_ = {packet.ranges[i] * cos(cur_ang), packet.ranges[i] * sin(cur_ang), 0.0f};
             bb->enabled_ = true;
             bb->size_ = {6, 6};
         }
-        else
-        {
+        else {
             bb->enabled_ = false;
         }
         cur_ang += packet.meta.angle_increment;
@@ -417,8 +415,7 @@ intern void update_node_transform(map_panel *mp, const node_transform &tform)
 {
     urho::Node *node{}, *parent{};
     auto node_fiter = mp->node_lut.find(tform.name);
-    if (node_fiter == mp->node_lut.end())
-    {
+    if (node_fiter == mp->node_lut.end()) {
         wlog("Could not find node %s in scene tree despitre getting node update packet", tform.name);
         return;
     }
@@ -434,9 +431,10 @@ intern void update_node_transform(map_panel *mp, const node_transform &tform)
     if (node_parent)
         node_parent_parent = node_parent->GetParent();
 
-    if (node_parent != parent && node_parent_parent != parent)
-    {
-        wlog("Received update for node %s with different parent than received in packet (%s)", tform.name, tform.parent_name);
+    if (node_parent != parent && node_parent_parent != parent) {
+        wlog("Received update for node %s with different parent than received in packet (%s)",
+             tform.name,
+             tform.parent_name);
     }
 
     node->SetPositionSilent(vec3_from(tform.pos));
@@ -459,8 +457,7 @@ intern void update_loc_nav_path(map_panel *mp, const nav_path &np)
 
 intern void update_cur_goal_status(map_panel *mp, const current_goal_status &gs)
 {
-    if (mp->goals.cur_goal_status != -2 || gs.status == 0 || gs.status == 1)
-    {
+    if (mp->goals.cur_goal_status != -2 || gs.status == 0 || gs.status == 1) {
         mp->goals.cur_goal = vec3_from(gs.goal_p.pos);
         mp->goals.cur_goal_status = gs.status;
     }
@@ -469,14 +466,12 @@ intern void update_cur_goal_status(map_panel *mp, const current_goal_status &gs)
 intern float animate_marker_circles(goal_marker_info *gm, float dt)
 {
     static bool increasing = true;
-    if (increasing && gm->cur_anim_time < gm->loop_anim_time)
-    {
+    if (increasing && gm->cur_anim_time < gm->loop_anim_time) {
         gm->cur_anim_time += dt;
         if (gm->cur_anim_time > gm->loop_anim_time)
             increasing = false;
     }
-    else
-    {
+    else {
         gm->cur_anim_time -= dt;
         if (gm->cur_anim_time < 0)
             increasing = true;
@@ -488,8 +483,7 @@ intern float animate_marker_circles(goal_marker_info *gm, float dt)
 
 intern void draw_nav_path(const nav_path_view &np, urho::DebugRenderer *dbg)
 {
-    if (np.enabled)
-    {
+    if (np.enabled) {
         for (int i = 1; i < np.entry_count; ++i)
             dbg->AddLine(np.path_entries[i - 1], np.path_entries[i], np.color);
     }
@@ -498,18 +492,15 @@ intern void draw_nav_path(const nav_path_view &np, urho::DebugRenderer *dbg)
 intern void draw_measure_path(const measure_points &mp, urho::DebugRenderer *dbg)
 {
     float path_len = 0.0f;
-    for (int i = 0; i < mp.entry_count; ++i)
-    {
-        if (i > 0)
-        {
+    for (int i = 0; i < mp.entry_count; ++i) {
+        if (i > 0) {
             dbg->AddLine(mp.entries[i - 1], mp.entries[i], mp.color);
             path_len += (mp.entries[i - 1] - mp.entries[i]).Length();
         }
         dbg->AddCircle(mp.entries[i], {0, 0, -1}, mp.marker_rad, mp.color);
     }
     mp.path_len_text->SetVisible(path_len > FLOAT_EPS);
-    if (path_len > FLOAT_EPS)
-    {
+    if (path_len > FLOAT_EPS) {
         path_len *= METERS_TO_FEET;
         int feet = int(path_len);
         path_len -= feet;
@@ -524,22 +515,18 @@ intern void draw_measure_path(const measure_points &mp, urho::DebugRenderer *dbg
 intern void update_and_draw_nav_goals(map_panel *mp, float dt, urho::DebugRenderer *dbg, net_connection *conn)
 {
     float marker_rad = animate_marker_circles(&mp->glob_npview.goal_marker, dt);
-    if (mp->goals.cur_goal_status == 0 || mp->goals.cur_goal_status == 1 || mp->goals.cur_goal_status == -2)
-    {
+    if (mp->goals.cur_goal_status == 0 || mp->goals.cur_goal_status == 1 || mp->goals.cur_goal_status == -2) {
         dbg->AddCircle(mp->goals.cur_goal, {0, 0, -1}, marker_rad, mp->glob_npview.goal_marker.color);
         auto dist_to_goal = (mp->base_link->GetWorldPosition() - mp->goals.cur_goal).Length();
-        if (dist_to_goal < 0.25)
-        {
+        if (dist_to_goal < 0.25) {
             command_stop stop{};
             net_tx(*conn, stop);
         }
     }
-    else
-    {
+    else {
         mp->glob_npview.goal_marker.cur_anim_time = 0.0f;
         mp->glob_npview.entry_count = 0;
-        if (!mp->goals.queued_goals.empty())
-        {
+        if (!mp->goals.queued_goals.empty()) {
             command_goal cg;
             mp->goals.cur_goal = mp->goals.queued_goals.back();
             mp->goals.queued_goals.pop_back();
@@ -549,8 +536,7 @@ intern void update_and_draw_nav_goals(map_panel *mp, float dt, urho::DebugRender
         }
     }
 
-    for (int i = mp->goals.queued_goals.size() - 1; i >= 0; --i)
-    {
+    for (int i = mp->goals.queued_goals.size() - 1; i >= 0; --i) {
         vec3 from = mp->goals.cur_goal;
         if (i != mp->goals.queued_goals.size() - 1)
             from = mp->goals.queued_goals[i + 1];
@@ -563,8 +549,7 @@ intern void mark_transforms_for_update_if_needed(map_panel *mp, float dt)
 {
     static float counter = 0.0f;
     counter += dt;
-    if (counter >= 0.016f)
-    {
+    if (counter >= 0.016f) {
         mp->odom->MarkDirty();
         counter = 0.0f;
     }
@@ -584,7 +569,8 @@ intern void setup_input_actions(map_panel *mp, const ui_info &ui_inf, net_connec
 {
     auto cam_node = mp->view->GetCameraNode();
     auto on_click = [cam_node, mp](const itrigger_event &tevent) {
-        if (mp->js_enabled || (mp->view != tevent.vp.element_under_mouse && tevent.vp.element_under_mouse->GetPriority() > 2))
+        if (mp->js_enabled ||
+            (mp->view != tevent.vp.element_under_mouse && tevent.vp.element_under_mouse->GetPriority() > 2))
             return;
 
         if ((mp->toolbar.add_goal && !mp->toolbar.add_goal->IsChecked()) && !mp->toolbar.enable_measure->IsChecked())
@@ -602,19 +588,16 @@ intern void setup_input_actions(map_panel *mp, const ui_info &ui_inf, net_connec
         auto scrn_ray = camc->GetScreenRay(tevent.norm_mpos.x_, tevent.norm_mpos.y_);
 
         double dist = scrn_ray.HitDistance(p);
-        if (dist < 1000)
-        {
+        if (dist < 1000) {
             auto pos = scrn_ray.origin_ + scrn_ray.direction_ * dist;
             pos.z_ -= 0.05f; // No z fighting!
 
             // Place at the front
-            if (mp->toolbar.add_goal && mp->toolbar.add_goal->IsChecked())
-            {
+            if (mp->toolbar.add_goal && mp->toolbar.add_goal->IsChecked()) {
                 mp->goals.queued_goals.insert(mp->goals.queued_goals.begin(), pos);
                 mp->toolbar.add_goal->SetChecked(false);
             }
-            else if (mp->toolbar.enable_measure->IsChecked())
-            {
+            else if (mp->toolbar.enable_measure->IsChecked()) {
                 mp->mpoints.entries[mp->mpoints.entry_count] = pos;
                 ++mp->mpoints.entry_count;
             }
@@ -677,8 +660,7 @@ intern void setup_event_handlers(map_panel *mp, const ui_info &ui_inf, net_conne
 
     mp->view->SubscribeToEvent(urho::E_RESIZED, [mp, ui_inf](urho::StringHash type, urho::VariantMap &ev_data) {
         auto elem = (urho::UIElement *)ev_data[urho::Pressed::P_ELEMENT].GetPtr();
-        if (elem == mp->view)
-        {
+        if (elem == mp->view) {
             reposition_cam_view(mp, ui_inf);
             resize_path_length_text(mp, ui_inf);
             map_toggle_views_handle_resize(mp, ui_inf);
@@ -695,19 +677,26 @@ intern void setup_event_handlers(map_panel *mp, const ui_info &ui_inf, net_conne
 
 intern void update_meta_stats(map_panel *mp, const misc_stats &updated_stats)
 {
-    if (updated_stats.conn_count != mp->cur_stats.conn_count || !fequals(updated_stats.cur_bw_mbps, mp->cur_stats.cur_bw_mbps, 0.01f) ||
-        !fequals(updated_stats.avg_bw_mbps, mp->cur_stats.avg_bw_mbps, 0.01f))
-    {
+    if (updated_stats.conn_count != mp->cur_stats.conn_count ||
+        !fequals(updated_stats.cur_bw_mbps, mp->cur_stats.cur_bw_mbps, 0.01f) ||
+        !fequals(updated_stats.avg_bw_mbps, mp->cur_stats.avg_bw_mbps, 0.01f)) {
         mp->cur_stats = updated_stats;
 
         int cur_bw(mp->cur_stats.cur_bw_mbps), avg_bw(mp->cur_stats.avg_bw_mbps);
-        float fcur_bw_100 = (mp->cur_stats.cur_bw_mbps - cur_bw)*10.0f;
-        float favg_bw_100 = (mp->cur_stats.avg_bw_mbps - avg_bw)*10.0f;
+        float fcur_bw_100 = (mp->cur_stats.cur_bw_mbps - cur_bw) * 10.0f;
+        float favg_bw_100 = (mp->cur_stats.avg_bw_mbps - avg_bw) * 10.0f;
         int cur_bw_100(fcur_bw_100), avg_bw_100(favg_bw_100);
-        int cur_bw_10((fcur_bw_100 - cur_bw_100)*10.0f), avg_bw_10((favg_bw_100 - avg_bw_100)*10.0f);
+        int cur_bw_10((fcur_bw_100 - cur_bw_100) * 10.0f), avg_bw_10((favg_bw_100 - avg_bw_100) * 10.0f);
 
         urho::String str;
-        str.AppendWithFormat("Clients: %d    BW:%d.%d%d (%d.%d%d avg) Mbps", mp->cur_stats.conn_count, cur_bw, cur_bw_100, cur_bw_10, avg_bw, avg_bw_100, avg_bw_10);
+        str.AppendWithFormat("Clients: %d    BW:%d.%d%d (%d.%d%d avg) Mbps",
+                             mp->cur_stats.conn_count,
+                             cur_bw,
+                             cur_bw_100,
+                             cur_bw_10,
+                             avg_bw,
+                             avg_bw_100,
+                             avg_bw_10);
         mp->conn_text->SetText(str);
         ilog("Got str %s", str.CString());
     }
@@ -720,8 +709,7 @@ intern void update_image(map_panel *mp, const compressed_image &img)
     u8 *converted_data = stbi_load_from_memory(img.data, img.meta.data_size, &sz.x_, &sz.y_, &channels, 3);
 
     auto cur_sz = ivec2{mp->cam_view.rend_text->GetWidth(), mp->cam_view.rend_text->GetHeight()};
-    if (cur_sz != sz)
-    {
+    if (cur_sz != sz) {
         mp->cam_view.rend_text->SetSize(sz.x_, sz.y_, GL_RGB, urho::TEXTURE_DYNAMIC, 0, false);
         mp->cam_view.texture_view->SetFullImageRect();
         ilog("Resizing image to %dx%d", sz.x_, sz.y_);
@@ -749,16 +737,26 @@ void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, 
     setup_conn_text(mp, ui_inf);
     setup_path_length_text(mp, ui_inf);
 
-    ss_connect(&mp->router, conn->scan_received, [mp](const sicklms_laser_scan &pckt) { update_scene_from_scan(mp, pckt); });
+    ss_connect(
+        &mp->router, conn->scan_received, [mp](const sicklms_laser_scan &pckt) { update_scene_from_scan(mp, pckt); });
 
-    ss_connect(&mp->router, conn->map_update_received, [mp](const occ_grid_update &pckt) { update_scene_map_from_occ_grid(&mp->map, pckt); });
+    ss_connect(&mp->router, conn->map_update_received, [mp](const occ_grid_update &pckt) {
+        update_scene_map_from_occ_grid(&mp->map, pckt);
+    });
 
-    ss_connect(&mp->router, conn->glob_cm_update_received, [mp](const occ_grid_update &pckt) { update_scene_map_from_occ_grid(&mp->glob_cmap, pckt); });
-    ss_connect(&mp->router, conn->loc_cm_update_received, [mp](const occ_grid_update &pckt) { update_scene_map_from_occ_grid(&mp->loc_cmap, pckt); });
-    ss_connect(&mp->router, conn->transform_updated, [mp](const node_transform &pckt) { update_node_transform(mp, pckt); });
+    ss_connect(&mp->router, conn->glob_cm_update_received, [mp](const occ_grid_update &pckt) {
+        update_scene_map_from_occ_grid(&mp->glob_cmap, pckt);
+    });
+    ss_connect(&mp->router, conn->loc_cm_update_received, [mp](const occ_grid_update &pckt) {
+        update_scene_map_from_occ_grid(&mp->loc_cmap, pckt);
+    });
+    ss_connect(
+        &mp->router, conn->transform_updated, [mp](const node_transform &pckt) { update_node_transform(mp, pckt); });
     ss_connect(&mp->router, conn->glob_nav_path_updated, [mp](const nav_path &pckt) { update_glob_nav_path(mp, pckt); });
     ss_connect(&mp->router, conn->loc_nav_path_updated, [mp](const nav_path &pckt) { update_loc_nav_path(mp, pckt); });
-    ss_connect(&mp->router, conn->goal_status_updated, [mp](const current_goal_status &pckt) { update_cur_goal_status(mp, pckt); });
+    ss_connect(&mp->router, conn->goal_status_updated, [mp](const current_goal_status &pckt) {
+        update_cur_goal_status(mp, pckt);
+    });
     ss_connect(&mp->router, conn->image_update, [mp](const compressed_image &img) { update_image(mp, img); });
     ss_connect(&mp->router, conn->image_update, [mp](const compressed_image &img) { update_image(mp, img); });
     ss_connect(&mp->router, conn->meta_stats_update, [mp](const misc_stats &ms) { update_meta_stats(mp, ms); });
@@ -772,8 +770,7 @@ void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, 
 void map_clear_occ_grid(occ_grid_map *ocg)
 {
     ocg->image->SetSize(512, 512, 4);
-    for (int h = 0; h < ocg->image->GetHeight(); ++h)
-    {
+    for (int h = 0; h < ocg->image->GetHeight(); ++h) {
         for (int w = 0; w < ocg->image->GetWidth(); ++w)
             ocg->image->SetPixel(w, h, ocg->cols.undiscovered);
     }

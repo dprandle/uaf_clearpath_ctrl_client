@@ -7,7 +7,7 @@
 #+LaTeX_HEADER: \usepackage{amsmath}
 #+LaTeX_HEADER: \usepackage{caption}
 #+LaTeX_HEADER: \usepackage[parfill]{parskip}
-#+LaTeX_HEADER: \captionsetup[figure]{font=footnotesize,labelfont={bf,footnotesize}}
+#+LaTeX_HEADER: \captionsetup{font=footnotesize,labelfont={bf,footnotesize}}
 #+LaTeX_HEADER: \usepackage{xcolor}
 #+LaTeX_HEADER: \hypersetup{colorlinks, citecolor={blue!50!black}, linkcolor={blue!35!black}, urlcolor={blue!80!black}}
 #+LaTeX_HEADER: \usepackage[section]{placeins}
@@ -72,11 +72,13 @@ An ROS system is started by running roscore in a terminal (after sourcing the se
 The Jackal and Husky run separate ROS systems - on startup they both run roscore with ROS_MASTER_URI pointing to localhost on port 11311. It is theoretically possible to use the same ROS system for both robots, but would be difficult and provide little benefit (this would be called a multi-master setup). The command roscore starts an ROS master daemon, a parameter server, and a node (a process) called rosout for logging. The ROS master daemon is responsible for connecting ROS nodes (processes) to eachother on request. Once the connection is made - nodes engage in peer to peer communication. The parameter server provides a server for nodes to register static and dynamic parameters, and the rosout node provides logging.
 
 To setup the development machine to communicate with either the Jackal or the Husky easily, we add some lines to ~/.bashrc which is sourced on terminal startup. For convenience, we also source the ROS setup script.
+
 #+begin_src bash
   source /opt/ros/noetic/setup.bash
   export ROS_MASTER_URI=http://cpr-uaf01:11311
   #export ROS_MASTER_URI=http://cpr-uaf02-husky:11311
 #+end_src
+
 To choose which machine just comment out the appropriate line - commenting both will set the master to self (this is used for simulation as we will discuss later). Every terminal will now have ROS commands available.
 
 ** Nodes, Packages, and Launch Files
@@ -173,21 +175,23 @@ Both the Jackal and Husky include wireless controllers which directly drive the 
     int32[] buttons # the buttons measurements from a joystick
 #+end_src
 
-The message is posted to the topic /bluetooth_teleop/joy, which another node called /bluetooth_teleop/teleop_twist_joy subscribes to. This node translates the buttons and axis from the controller message to velocity drive commands and posts Twist messages containing these commands to the /bluetooth_teleop/cmd_vel topic.
+The message is posted to the topic bluetooth_teleop/joy, which another node called bluetooth_teleop/teleop_twist_joy subscribes to. This node translates the buttons and axis from the controller message to velocity drive commands and posts Twist messages containing these commands to the bluetooth_teleop/cmd_vel topic.
 
-There is a node called /twist_mux which is responsible for multiplexing the velocity command messages from the controller nodes with velocity commands from other sources. For example, using an ROS tool called rviz \autocite{rviz}, it is possible to drive the Jackal/Husky by dragging drive arrows shown in figure [[fig:jackal_rviz]] with the mouse.
+There is a node called /twist_mux which is responsible for multiplexing the velocity command messages from the controller nodes with velocity commands from other sources. For example, using an ROS tool called rviz \autocite{rviz}, it is possible to drive the Jackal/Husky by dragging drive arrows shown in *Figure [[fig:jackal_rviz]]* with the mouse.
 
 #+caption: Jackal in rviz with driving controls
 #+name:   fig:jackal_rviz
 #+attr_latex: :width 5in
+#+ATTR_HTML:  :width 70% :height auto
 [[./images/jackal_rviz.png]]
 \FloatBarrier
 
-On dragging, RViz sends forward/back/left/right/rotate commands to the node /twist_marker_server which translates these commands to Twist messages and publishes these messages to the /twist_marker_server/cmd_vel topic. The /twist_mux node subscribes to all /cmd_vel topics and produces a single Twist message which is published to /jackal_velocity_controller/cmd_vel. The motor control board (or gazebo if simulating) then directly controls the jackals drive motors based on this message.
+On dragging, RViz sends forward/back/left/right/rotate commands to the node twist_marker_server which translates these commands to Twist messages and publishes these messages to the twist_marker_server/cmd_vel topic. The twist_mux node subscribes to all cmd_vel topics and produces a single Twist message which is published to jackal_velocity_controller/cmd_vel. The motor control board (or gazebo if simulating) then directly controls the jackals drive motors based on this message.
 
 #+caption: Node/topic layout - nodes in ovals topics and namespaces in rectangles
 #+name:   fig:drive-topics
 #+attr_latex: :width 7in
+#+ATTR_HTML:  :width 100% :height auto
 [[./images/rqt_graph.png]]
 \FloatBarrier
 
@@ -343,32 +347,35 @@ Getting the position from the matrix is easy - its the first three elements of t
   }
 #+end_src
 
-The transform heirarchy is crucial for mapping, localization, and navigation. Even without any simultaneous localization and mapping (SLAM) nodes enabled, the Jackal and Husky use odometry and the IMU information along with the transform heirarchy to produce an estimate as to where it is in the world. The root level frame in this case is called odom. The ekf localization node calculates the base_link rotation/translation (as relative to odom) and publishes the odom frame with the base_link as the child frame as shown in figure [[fig:ekf-localization]].
+The transform heirarchy is crucial for mapping, localization, and navigation. Even without any simultaneous localization and mapping (SLAM) nodes enabled, the Jackal and Husky use odometry and the IMU information along with the transform heirarchy to produce an estimate as to where it is in the world. The root level frame in this case is called odom. The ekf localization node calculates the base_link rotation/translation (as relative to odom) and publishes the odom frame with the base_link as the child frame as shown in *Figure [[fig:ekf-localization]]*.
 
-#+caption: ekf_localization node publishing edits to base_link odom transform frame to /tf based on multiple inputs
+#+caption: ekf_localization node publishing to /tf based on multiple inputs
 #+name:   fig:ekf-localization
 #+attr_latex: :width 3in
+#+ATTR_HTML:  :width 43% :height auto
 [[./images/ekf_localization_node.png]]
 \FloatBarrier
 
-The complete jackal heirarchy without any SLAM nodes running is shown in figure [[fig:transform-heirarchy]]. The husky is nearly identical - but has a few different leaf nodes for its sensors and geometry. Most of the transform frames are published by the /robot_state_publisher node. This node reads in a URDF file from the parameter server and publishes transforms to /tf based on the contents of the URDF file. URDF is a file format that lists robot joints and links; links correspond to frames, and joints list the parent/child relationships between frames - there are several tutorials here \autocite{urdf}.
+The complete jackal heirarchy without any SLAM nodes running is shown in *Figure [[fig:transform-heirarchy]]*. The husky is nearly identical - but has a few different leaf nodes for its sensors and geometry. Most of the transform frames are published by the /robot_state_publisher node. This node reads in a URDF file from the parameter server and publishes transforms to /tf based on the contents of the URDF file. URDF is a file format that lists robot joints and links; links correspond to frames, and joints list the parent/child relationships between frames - there are several tutorials here \autocite{urdf}.
 
 #+caption: Transform heirarchy for the jackal
 #+name:   fig:transform-heirarchy
 #+attr_latex: :width 7in
+#+ATTR_HTML:  :width 100% :height auto
 [[./images/transform.png]]
 \FloatBarrier
 
 ** SLAM GMapping
-Simultaneous Localization and Mapping, or SLAM, refers to the process of reading in sensor data over time, using the changing sensor data to find landmarks and build a map, and then using the landmarks and map to localize the robot. One of the most widely used algorithms to do SLAM with two-dimensional planar LIDAR data is gmapping. The gmapping SLAM algorithm, as proposed in \autocite{gmapping}, is implemented on OpenSLAM \autocite{open_slam_gmapping}, and ported to ROS as a package \autocite{gmapping_package}. The package launches a node called slam_gmapping which subscribes to /front/scan and /tf, performs SLAM using the data on those topics, and publishes the resulting map as an OccupancyGrid to the /map topic as shown in figure [[fig:gmapping_graph]]. 
+Simultaneous Localization and Mapping, or SLAM, refers to the process of reading in sensor data over time, using the changing sensor data to find landmarks and build a map, and then using the landmarks and map to localize the robot. One of the most widely used algorithms to do SLAM with two-dimensional planar LIDAR data is gmapping. The gmapping SLAM algorithm, as proposed in \autocite{gmapping}, is implemented on OpenSLAM \autocite{open_slam_gmapping}, and ported to ROS as a package \autocite{gmapping_package}. The package launches a node called slam_gmapping which subscribes to /front/scan and /tf, performs SLAM using the data on those topics, and publishes the resulting map as an OccupancyGrid to the /map topic as shown in *Figure [[fig:gmapping_graph]]*.
 
 #+caption: GMapping package node and updated transform tree
 #+name:   fig:gmapping_graph
 #+attr_latex: :width 6in
+#+ATTR_HTML:  :width 86% :height auto
 [[./images/gmapping_graph.png]]
 \FloatBarrier
 
-A new transform frame called map is also published to the /tf topic as shown in figure [[fig:gmapping_graph]]. The slam_gmapping node performs localization by calculating the odom translation/rotation (as relative to the map using gmapping SLAM algorithm) and publishing the map frame to /tf with the odom frame as its child. In the complete picture, ekf_localization updates the relative transform of base_link to odom by using the IMU/odometry, and slam_gmapping updates the relative transform of odom to map by using SLAM based on the LIDAR scan data.
+A new transform frame called map is also published to the /tf topic as shown in *Figure [[fig:gmapping_graph]]*. The slam_gmapping node performs localization by calculating the odom translation/rotation (as relative to the map using gmapping SLAM algorithm) and publishing the map frame to /tf with the odom frame as its child. In the complete picture, ekf_localization updates the relative transform of base_link to odom by using the IMU/odometry, and slam_gmapping updates the relative transform of odom to map by using SLAM based on the LIDAR scan data.
 
 The OccupancyGrid message format is:
 #+begin_src python
@@ -404,11 +411,12 @@ The OccupancyGrid message format is:
 This message type is used for costmaps in addition to maps. For maps, the values in data are either 0, 100, or -1; not the full range of [0-100]. With a map available, the navigation stack can run and create costmaps and use those costmaps to create drive paths.
 
 ** Navigation Stack
-The navigation stack on ROS refers to the move_base node, the plugins the move_base node uses, and all the topics published by move_base. Figure [[fig:nav_stack]] shows an overview of the node/topic relationship \autocite{nav_stack}. The move_base node is configurable; the ovals inside of the move_base rectangle indicate parts of the node which run using plugins. This means the user can create a shared library and, with some configuration, move_base will use the shared library in place of the default behaviour.
+The navigation stack on ROS refers to the move_base node, the plugins the move_base node uses, and all the topics published by move_base. *Figure [[fig:nav_stack]]* shows an overview of the node/topic relationship \autocite{nav_stack}. The move_base node is configurable; the ovals inside of the move_base rectangle indicate parts of the node which run using plugins. This means the user can create a shared library and, with some configuration, move_base will use the shared library in place of the default behaviour.
 
 #+caption: Navigation stack overview
 #+name:   fig:nav_stack
 #+attr_latex: :width 6in
+#+ATTR_HTML:  :width 86% :height auto
 [[./images/overview_tf_small.png]]
 \FloatBarrier
 
@@ -469,11 +477,12 @@ All planner nodes are put in a namespace within the package. For example, the no
 *** Costmaps
 Both the local and the global costmaps contain data about nearby obstacles - the difference between the costmaps is in the configuration. The global costmap is usually configured to use map as its global frame, be the same size as the OccupancyGrid published to the /map topic, and not move along with the robot. The local costmap uses odom as its global frame, is much smaller than the global costmap, and stays centered over the robot as the robot moves.
 
-Move base publishes the local costmap to the move_base/local_costmap/costmap topic, and the global costmap to the move_base/global_costmap/costmap topic. The message type for both topics is OccupancyGrid, where the data member of the message contains probabilities of an obstacle being at that map location. Move base uses the laser scan, and if a map is being published to the /map topic the map, to find where obstacles are at and then inflates the obstacles by the robot's footprint. The resulting 8 bit probability values are divided in to ranges as shown in [[fig:costmap_spec]] \autocite{costmap_spec}.
+Move base publishes the local costmap to the move_base/local_costmap/costmap topic, and the global costmap to the move_base/global_costmap/costmap topic. The message type for both topics is OccupancyGrid, where the data member of the message contains probabilities of an obstacle being at that map location. Move base uses the laser scan, and if a map is being published to the /map topic the map, to find where obstacles are at and then inflates the obstacles by the robot's footprint. The resulting 8 bit probability values are divided in to ranges as shown in *Figure [[fig:costmap_spec]]* \autocite{costmap_spec}.
 
 #+caption: Costmap 8 bit probability spec considering robot footprint
 #+name:   fig:costmap_spec
 #+attr_latex: :width 4in
+#+ATTR_HTML:  :width 57% :height auto
 [[./images/costmap_spec.png]]
 \FloatBarrier
 
@@ -514,11 +523,12 @@ And to start the simulation with the laser scan enabled:
 $ roslaunch jackal_gazebo jackal_world.launch config:=front_laser # Again, replace jackal with husky for the husky
 #+end_src
 
-The default jackal_world.launch and husky_playground.launch files create the worlds shown in [[fig:jackal_husky_sim]]. The default worlds can be edited; its possible to create new geometry or load in models created by other Gazebo users. The model database contains tons of content, including complete office buildings! For this project, we stuck with the default worlds as the scope of the project didn't require anything else.
+The default jackal_world.launch and husky_playground.launch files create the worlds shown in *Figure [[fig:jackal_husky_sim]]*. The default worlds can be edited; its possible to create new geometry or load in models created by other Gazebo users. The model database contains tons of content, including complete office buildings! For this project, we stuck with the default worlds as the scope of the project didn't require anything else.
 
 #+caption: Jackal and Husky default simulation worlds
 #+name:   fig:jackal_husky_sim
 #+attr_latex: :width 6in
+#+ATTR_HTML:  :width 85% :height auto
 [[./images/jackal_husky_sim.png]]
 \FloatBarrier
 
@@ -563,39 +573,354 @@ Text
 ** Custom DNS Servers
 Text
 
-* Client Server App
-The client app is written in c/c++ and uses Emscripten \autocite{emscripten} to cross compile to WebAssembly. Urho3D \autocite{urho3d} is used for rendering, user interface, and user input processing; Urho3D is also cross compiled to WebAssembly using Emscripten. Building the client app produces four files:
+* UAF Clearpath Control Web Application
+The web application provides an interface to ROS control and navigation data for the Jackal and Husky through a web browser. The basic driving/mapping/autonomous navigation interface does not require any ROS knowledge. There is an interface for getting/setting ROS parameters for users who need more control.
+
+On Jackal and Husky startup, an http server starts which serves the application to any clients who connect. The frontend app served to the connecting clients is written in c/c++ and uses Emscripten \autocite{emscripten} to cross compile to WebAssembly. Urho3D \autocite{urho3d} is used for rendering, user interface, and user input processing; Urho3D is also cross compiled to WebAssembly using Emscripten. Node.js \autocite{nodejs} is used for the backend to create the http server and uses rosnodejs \autocite{rosnodejs} to interface with ROS.
+
+The application also supports targeting Desktop, but only Mac/Linux as it uses POSIX sockets. The nodejs backend starts a second POSIX server on a different port to allow desktop connections. Targeting desktop is useful during the development process. From this point on we refer to the nodejs backend application as the _server_ app and the frontend application that is served to clients as the _client_ app.
+
+** Setup and Build
+Building the client app requires CMake along with tools sourced from build-essentials linux package. All builds require downloading and building Urho3D from source, and the web build requires downloading and installing the Emscripten library. The server node application only requires node/npm.
+
+*** Emscripten
+Emscripten version 2.0.8 is used for this project, as that is the latest supported version for building Urho3d. To download and install Emscripten v2.0.8:
+#+begin_src bash
+  $ git clone https://github.com/emscripten-core/emsdk.git
+  $ cd emsdk
+  $ ./emsdk install 2.0.8
+#+end_src
+
+The easiest way to use the Emscripten compiler is to use the provided toolchain file with CMake. A toolchain file is a special file which sets up CMake for cross compiling. After issuing the install command, the Emscripten toolchain file is located at emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake. To use it with CMake, pass it in when invoking CMake:
+#+begin_src bash
+  $ cmake -DCMAKE_TOOLCHAIN_FILE=<path_to_emsdk>/emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake
+#+end_src
+
+*** Urho3D
+We use a forked copy of Urho3D based on tag 1.9.0. It is forked because the repository has been archived, and some source code modifications are necessary for bugfixes specific to our app. The source code can be downloaded with:
+
+#+begin_src bash
+  $ git clone https://github.com/dprandle/urho3d.git
+  $ cd urho3d && git checkout 1.9.0
+#+end_src
+
+We use two different build configurations; linux (aka desktop) and emscripten. The linux desktop build has debug symbols enabled, but the emscripten build does not as the target runs in a web browser. For both builds the samples are turned off as they signigicantly increase the build time. We export compile commands for the linux build (since it uses g++) for easy browsing of the urho source code in editors such as vscode or emacs which make use of clangd. The options are listed in *Table [[table:build_config]]*. The directory where Emscripten was cloned is shown as <ems_dir>.
+
+#+caption: Build configuration options for Urho3D - blank means the value is not passed to CMake
+#+name:   table:build_config
+#+attr_latex: :width 7in :font \scriptsize
+| *CMake Variable*              | *Linux Build* | *Emscripten Build*                   |
+|-------------------------------+---------------+--------------------------------------|
+| URHO_SAMPLES                  | OFF           | OFF                                  |
+| CMAKE_EXPORT_COMPILECOMMANDS  | TRUE          | FALSE                                |
+| CMAKE_BUILD_TYPE              | Debug         | Release                              |
+| CMAKE_TOOLCHAIN_FILE          |               | <ems_dir>/upstream/emscripten/cmake/ |
+|                               |               | Modules/Platform/Emscripten.cmake    |
+| WEB                           |               | TRUE                                 |
+| EMSCRIPTEN_ROOT_PATH          |               | <ems_dir>/upstream/emscripten        |
+| EMSCRIPTEN_SYSROOT            |               | <ems_dir>/upstream/emscripten/system |
+| EMSCRIPTEN_ALLOW_MEMRY_GROWTH |               | TRUE                                 |
+
+The build_urho3d.sh script located in the client app source root configures and builds Urho3D for both configuration. The location of the Urho3D root source directory must be passed in as the -u arguement, and the Emscripten root source directory as the -e arguement. If -u isn't present, the script will try to use ../urho3d as the Urho3D directory, and if -e isn't passed in it will try to use ../emsdk as the Emscripten directory:
+#+begin_src bash
+  $ ./build_urho3d -u <path/to/urho3d> -e <path/to/emscripten> # Build using paths specified
+  $ ./build_urho3d -u <path/to/urho3d> # Build with path specified for Urho and ../emsdk for Emscripten
+  $ ./build_urho3d -e <path/to/emscripten> # Build with path specified for Emscripten and ../urho3d for Urho  
+#+end_src
+
+The configure and build process can take a while - grab a coffee. The urho build artifacts are created in <urho_dir>/build/linux for the linux build, and in <urho_dir>/build/emscripten for the emscripten build.
+
+*** Client Application
+With Emscripten and Urho3D setup, the client app is ready to build. The CMakeLists.txt files (one in the root folder, one in the src folder) make use of cmake functions defined by Urho3D, and so they need to know, for each build configuration, where the build artifacts for Urho3D are located. As with Urho3D, the linux build includes debug symbols and exports compile commands while the emscripten build does not.
+
+The build options are shown in *Table [[table:client_build_config]]*. The Urho3D root directory is shown as <urho_dir> and the Emscripten root directory is shown as <ems_dir>. The value for URHO3D_HOME is shown assuming the build script was used to configure/build Urho3D. If it wasn't, the values should be replaced with the build location for each configuration.
+
+#+caption: Build configuration options for client application - blank means the value is not passed to CMake
+#+name:   table:client_build_config
+#+attr_latex: :width 7in :font \scriptsize
+| *CMake Variable*               | *Linux Build*          | *Emscripten Build*                   |
+|--------------------------------+------------------------+--------------------------------------|
+| CMAKE_EXPORT_COMPILE_COMMANDS  | TRUE                   | FALSE                                |
+| CMAKE_BUILD_TYPE               | Debug                  | Release                              |
+| URHO3D_SRC                     | <urho_dir>             | <urho_dir>                           |
+| URHO3D_HOME                    | <urho_dir>/build/linux | <urho_dir>/build/emscripten          |
+| CMAKE_TOOLCHAIN_FILE           |                        | <ems_dir>/upstream/emscripten/cmake/ |
+|                                |                        | Modules/Platform/Emscripten.cmake    |
+| WEB                            |                        | TRUE                                 |
+| EMSCRIPTEN                     |                        | TRUE                                 |
+| EMSCRIPTEN_ALLOW_MEMORY_GROWTH |                        | TRUE                                 |
+
+The build_app.sh script located in the client app source root configures and builds the client application. As with the build_urho3d.sh script, the Urho3D root directory is passed in as the -u arguement, and the Emscripten root directory with -e arguement (with the same defaults). Leaving out -e completely for this script will build for linux desktop, while including it at all will build using emscripten:
+
+#+begin_src bash
+  $ ./build_app.sh -u <path/to/urho3d> -e <path/to/emscripten> # Build with Emscripten using paths specified
+  $ ./build_app.sh -u <path/to/urho3d> -e # Build with Emscripten using path specified for Urho and ../emsdk for Emscripten
+  $ ./build_app.sh -e # Build with Emscripten using ../urho3d for Urho and ../emsdk for Emscripten
+  $ ./build_app.sh -u <path/to/urho3d> # Build for linux desktop using path specified for Urho
+  $ ./build_app.sh # Build for linux desktop using ../urho3d for Urho
+#+end_src
+
+Building the client app for linux produces a normal linux binary. Building the client app with Emscripten produces four files:
  - uaf_clearpath_ctrl.wasm: WebAssembly - our c/c++ code gets compiled in to this binary blob which is runnable within the browser sandbox
  - uaf_clearpath_ctrl.data: Contains all resources which are read from files (images, shaders, config files, models, etc)
  - uaf_clearpath_ctrl.js: Contains javascript functions generated by emscripten which call in to our WebAssembly
  - uaf_clearpath_ctrl.html: This is a shell html file which serves as the entry point - it imports and calls functions in uaf_clearpath_ctrl.js to load uaf_clearpath_ctrl.data and uaf_clearpath_ctrl.wasm
 
+It's possible to setup a local server to serve the html file directly from the build path, but we are setup to deploy these files to the uaf_clearpath_ctrl_server folder located locally (for development and debugging) or on the Jackal/Husky. The deploy_app.sh script can be used to deploy the files. Pass in the local folder path with -l, -j to try and deploy to Jackal, and -h to try and deploy to th Husky. The -l, if no arguement is used, defaults to ../uaf_clearpath_ctrl_server, the -j defaults to the Jackal hostname cpr-uaf01, and the -h defaults to the Husky hostname cpr-uaf02-husky.
 
-** Setup and Build
-To build the client app, cmake is required along with tools sourced from build-essentials linux package.
+#+begin_src bash
+  $ ./deploy_app.sh -l -j -h # attempt to deploy the resulting build files to ../uaf_clearpath_ctrl_server, administrator@cpr-uaf01:~/uaf_clearpath_ctrl_server, and administrator@cpr-uaf02-husky:~/uaf_clearpath_ctrl_server
+  $ ./deploy_app.sh -l <custom/server/path> # Only deploy files locally to <custom/server/path>
+  $ ./deploy_app.sh # Do nothing
+  $ ./deploy_app.sh -j # Deploy to jackal only using default hostname cpr-uaf01 
+#+end_src
 
-*** Emscripten
-Text
+The files are actually deployed to the src/emscripten subfolder within the uaf_clearpath_ctrl_server. If browsers have the app open when the files are deployed, the page will need to be refreshed for the changes to take effect. On both the Jackal and the Husky, the uaf_clearpath_ctrl_server folder is located in the home directory.
 
-*** Urho3D
-Text
+*** Server Application
+NodeJS and NPM are needed to install the server. To install all required packages, use npm install. The following clones the server, installs the dependencies, and then starts it:
+#+begin_src bash
+  $ git clone https://github.com/dprandle/uaf_clearpath_ctrl_server.git
+  $ cd uaf_clearpath_ctrl_server
+  $ npm install
+  $ npm start
+#+end_src
 
-*** UGV Control
-Text
-
-*** UGV Server
-Text
+The client side app, as previously mentioned, is located in src/emscripten. The javascript run by nodejs, which starts the servers, is located in src/index.js. All code for the server is in this one file, which npm is configured to run on npm start. Since the Jackal and Husky run the server as a service using systemctrl, deploying new versions of index.js either requires either rebooting or restarting the systemctrl service.
 
 ** Feature/Interface Overview
-Using a
+There are two different interfaces depending on which URL is used to load the app. The control interface includes everything, while the observer interface is a subset which doesn't provide any mechanism for driving or setting ROS parameters. *Figure [[fig:control_observer_phone]]* shows the control and observer interface.
+
+#+caption: Control interface on left and observer interface on right on phone
+#+name: fig:control_observer_phone
+#+attr_latex: :width 6in
+#+ATTR_HTML:  :width 85% :height auto
+[[./images/control_observer_phone.png]]
+\FloatBarrier
+
+An overview of the control interface is shown in *Figure [[fig:control_interface_overview]]*. This is viewing the simulated jackal in Google Chrome on Linux desktop.
+
+#+caption: Desktop web browser view of full interface
+#+name: fig:control_interface_overview
+#+attr_latex: :width 6in
+#+ATTR_HTML:  :width 85% :height auto
+[[./images/control_interface_overview.png]]
+\FloatBarrier
+
+*** Feature List
+The following is a list of implemented features:
+
+**** Robot
+- Show live robot position/orientation
+- Show the robot model rendered using the ROS transform tree
+
+**** Joystick
+- Allow driving the robot in any direction at speeds in proportion to the joystick offset from centerghh    hwr
+
+**** View Panel
+- Show/hide the live laser scan
+- Show/hide map as it's generated
+- Show/hide the live camera feed if connected to Jackal
+- Show/hide the local/global costmaps as they're generated/updated
+- Show/hide the local/global navigation paths as they are generated/updated
+
+**** Toolbar
+- Enable/disable automatic camera following the robot
+- Add/remove multiple navigation waypoints for autonomous navigation
+- Reset the navigation stack and clear all maps
+- Get and Set ROS parameters
+- Send all other connected clients a message
+- Measure paths
+
+**** Output Panel
+- Show results and errors on setting ROS parameters
+- Show received messages from other clients
+- Show misc notifications from the server
+
+**** Camera Controls
+- Pan left/right/up/down
+- Zoom in and out
+
+**** Misc Stats
+- Show number of clients currently connected to robot
+- Show instantaneous and average payload bandwidth (does not include packet overhead) for all connected clients
+
+** Startup
+The entry point, like most c applications, is the function main:
+#+begin_src cpp
+int main(int argc, char **argv)
+{
+    auto args = urho::ParseArguments(argc, argv);
+    auto urho_ctxt = new urho::Context;
+    jackal_control_ctxt jctrl{};
+    jctrl.urho_ctxt = urho_ctxt;
+
+    if (!jctrl_init(&jctrl, args))
+        return 0;
+
+    jctrl_exec(&jctrl);
+    jctrl_term(&jctrl);
+}
+#+end_src
+
+First we parse the command line arguements - this is for desktop builds. On the desktop build, the arguement -ip can be used to specify the ip address and -port for the port of the robot to connect to. If left out, these default to local host (127.0.0.1) and port 4000. For desktops with lower DPI/resolution, the -ui_scale option can be specified to scale all UI elements. The jackal_control_ctxt structure contains top level data structures required to run the app.
+
+#+begin_src cpp
+  struct jackal_control_ctxt
+  {
+      urho::Context* urho_ctxt {};
+      urho::Engine * urho_engine {};
+
+      ui_info ui_inf;
+
+      joystick_panel js_panel;
+      map_panel mpanel;
+      input_data inp;
+
+      net_connection conn;
+
+      ss_router router;
+  };
+#+end_src
+
+The app is entirely setup and initialized in the jctrl_init function, which takes the command line arguements and the jackal_control_ctxt structure as parameters. Each module is initialized within this initialization function:
+
+#+begin_src cpp
+  bool jctrl_init(jackal_control_ctxt *ctxt, const urho::StringVector & args)
+  {
+      ctxt->urho_engine = new urho::Engine(ctxt->urho_ctxt);
+
+      int port {4000};
+      urho::String ip{"127.0.0.1"};
+      parse_command_line_args(&port, &ip, &ctxt->ui_inf.dev_pixel_ratio_inv, args);
+
+      if (!init_urho_engine(ctxt->urho_engine, ctxt->ui_inf.dev_pixel_ratio_inv))
+          return false;
+
+      log_init(ctxt->urho_ctxt);
+
+      ilog("Initializing jackal control");
+
+      log_set_level(urho::LOG_DEBUG);
+      setup_ui_info(&ctxt->ui_inf, ctxt->urho_ctxt);
+      setup_main_renderer(ctxt);
+
+      input_init(&ctxt->inp.dispatch, ctxt->urho_ctxt);
+      ctxt->inp.map.name = "global";
+      ctxt->inp.dispatch.inv_pixel_ratio = ctxt->ui_inf.dev_pixel_ratio_inv;
+      ctxt->inp.dispatch.context_stack.push_back(&ctxt->inp.map);
+
+      net_connect(&ctxt->conn, ip.CString(), port);
+      joystick_panel_init(&ctxt->js_panel, ctxt->ui_inf, &ctxt->conn);
+
+      ctxt->mpanel.ctxt = ctxt;
+      map_panel_init(&ctxt->mpanel, ctxt->ui_inf, &ctxt->conn, &ctxt->inp);
+
+      ss_connect(&ctxt->router, ctxt->js_panel.in_use, [ctxt](bool in_use) {
+          ctxt->mpanel.js_enabled = in_use;
+      });    
+
+      ilog("Device pixel ratio inverse: %f", ctxt->ui_inf.dev_pixel_ratio_inv);
+      return true;
+  }
+#+end_src
+
+The init_urho_function sets up the Urho3D window parameters, log file for desktop (no logging for web builds), and calls the Urho3D engine initialization function. This sets up all of the default Urho3D "sub-systems" which are obtained by calling GetSubsystem<SystemType> method of the Urho3D context.
+
+The function jctrl_exec runs the main application loop which differs for Desktop vs web builds:
+
+#+begin_src cpp
+  intern void jctrl_run_frame(jackal_control_ctxt *ctxt)
+  {
+      net_rx(&ctxt->conn);
+      ctxt->urho_engine->RunFrame();
+  }
+
+  #if defined(__EMSCRIPTEN__)
+  intern void run_frame_proxy(void *data)
+  {
+      auto ctxt = (jackal_control_ctxt *)data;
+      jctrl_run_frame(ctxt);
+  }
+  #endif
+
+  void jctrl_exec(jackal_control_ctxt *ctxt)
+  {
+  #if !defined(__EMSCRIPTEN__)
+      while (!ctxt->urho_engine->IsExiting()) {
+          jctrl_run_frame(ctxt);
+      }
+  #else
+      emscripten_set_main_loop_arg(run_frame_proxy, ctxt, -1, true);
+  #endif
+  }
+#+end_src
+
+The =__EMSCRIPTEN__= preprocessor symbol is defined in web builds using Emscripten. The function emscripten_set_main_loop_arg is an Emscripten library function which takes a callback function pointer and a user void pointer as the first two parameters; the user pointer is passed as the arguement to the callback function. The web browser controls the application loop, the passed in callback function is called every frame. In either desktop or web builds, jctrl_run_frame is called every frame which reads in any incoming network data with net_rx and calls RunFrame on the urho::Engine which gathers all input, updates all objects in urho scene, updates all user interface items, and renders the results.
+
+The user interface is setup differently depending on whether or not the app is started as a controller or observer.
 
 ** Observer and Controller
-Text
+The web build differentiates between a controller and observer by parsing the url from the web browser address bar - the desktop build always runs as a controller. Javascript is required to get the full browser url path. Emscripten provides a way to write javascript functions within c source code by using the EM_JS(...) construct. The EM_JS macro takes the C function return type as the first parameter, the C function name as the second parameter, the C function parameters as the third parameter, and the javascript function definition as the fourth parameter:
+
+#+begin_src cpp
+EM_JS(char*, get_browser_url_path, (), {
+    const path = window.location.pathname;
+    const length = lengthBytesUTF8(path) + 1;
+    const str = _malloc(length);
+    stringToUTF8(path, str, length);
+    console.log(`Should be returning  ${length} bytes for ${path}`);
+    return str;
+});  
+#+end_src
+
+All code within the curly brackets is javascript, and has access to the DOM, browser javascript functions (ie window.location.pathname), and Emscripten javascript functions (lengthBytesUTF8, _malloc, stringToUTF8). The get_browser_url_path function is called like a normal C function to get the full browser path:
+
+#+begin_src cpp
+    char *url_path = get_browser_url_path();
+    conn->can_control = strncmp(url_path, "/control", 8) == 0;
+    ilog("URL PATH: %s", url_path);
+    free(url);  
+#+end_src
+
+This code checks for the presence of /control within the url_path and sets conn->can_control if it is there. The conn variable refers to a net_connection struct which is shown in detail in the Networking section. The conn->can_control flag is used to setup the user interface, disabling any control/driving elements if false.
+
+This is not meant to be a secure mechanism. This is purely to avoid chaos when giving demonstrations at public events while still allowing spectators to view mapping data in real time on their phones.
 
 ** Scene
-Text
+The urho::Scene object is the Urho3D interface used to add items to the transform heirarchy \autocite{urho_scene}. Each item in the scene is represented as an urho::Node which can have a single parent node and multiple child nodes. All items in the scene are children of the scene node; the urho::Scene class inherits from urho::Node and serves as the root node for the transform heirarchy. The scene also provides an interface for retreiving nodes by name, id, and tag.
+
+Urho3D uses a flavor of Entity-Component-System (ECS) \autocite{ecs} to organize node data and behavior. Rather than using inheritance and subclassing urho::Node to implement different behaviors per node type, behaviors are implemented by creating urho::Component types and attaching components to nodes to give that node a certain behavior. Rather than placing the behavior implementation code within the nodes or components, the behavior code is placed in a "sub-system" which operates on all nodes containing the component type of interest; the component is basically plain old data. What ECS calls "entities", Urho3D calls "nodes"; both act as meta-data for objects within the library. Unlike with ECS, in Urho3D every node has a transform - the transform is not outsourced to a transform component. Also, in general, Urho3D wraps all components in classes with accessor functions, some of which alter the component state on calling.
+
+The Urho3D renderer subsystem operates on all node's which have any component inheriting from urho::Drawable. Most nodes in this application have the urho::StaticModel component attached which references a model file to render. The scan data is shown using a node with the urho::BillboardSet component attached.
+
 *** Urho3D Rendering
-Text
+Rendering is done by the urho::Renderer by gathering all nodes with urho::Drawable components and rendering each item according to it's drawable component type and options \autocite{urho_renderer}.
+
+The urho::Renderer is setup in setup_main_renderer which is called from jctrl_init:
+#+begin_src cpp
+intern void setup_main_renderer(jackal_control_ctxt *ctxt)
+{
+    auto graphics = ctxt->urho_ctxt->GetSubsystem<urho::Graphics>();
+    graphics->SetWindowTitle("Clearpath Control");
+
+    auto cache = ctxt->urho_ctxt->GetSubsystem<urho::ResourceCache>();
+    auto rpath = cache->GetResource<urho::XMLFile>("RenderPaths/clear_only.xml");
+    urho::Renderer *rnd = ctxt->urho_ctxt->GetSubsystem<urho::Renderer>();
+    urho::Viewport *vp = new urho::Viewport(ctxt->urho_ctxt, nullptr, nullptr);
+    vp->SetRenderPath(rpath);
+    rnd->SetViewport(0, vp);
+
+    auto zn = rnd->GetDefaultZone();
+    zn->SetFogColor({0.0, 0.0, 0.0, 1.0});
+}  
+#+end_src
+
+We setup the renderer by creating a viewport, attaching a render path to the viewport, and setting the renderer's viewport to the created viewport. A render path is an object which declares a number of rendering commands, where each command describes some operation to apply to a render target \autocite{urho_render_path}. For example, a scenepass command specifies rendering all nodes in the scene that reference a technique (through a referenced material, which is referenced by a static model component) that contains the specified "pass" to the render target specified by "output". A clear command clears the render target specified by "output" to the specified "color". The default render target is used, which is the screen backbuffer, when output isn't specified. All commands are executed in the order listed in the XML file. The render path used for the app is simple:
+
+#+begin_src xml
+  
+#+end_src
 
 *** Transform Tree
 Text
@@ -659,6 +984,9 @@ Text
 Text
 
 ** Getting and Setting ROS Parameters
+:PROPERTIES:
+:ID:       a893a693-0450-4f2b-a804-09e9b6167990
+:END:
 Text
 
 ** Live Camera Feed (Jackal Only)

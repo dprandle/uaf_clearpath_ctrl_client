@@ -245,9 +245,9 @@ pup_func(sicklms_laser_scan)
 struct misc_stats
 {
     packet_header header{};
-    u8 conn_count {0};
-    float cur_bw_mbps {};
-    float avg_bw_mbps {};
+    u8 conn_count{0};
+    float cur_bw_mbps{};
+    float avg_bw_mbps{};
 };
 
 pup_func(misc_stats)
@@ -294,7 +294,7 @@ struct compressed_image
     static constexpr int MAX_PIXEL_COUNT = MAX_IMAGE_SIZE * MAX_IMAGE_SIZE;
     packet_header header{};
     compressed_image_meta meta{};
-    u8 data[MAX_PIXEL_COUNT*2]; // max 2 bytes per pixel - if an image was basically uncompressable
+    u8 data[MAX_PIXEL_COUNT * 2]; // max 2 bytes per pixel - if an image was basically uncompressable
 };
 
 pup_func(compressed_image)
@@ -304,12 +304,11 @@ pup_func(compressed_image)
     pup_member_meta(data, pack_va_flags::FIXED_ARRAY_CUSTOM_SIZE, &val.meta.data_size);
 };
 
-
 struct text_block
 {
     static constexpr int MAX_TXT_SIZE = 30000;
     packet_header header{};
-    u32 txt_size {0};
+    u32 txt_size{0};
     char text[MAX_TXT_SIZE];
 };
 
@@ -377,7 +376,6 @@ struct current_goal_status
     pose goal_p;
 };
 
-
 pup_func(current_goal_status)
 {
     pup_member(header);
@@ -393,18 +391,18 @@ struct reusable_packets
     sicklms_laser_scan *scan{};
     node_transform *ntf{};
     nav_path *navp{};
-    current_goal_status * cur_goal_stat{};
-    text_block * txt{};
-    compressed_image * img {};
-    misc_stats * ms{};
+    current_goal_status *cur_goal_stat{};
+    text_block *txt{};
+    compressed_image *img{};
+    misc_stats *ms{};
 
     // Packets for sending
-    command_set_params * cmdp{};
+    command_set_params *cmdp{};
 };
 
 struct net_rx_buffer
 {
-    static constexpr int MAX_PACKET_SIZE = occ_grid_update::MAX_CHANGE_ELEMS*4 + 1000;
+    static constexpr int MAX_PACKET_SIZE = occ_grid_update::MAX_CHANGE_ELEMS * 4 + 1000;
     binary_fixed_buffer_archive<MAX_PACKET_SIZE> read_buf{PACK_DIR_IN};
     sizet available;
 };

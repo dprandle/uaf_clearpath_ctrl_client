@@ -15,10 +15,10 @@
 #include <emscripten/websocket.h>
 EM_JS(void, toggle_input_visibility, (int rows, int cols), {
     let ta = document.getElementById('text-area');
-    if (ta.style.display === "block")
+    if (ta.style.display == = "block") {
         ta.style.display = "none";
-    else
-    {
+    }
+    else {
         ta.style.display = "block";
         if (rows > ta.rows)
             ta.rows = rows;
@@ -117,13 +117,11 @@ intern void show_received_text(map_panel *mp, const text_block &tb, const ui_inf
     if (mp->text_disp.apanel.anim_state != PANEL_ANIM_INACTIVE)
         return;
     float cur_y_anch = mp->text_disp.apanel.widget->GetMaxAnchor().y_;
-    if (fequals(cur_y_anch, 0.0f))
-    {
+    if (fequals(cur_y_anch, 0.0f)) {
         mp->text_disp.apanel.anim_state = PANEL_ANIM_SHOW;
         mp->text_disp.cur_open_time = mp->text_disp.apanel.max_anim_time;
     }
-    else if (mp->text_disp.cur_open_time > 0.0)
-    {
+    else if (mp->text_disp.cur_open_time > 0.0) {
         mp->text_disp.cur_open_time = mp->text_disp.apanel.max_anim_time;
     }
 }
@@ -143,11 +141,10 @@ intern void handle_received_get_params_response(map_panel *mp, const text_block 
 
 intern void param_run_frame(map_panel *mp, float dt, const ui_info &ui_inf)
 {
-    if (!animated_panel_run_frame(&mp->text_disp.apanel, dt, ui_inf, "TextDisp") && (mp->text_disp.cur_open_time > (mp->text_disp.apanel.max_anim_time - FLOAT_EPS)))
-    {
+    if (!animated_panel_run_frame(&mp->text_disp.apanel, dt, ui_inf, "TextDisp") &&
+        (mp->text_disp.cur_open_time > (mp->text_disp.apanel.max_anim_time - FLOAT_EPS))) {
         mp->text_disp.cur_open_time += dt;
-        if (mp->text_disp.cur_open_time >= mp->text_disp.max_open_timer_time)
-        {
+        if (mp->text_disp.cur_open_time >= mp->text_disp.max_open_timer_time) {
             mp->text_disp.cur_open_time = 0.0f;
             mp->text_disp.apanel.anim_state = PANEL_ANIM_HIDE;
         }
@@ -161,13 +158,18 @@ void param_init(map_panel *mp, net_connection *conn, const ui_info &ui_inf)
     setup_accept_params_button(mp, ui_inf);
     setup_text_notice_widget(mp, ui_inf);
 
-    ss_connect(&mp->router, conn->param_set_response_received, [mp, ui_inf](const text_block &pckt) { show_received_text(mp, pckt, ui_inf); });
-    ss_connect(&mp->router, conn->param_get_response_received, [mp, ui_inf](const text_block &pckt) { handle_received_get_params_response(mp, pckt, ui_inf); });
-
-    mp->text_disp.apanel.widget->SubscribeToEvent(urho::E_UPDATE, [mp, ui_inf](urho::StringHash type, urho::VariantMap &ev_data) {
-        auto dt = ev_data[urho::Update::P_TIMESTEP].GetFloat();
-        param_run_frame(mp, dt, ui_inf);
+    ss_connect(&mp->router, conn->param_set_response_received, [mp, ui_inf](const text_block &pckt) {
+        show_received_text(mp, pckt, ui_inf);
     });
+    ss_connect(&mp->router, conn->param_get_response_received, [mp, ui_inf](const text_block &pckt) {
+        handle_received_get_params_response(mp, pckt, ui_inf);
+    });
+
+    mp->text_disp.apanel.widget->SubscribeToEvent(urho::E_UPDATE,
+                                                  [mp, ui_inf](urho::StringHash type, urho::VariantMap &ev_data) {
+                                                      auto dt = ev_data[urho::Update::P_TIMESTEP].GetFloat();
+                                                      param_run_frame(mp, dt, ui_inf);
+                                                  });
 }
 
 void param_term(map_panel *mp)
@@ -186,18 +188,15 @@ void param_toggle_input_visible(map_panel *mp)
 
 void param_handle_mouse_released(map_panel *mp, urho::UIElement *elem, net_connection *conn)
 {
-    if (elem == mp->text_disp.apanel.hide_show_panel)
-    {
+    if (elem == mp->text_disp.apanel.hide_show_panel) {
         animated_panel_hide_show_pressed(&mp->text_disp.apanel);
     }
-    else if (elem == mp->accept_inp.get_btn)
-    {
+    else if (elem == mp->accept_inp.get_btn) {
         command_get_params cgp{};
         mp->accept_inp.get_btn_text->SetText("Getting...");
         net_tx(*conn, cgp);
     }
-    else if (elem == mp->accept_inp.send_btn || elem == mp->accept_inp.send_btn_text)
-    {
+    else if (elem == mp->accept_inp.send_btn || elem == mp->accept_inp.send_btn_text) {
         static command_set_params param_pckt{};
 
         // Get input from box and send it

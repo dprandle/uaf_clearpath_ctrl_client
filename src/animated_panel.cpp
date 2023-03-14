@@ -13,12 +13,12 @@ void set_min_anchor(animated_panel *panel, float x, float y)
     panel->widget->SetMinAnchor(x, y);
 }
 
-vec2 get_max_anchor(animated_panel * panel)
+vec2 get_max_anchor(animated_panel *panel)
 {
     return panel->widget->GetMaxAnchor();
 }
 
-vec2 get_min_anchor(animated_panel * panel)
+vec2 get_min_anchor(animated_panel *panel)
 {
     return panel->widget->GetMinAnchor();
 }
@@ -30,8 +30,7 @@ bool animated_panel_run_frame(animated_panel *panel, float dt, const ui_info &ui
 
     auto set_anchor = &set_max_anchor;
     auto get_anchor = &get_max_anchor;
-    if (panel->anchor_rest_point > panel->anchor_set_point)
-    {
+    if (panel->anchor_rest_point > panel->anchor_set_point) {
         set_anchor = &set_min_anchor;
         get_anchor = &get_min_anchor;
     }
@@ -49,15 +48,12 @@ bool animated_panel_run_frame(animated_panel *panel, float dt, const ui_info &ui
 
     panel->cur_anim_time += dt;
 
-    if (panel->cur_anim_time >= panel->max_anim_time)
-    {
-        if (panel->anim_state == PANEL_ANIM_SHOW)
-        {
+    if (panel->cur_anim_time >= panel->max_anim_time) {
+        if (panel->anim_state == PANEL_ANIM_SHOW) {
             cur_anchor = panel->anchor_set_point;
             panel->hide_show_panel->SetStyle(prefix + "Hide", ui_inf.style);
         }
-        else
-        {
+        else {
             cur_anchor = panel->anchor_rest_point;
             panel->hide_show_panel->SetStyle(prefix + "Show", ui_inf.style);
         }

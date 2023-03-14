@@ -16,7 +16,11 @@
 intern const float UI_ADDITIONAL_TOOLBAR_SCALING = 1.00f;
 
 template<class T>
-intern void add_toolbar_button(T ** btn, urho::UIElement * parent, urho::Context * uctxt, const urho::String &style, const ui_info &ui_inf)
+intern void add_toolbar_button(T **btn,
+                               urho::UIElement *parent,
+                               urho::Context *uctxt,
+                               const urho::String &style,
+                               const ui_info &ui_inf)
 {
     *btn = parent->CreateChild<T>();
     (*btn)->SetStyle(style, ui_inf.style);
@@ -36,8 +40,7 @@ void toolbar_init(map_panel *mp, const ui_info &ui_inf, bool can_control)
 
     add_toolbar_button(&mp->toolbar.enable_follow, mp->toolbar.widget, uctxt, "EnableFollow", ui_inf);
 
-    if (can_control)
-    {
+    if (can_control) {
         add_toolbar_button(&mp->toolbar.add_goal, mp->toolbar.widget, uctxt, "AddGoalButton", ui_inf);
         add_toolbar_button(&mp->toolbar.cancel_goal, mp->toolbar.widget, uctxt, "CancelGoalsButton", ui_inf);
         add_toolbar_button(&mp->toolbar.clear_maps, mp->toolbar.widget, uctxt, "ClearMapsButton", ui_inf);
@@ -49,13 +52,15 @@ void toolbar_init(map_panel *mp, const ui_info &ui_inf, bool can_control)
 
     ivec2 tb_offset = {mp->toolbar.enable_follow->GetMaxOffset().x_, 0};
     float anchor_spacing = 1.0f / mp->toolbar.widget->GetNumChildren();
-    for (int i = 0; i < mp->toolbar.widget->GetNumChildren(); ++i)
-    {
+    for (int i = 0; i < mp->toolbar.widget->GetNumChildren(); ++i) {
         auto child = mp->toolbar.widget->GetChild(i);
-        child->SetMinAnchor(0, i*anchor_spacing);
-        child->SetMaxAnchor(0, i*anchor_spacing);
+        child->SetMinAnchor(0, i * anchor_spacing);
+        child->SetMaxAnchor(0, i * anchor_spacing);
         tb_offset.y_ += child->GetMaxOffset().y_ + 10;
-        ilog("Adding offset for %s of %d (total now %d)", child->GetName().CString(), child->GetMaxOffset().y_ + 10, tb_offset.y_);
+        ilog("Adding offset for %s of %d (total now %d)",
+             child->GetName().CString(),
+             child->GetMaxOffset().y_ + 10,
+             tb_offset.y_);
     }
     mp->toolbar.widget->SetMaxOffset(tb_offset);
 }
@@ -70,22 +75,18 @@ void toolbar_handle_toggle(map_panel *mp, urho::UIElement *elem)
     auto ctxt = elem->GetContext();
     auto time = ctxt->GetSubsystem<urho::Time>();
 
-    if (elem == mp->toolbar.add_goal)
-    {
+    if (elem == mp->toolbar.add_goal) {
         mp->toolbar.last_frame_checked = time->GetFrameNumber();
         if (mp->toolbar.add_goal->IsChecked())
             mp->toolbar.enable_measure->SetChecked(false);
     }
-    else if (elem == mp->toolbar.set_params)
-    {
+    else if (elem == mp->toolbar.set_params) {
         param_toggle_input_visible(mp);
     }
-    else if (elem == mp->toolbar.enable_follow)
-    {
+    else if (elem == mp->toolbar.enable_follow) {
 
         auto cam_node = mp->view->GetCameraNode();
-        if (mp->toolbar.enable_follow->IsChecked())
-        {
+        if (mp->toolbar.enable_follow->IsChecked()) {
             cam_node->SetParent(mp->base_link->GetChild("jackal_follow_cam"));
             auto cam_pos = cam_node->GetPosition();
             cam_pos.x_ = 0.0f;
@@ -93,27 +94,22 @@ void toolbar_handle_toggle(map_panel *mp, urho::UIElement *elem)
             cam_node->SetPosition(cam_pos);
             cam_node->SetRotation({});
         }
-        else
-        {
+        else {
             cam_node->SetParent(mp->view->GetScene());
         }
     }
-    else if (elem == mp->toolbar.enable_measure)
-    {
+    else if (elem == mp->toolbar.enable_measure) {
         mp->toolbar.last_frame_checked = time->GetFrameNumber();
-        if (mp->toolbar.enable_measure->IsChecked())
-        {
+        if (mp->toolbar.enable_measure->IsChecked()) {
             mp->toolbar.add_goal->SetChecked(false);
         }
     }
 }
 
 void toolbar_handle_mouse_released(map_panel *mp, urho::UIElement *elem, net_connection *conn)
-{    
-    if (elem == mp->toolbar.cancel_goal)
-    {
-        if (!mp->toolbar.add_goal->IsEnabled())
-        {
+{
+    if (elem == mp->toolbar.cancel_goal) {
+        if (!mp->toolbar.add_goal->IsEnabled()) {
             auto r = mp->toolbar.add_goal->GetImageRect() + irect{-128, 0, -128, 0};
             mp->toolbar.add_goal->SetImageRect(r);
             mp->toolbar.add_goal->SetEnabled(true);
@@ -122,10 +118,8 @@ void toolbar_handle_mouse_released(map_panel *mp, urho::UIElement *elem, net_con
         mp->goals.queued_goals.clear();
         net_tx(*conn, stop);
     }
-    else if (elem == mp->toolbar.clear_maps)
-    {
-        if (!mp->toolbar.add_goal->IsEnabled())
-        {
+    else if (elem == mp->toolbar.clear_maps) {
+        if (!mp->toolbar.add_goal->IsEnabled()) {
             auto r = mp->toolbar.add_goal->GetImageRect() + irect{-128, 0, -128, 0};
             mp->toolbar.add_goal->SetImageRect(r);
             mp->toolbar.add_goal->SetEnabled(true);
@@ -133,11 +127,10 @@ void toolbar_handle_mouse_released(map_panel *mp, urho::UIElement *elem, net_con
         command_clear_maps cm{};
         net_tx(*conn, cm);
     }
-    else if (elem == mp->toolbar.delete_measure)
-    {
+    else if (elem == mp->toolbar.delete_measure) {
         if (mp->mpoints.entry_count == 0)
             mp->toolbar.enable_measure->SetChecked(false);
-        
+
         if (mp->mpoints.entry_count > 2)
             --mp->mpoints.entry_count;
         else

@@ -28,10 +28,8 @@ void input_add_trigger(input_keymap *kmap, const input_action_trigger &trigger)
 bool input_remove_trigger(input_keymap *kmap, const input_action_trigger &trigger)
 {
     auto range = input_find_triggers(kmap, trigger.cond);
-    while (range.first != range.second)
-    {
-        if (range.first->second == trigger)
-        {
+    while (range.first != range.second) {
+        if (range.first->second == trigger) {
             kmap->tmap.erase(range.first);
             return true;
         }
@@ -45,16 +43,18 @@ int input_remove_triggers(input_keymap *kmap, const input_trigger_cond &cond)
     return kmap->tmap.erase(cond.lookup_key);
 }
 
-intern viewport_info
-viewport_with_mouse(const std::vector<viewport_element> &vp_stack, const ivec2 &screen_size, const vec2 &norm_mpos, const vec2 &norm_mdelta, double inv_pixel_ratio)
+intern viewport_info viewport_with_mouse(const std::vector<viewport_element> &vp_stack,
+                                         const ivec2 &screen_size,
+                                         const vec2 &norm_mpos,
+                                         const vec2 &norm_mdelta,
+                                         double inv_pixel_ratio)
 {
     viewport_info ret{};
 
     vec2 sz_f(screen_size.x_, screen_size.y_);
 
     // Go through viewport stack and try to find one that has our mouse pointer within
-    for (int i = 0; i < vp_stack.size(); ++i)
-    {
+    for (int i = 0; i < vp_stack.size(); ++i) {
         viewport_element vp_desc{vp_stack[i].vp, vp_stack[i].view_element};
 
         irect scrn = vp_desc.vp->GetView()->GetViewRect();
@@ -64,19 +64,16 @@ viewport_with_mouse(const std::vector<viewport_element> &vp_stack, const ivec2 &
         vec2 mpos = norm_mpos * sz_f * inv_pixel_ratio;
         vec2 mdelta = norm_mdelta * sz_f * inv_pixel_ratio;
 
-        if (vp_desc.view_element)
-        {
+        if (vp_desc.view_element) {
             min = vp_desc.view_element->GetScreenPosition();
             max = max + min;
 
             urho::Vector<urho::UIElement *> children;
             ret.element_under_mouse = vp_desc.view_element->GetRoot();
             ret.element_under_mouse->GetChildren(children, true);
-            for (int i = 0; i < children.Size(); ++i)
-            {
+            for (int i = 0; i < children.Size(); ++i) {
                 if (children[i]->IsInside({(int)mpos.x_, (int)mpos.y_}, true) &&
-                    (!ret.element_under_mouse || children[i]->GetPriority() > ret.element_under_mouse->GetPriority()))
-                {
+                    (!ret.element_under_mouse || children[i]->GetPriority() > ret.element_under_mouse->GetPriority())) {
                     ret.element_under_mouse = children[i];
                 }
             }
@@ -90,8 +87,7 @@ viewport_with_mouse(const std::vector<viewport_element> &vp_stack, const ivec2 &
 
         // Return the first viewport that contains the mouse click!
         rect fr(ll, ur);
-        if (fr.IsInside(mpos) == urho::Intersection::INSIDE)
-        {
+        if (fr.IsInside(mpos) == urho::Intersection::INSIDE) {
             ret.vp_desc = vp_desc;
             ret.vp_norm_mpos = (mpos - ll) / fr.Size();
             ret.vp_norm_mdelta = mdelta / fr.Size();
@@ -101,11 +97,11 @@ viewport_with_mouse(const std::vector<viewport_element> &vp_stack, const ivec2 &
     return ret;
 }
 
-intern bool trigger_already_active(const std::vector<input_action_trigger> &active_triggers, const input_action_trigger &trig)
+intern bool trigger_already_active(const std::vector<input_action_trigger> &active_triggers,
+                                   const input_action_trigger &trig)
 {
     auto iter = active_triggers.begin();
-    while (iter != active_triggers.end())
-    {
+    while (iter != active_triggers.end()) {
         if (trig == *iter)
             return true;
         ++iter;
@@ -116,14 +112,13 @@ intern bool trigger_already_active(const std::vector<input_action_trigger> &acti
 intern void on_key_down(input_uevent_handlers *uh, Urho3D::StringHash event_type, Urho3D::VariantMap &event_data)
 {
     input_trigger_cond tc;
-    tc.key = i32(event_data["Key"].GetInt());
+    tc.key = i32(event_data["Key"].GetI32());
     tc.mbutton = 0;
-    i32 qualifiers(event_data["Qualifiers"].GetInt());
-    i32 mouse_buttons(event_data["Buttons"].GetInt());
+    i32 qualifiers(event_data["Qualifiers"].GetI32());
+    i32 mouse_buttons(event_data["Buttons"].GetI32());
     ivec2 screen_size = uh->GetSubsystem<Urho3D::Graphics>()->GetSize();
 
-    for (int i = uh->ictxt->context_stack.size(); i > 0; --i)
-    {
+    for (int i = uh->ictxt->context_stack.size(); i > 0; --i) {
         input_keymap *cur_km = uh->ictxt->context_stack[i - 1];
         input_action_trigger *trig = nullptr;
 
@@ -131,8 +126,7 @@ intern void on_key_down(input_uevent_handlers *uh, Urho3D::StringHash event_type
         // and the allowed
         // First find all triggers with the exact match for key and mouse qualifiers
         auto tr = input_find_triggers(cur_km, tc);
-        while (tr.first != tr.second)
-        {
+        while (tr.first != tr.second) {
             const input_action_trigger &trig = tr.first->second;
 
             // Check the qualifier and mouse button required conditions
@@ -142,20 +136,24 @@ intern void on_key_down(input_uevent_handlers *uh, Urho3D::StringHash event_type
             // Check the qualifier and mouse button allowed conditions
             i32 allowed_quals = trig.qual_req | trig.qual_allowed;
             i32 allowed_mb = trig.mb_req | trig.mb_allowed;
-            bool pass_qual_allowed(((allowed_quals & urho::QUAL_ANY) == urho::QUAL_ANY) || (qualifiers | allowed_quals) == allowed_quals);
+            bool pass_qual_allowed(((allowed_quals & urho::QUAL_ANY) == urho::QUAL_ANY) ||
+                                   (qualifiers | allowed_quals) == allowed_quals);
             bool pass_mb_allowed((mouse_buttons | allowed_mb) == allowed_mb);
 
             // If passes all the conditions, send the event for the trigger and mark trigger as active
-            if (!trigger_already_active(uh->ictxt->active_triggers, trig) && pass_qual_required && pass_mb_required && pass_qual_allowed && pass_mb_allowed)
-            {
-                if ((trig.tstate & T_BEGIN) == T_BEGIN)
-                {
+            if (!trigger_already_active(uh->ictxt->active_triggers, trig) && pass_qual_required && pass_mb_required &&
+                pass_qual_allowed && pass_mb_allowed) {
+                if ((trig.tstate & T_BEGIN) == T_BEGIN) {
                     itrigger_event ev{trig.name,
                                       T_BEGIN,
                                       uh->ictxt->current_norm_mpos,
                                       {},
                                       {},
-                                      viewport_with_mouse(uh->ictxt->vp_stack, screen_size, uh->ictxt->current_norm_mpos, {}, uh->ictxt->inv_pixel_ratio)};
+                                      viewport_with_mouse(uh->ictxt->vp_stack,
+                                                          screen_size,
+                                                          uh->ictxt->current_norm_mpos,
+                                                          {},
+                                                          uh->ictxt->inv_pixel_ratio)};
                     uh->ictxt->trigger(trig.name, ev);
                 }
                 uh->ictxt->active_triggers.push_back(trig);
@@ -169,35 +167,33 @@ intern void on_key_down(input_uevent_handlers *uh, Urho3D::StringHash event_type
 intern void on_key_up(input_uevent_handlers *uh, urho::StringHash event_type, urho::VariantMap &event_data)
 {
     input_trigger_cond tc;
-    tc.key = i32(event_data["Key"].GetInt());
+    tc.key = i32(event_data["Key"].GetI32());
     tc.mbutton = 0;
-    i32 mouse_buttons = i32(event_data["Buttons"].GetInt());
-    i32 qualifiers = i32(event_data["Qualifiers"].GetInt());
+    i32 mouse_buttons = i32(event_data["Buttons"].GetI32());
+    i32 qualifiers = i32(event_data["Qualifiers"].GetI32());
     ivec2 screen_size = uh->GetSubsystem<Urho3D::Graphics>()->GetSize();
 
     auto iter = uh->ictxt->active_triggers.begin();
-    while (iter != uh->ictxt->active_triggers.end())
-    {
+    while (iter != uh->ictxt->active_triggers.end()) {
         const input_action_trigger &curt = *iter;
 
         // Always end the action and send the trigger when the main key is depressed - dont care
         // about any of the qualifier situation
-        if (tc.key == curt.cond.key)
-        {
-            if ((curt.tstate & T_END) == T_END)
-            {
-                itrigger_event ev{curt.name,
-                                  T_END,
-                                  uh->ictxt->current_norm_mpos,
-                                  {},
-                                  {},
-                                  viewport_with_mouse(uh->ictxt->vp_stack, screen_size, uh->ictxt->current_norm_mpos, {}, uh->ictxt->inv_pixel_ratio)};
+        if (tc.key == curt.cond.key) {
+            if ((curt.tstate & T_END) == T_END) {
+                itrigger_event ev{
+                    curt.name,
+                    T_END,
+                    uh->ictxt->current_norm_mpos,
+                    {},
+                    {},
+                    viewport_with_mouse(
+                        uh->ictxt->vp_stack, screen_size, uh->ictxt->current_norm_mpos, {}, uh->ictxt->inv_pixel_ratio)};
                 uh->ictxt->trigger(curt.name, ev);
             }
             iter = uh->ictxt->active_triggers.erase(iter);
         }
-        else
-        {
+        else {
             ++iter;
         }
     }
@@ -207,26 +203,24 @@ intern void on_mouse_down(input_uevent_handlers *uh, urho::StringHash event_type
 {
     input_trigger_cond tc;
     tc.key = 0;
-    tc.mbutton = event_data["Button"].GetInt();
-    i32 mouse_buttons = i32(event_data["Buttons"].GetInt());
-    i32 qualifiers = i32(event_data["Qualifiers"].GetInt());
+    tc.mbutton = event_data["Button"].GetI32();
+    i32 mouse_buttons = i32(event_data["Buttons"].GetI32());
+    i32 qualifiers = i32(event_data["Qualifiers"].GetI32());
     i32 wheel = 0;
     vec2 norm_mdelta;
     ivec2 screen_size = uh->GetSubsystem<Urho3D::Graphics>()->GetSize();
 
     if (tc.mbutton == MOUSEB_WHEEL)
-        wheel = i32(event_data["Wheel"].GetInt());
+        wheel = i32(event_data["Wheel"].GetI32());
 
-    if (tc.mbutton == MOUSEB_MOVE)
-    {
-        vec2 current_mpos(float(event_data["X"].GetInt()), float(event_data["Y"].GetInt()));
+    if (tc.mbutton == MOUSEB_MOVE) {
+        vec2 current_mpos(float(event_data["X"].GetI32()), float(event_data["Y"].GetI32()));
         current_mpos = normalize_coords(current_mpos, screen_size);
         norm_mdelta = current_mpos - uh->ictxt->current_norm_mpos;
         uh->ictxt->current_norm_mpos = current_mpos;
     }
 
-    for (int i = uh->ictxt->context_stack.size(); i > 0; --i)
-    {
+    for (int i = uh->ictxt->context_stack.size(); i > 0; --i) {
         input_keymap *cur_km = uh->ictxt->context_stack[i - 1];
         input_action_trigger *trig = nullptr;
 
@@ -234,8 +228,7 @@ intern void on_mouse_down(input_uevent_handlers *uh, urho::StringHash event_type
         // and the allowed
         // First find all triggers with the exact match for key and mouse qualifiers
         auto tr = input_find_triggers(cur_km, tc);
-        while (tr.first != tr.second)
-        {
+        while (tr.first != tr.second) {
             const input_action_trigger &trig = tr.first->second;
 
             // Check the qualifier and mouse button required conditions
@@ -246,21 +239,25 @@ intern void on_mouse_down(input_uevent_handlers *uh, urho::StringHash event_type
             // Check the qualifier and mouse button allowed conditions
             i32 allowed_quals = trig.qual_req | trig.qual_allowed;
             i32 allowed_mb = trig.mb_req | trig.mb_allowed | trig.cond.mbutton;
-            bool pass_qual_allowed(((allowed_quals & urho::QUAL_ANY) == urho::QUAL_ANY) || (qualifiers | allowed_quals) == allowed_quals);
+            bool pass_qual_allowed(((allowed_quals & urho::QUAL_ANY) == urho::QUAL_ANY) ||
+                                   (qualifiers | allowed_quals) == allowed_quals);
             bool pass_mb_allowed((mouse_buttons | allowed_mb) == allowed_mb);
 
             // If passes all the conditions, send the event for the trigger and mark trigger as active
 
-            if (!trigger_already_active(uh->ictxt->active_triggers, trig) && pass_qual_required && pass_mb_required && pass_qual_allowed && pass_mb_allowed)
-            {
-                if ((trig.tstate & T_BEGIN) == T_BEGIN)
-                {
+            if (!trigger_already_active(uh->ictxt->active_triggers, trig) && pass_qual_required && pass_mb_required &&
+                pass_qual_allowed && pass_mb_allowed) {
+                if ((trig.tstate & T_BEGIN) == T_BEGIN) {
                     itrigger_event ev{trig.name,
                                       T_BEGIN,
                                       uh->ictxt->current_norm_mpos,
                                       norm_mdelta,
                                       wheel,
-                                      viewport_with_mouse(uh->ictxt->vp_stack, screen_size, uh->ictxt->current_norm_mpos, norm_mdelta, uh->ictxt->inv_pixel_ratio)};
+                                      viewport_with_mouse(uh->ictxt->vp_stack,
+                                                          screen_size,
+                                                          uh->ictxt->current_norm_mpos,
+                                                          norm_mdelta,
+                                                          uh->ictxt->inv_pixel_ratio)};
                     uh->ictxt->trigger(trig.name, ev);
                 }
 
@@ -277,32 +274,30 @@ intern void on_mouse_up(input_uevent_handlers *uh, Urho3D::StringHash event_type
 {
     input_trigger_cond tc;
     tc.key = 0;
-    tc.mbutton = event_data["Button"].GetInt();
-    i32 mouse_buttons = i32(event_data["Buttons"].GetInt());
-    i32 qualifiers = i32(event_data["Qualifiers"].GetInt());
+    tc.mbutton = event_data["Button"].GetI32();
+    i32 mouse_buttons = i32(event_data["Buttons"].GetI32());
+    i32 qualifiers = i32(event_data["Qualifiers"].GetI32());
     ivec2 screen_size = uh->GetSubsystem<urho::Graphics>()->GetSize();
 
     auto iter = uh->ictxt->active_triggers.begin();
-    while (iter != uh->ictxt->active_triggers.end())
-    {
+    while (iter != uh->ictxt->active_triggers.end()) {
         const input_action_trigger &curt = *iter;
 
-        if (tc.mbutton == curt.cond.mbutton)
-        {
-            if (((curt.tstate & T_END) == T_END))
-            {
-                itrigger_event ev{curt.name,
-                                  T_END,
-                                  uh->ictxt->current_norm_mpos,
-                                  {},
-                                  {},
-                                  viewport_with_mouse(uh->ictxt->vp_stack, screen_size, uh->ictxt->current_norm_mpos, {}, uh->ictxt->inv_pixel_ratio)};
+        if (tc.mbutton == curt.cond.mbutton) {
+            if (((curt.tstate & T_END) == T_END)) {
+                itrigger_event ev{
+                    curt.name,
+                    T_END,
+                    uh->ictxt->current_norm_mpos,
+                    {},
+                    {},
+                    viewport_with_mouse(
+                        uh->ictxt->vp_stack, screen_size, uh->ictxt->current_norm_mpos, {}, uh->ictxt->inv_pixel_ratio)};
                 uh->ictxt->trigger(curt.name, ev);
             }
             iter = uh->ictxt->active_triggers.erase(iter);
         }
-        else
-        {
+        else {
             ++iter;
         }
     }

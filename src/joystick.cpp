@@ -47,11 +47,10 @@ intern void handle_joystick_move_end(joystick_panel *jsp)
     jsp->cached_mouse_pos = {};
 }
 
-intern void joystick_panel_run_frame(joystick_panel*jspanel, net_connection * conn)
+intern void joystick_panel_run_frame(joystick_panel *jspanel, net_connection *conn)
 {
-    if (!jspanel->js->GetEnableAnchor())
-    {
-        static command_velocity pckt {};
+    if (!jspanel->js->GetEnableAnchor()) {
+        static command_velocity pckt{};
         pckt.vinfo.linear = jspanel->velocity.y_;
         pckt.vinfo.angular = jspanel->velocity.x_;
         net_tx(*conn, pckt);
@@ -64,7 +63,7 @@ intern void setup_event_handlers(joystick_panel *jsp, const ui_info &ui_inf, net
         using namespace urho::DragMove;
         auto elem = (urho::UIElement *)ev_data[P_ELEMENT].GetPtr();
         if (elem == jsp->js)
-            handle_jostick_move({ev_data[P_X].GetInt(), ev_data[P_Y].GetInt()}, jsp);
+            handle_jostick_move({ev_data[P_X].GetI32(), ev_data[P_Y].GetI32()}, jsp);
     });
 
     jsp->js->SubscribeToEvent(urho::E_DRAGEND, [jsp](urho::StringHash type, urho::VariantMap &ev_data) {
@@ -86,7 +85,7 @@ intern void setup_event_handlers(joystick_panel *jsp, const ui_info &ui_inf, net
     });
 }
 
-intern void create_joystick_ui(joystick_panel *jsp, const ui_info &ui_inf, urho::Context * uctxt)
+intern void create_joystick_ui(joystick_panel *jsp, const ui_info &ui_inf, urho::Context *uctxt)
 {
     jsp->frame = new urho::BorderImage(uctxt);
     jsp->outer_ring = new urho::BorderImage(uctxt);
@@ -98,15 +97,15 @@ intern void create_joystick_ui(joystick_panel *jsp, const ui_info &ui_inf, urho:
     jsp->frame->AddChild(jsp->outer_ring);
     jsp->outer_ring->SetStyle("JoystickBorder", ui_inf.style);
     ivec2 offset = jsp->outer_ring->GetImageRect().Size();
-    offset.x_ *= ui_inf.dev_pixel_ratio_inv*0.75;
-    offset.y_ *= ui_inf.dev_pixel_ratio_inv*0.75;
+    offset.x_ *= ui_inf.dev_pixel_ratio_inv * 0.75;
+    offset.y_ *= ui_inf.dev_pixel_ratio_inv * 0.75;
     jsp->outer_ring->SetMaxOffset(offset);
 
     jsp->outer_ring->AddChild(jsp->js);
     jsp->js->SetStyle("Joystick", ui_inf.style);
     offset = jsp->js->GetImageRect().Size();
-    offset.x_ *= ui_inf.dev_pixel_ratio_inv*0.75;
-    offset.y_ *= ui_inf.dev_pixel_ratio_inv*0.75;
+    offset.x_ *= ui_inf.dev_pixel_ratio_inv * 0.75;
+    offset.y_ *= ui_inf.dev_pixel_ratio_inv * 0.75;
     jsp->js->SetMaxOffset(offset);
 }
 
@@ -114,11 +113,10 @@ void joystick_panel_init(joystick_panel *jsp, const ui_info &ui_inf, net_connect
 {
     auto uctxt = ui_inf.ui_sys->GetContext();
     ilog("Initializing joystick");
-    
+
     create_joystick_ui(jsp, ui_inf, uctxt);
     jsp->frame->SetVisible(conn->can_control);
-    if (conn->can_control)
-    {
+    if (conn->can_control) {
         setup_event_handlers(jsp, ui_inf, conn);
     }
 }

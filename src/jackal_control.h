@@ -14,8 +14,8 @@ class Engine;
 
 struct jackal_control_ctxt
 {
-    urho::Context* urho_ctxt {};
-    urho::Engine * urho_engine {};
+    urho::Context *urho_ctxt{};
+    urho::Engine *urho_engine{};
 
     ui_info ui_inf;
 
@@ -28,6 +28,6 @@ struct jackal_control_ctxt
     ss_router router;
 };
 
-bool jctrl_init(jackal_control_ctxt * ctxt, const urho::StringVector & args);
-void jctrl_term(jackal_control_ctxt * ctxt);
-void jctrl_exec(jackal_control_ctxt * ctxt);
+bool jctrl_init(jackal_control_ctxt *ctxt, const urho::StringVector &args);
+void jctrl_term(jackal_control_ctxt *ctxt);
+void jctrl_exec(jackal_control_ctxt *ctxt);

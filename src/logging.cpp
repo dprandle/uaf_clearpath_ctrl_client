@@ -4,9 +4,9 @@
 #include "typedefs.h"
 #include "logging.h"
 
-intern Urho3D::Log * logger {nullptr};
+intern Urho3D::Log *logger{nullptr};
 
-void log_init(urho::Context* uctxt)
+void log_init(urho::Context *uctxt)
 {
     logger = uctxt->GetSubsystem<urho::Log>();
     ilog("Initialized logging");

@@ -15,6 +15,6 @@ namespace Urho3D
 class Context;
 }
 
-void log_init(urho::Context* uctxt);
+void log_init(urho::Context *uctxt);
 void log_term();
 void log_set_level(int level);
