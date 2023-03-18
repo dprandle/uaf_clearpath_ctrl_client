@@ -26,7 +26,7 @@
 #include "input.h"
 #include "mapping.h"
 #include "network.h"
-#include "jackal_control.h"
+#include "robot_control.h"
 #include "joystick.h"
 
 const std::string MAP{"map"};
@@ -61,7 +61,7 @@ intern const ogmap_colors glob_cmc_colors{.lethal{1, 0, 1, 0.7},
 
 intern void create_3dview(map_panel *mp, urho::ResourceCache *cache, urho::UIElement *root, urho::Context *uctxt)
 {
-    auto rpath = cache->GetResource<urho::XMLFile>("RenderPaths/Forward.xml");
+    auto rpath = cache->GetResource<urho::XMLFile>("RenderPaths/simple.xml");
     auto scene = new urho::Scene(uctxt);
     auto cam_node = new urho::Node(uctxt);
 
@@ -189,12 +189,12 @@ intern void setup_scene(map_panel *mp, urho::ResourceCache *cache, urho::Scene *
     mp->node_lut[MAP] = mp->map.node;
 
     mp->glob_cmap.cols = glob_cmc_colors;
-    mp->glob_cmap.map_type = OCC_GRID_TYPE_COSTMAP;
+    mp->glob_cmap.map_type = OCC_GRID_TYPE_GCOSTMAP;
     setup_occ_grid_map(&mp->glob_cmap, "global_costmap", cache, scene, uctxt);
     mp->glob_cmap.node->Translate({0, 0, -0.01});
 
     mp->loc_cmap.cols = loc_cmc_colors;
-    mp->loc_cmap.map_type = OCC_GRID_TYPE_COSTMAP;
+    mp->loc_cmap.map_type = OCC_GRID_TYPE_LCOSTMAP;
     setup_occ_grid_map(&mp->loc_cmap, "local_costmap", cache, scene, uctxt);
     mp->loc_cmap.node->Translate({0, 0, -0.02});
 
@@ -208,10 +208,10 @@ intern void setup_scene(map_panel *mp, urho::ResourceCache *cache, urho::Scene *
     mp->base_link = mp->odom->CreateChild(BASE_LINK.c_str());
     mp->node_lut[BASE_LINK] = mp->base_link;
 
-    // Follow camera for the jackal
-    auto jackal_follow_cam = mp->base_link->CreateChild("jackal_follow_cam");
-    mp->view->GetCameraNode()->SetParent(jackal_follow_cam);
-    jackal_follow_cam->SetRotation({90, {0, 0, -1}});
+    // Follow camera for the robot
+    auto robot_follow_cam = mp->base_link->CreateChild("robot_follow_cam");
+    mp->view->GetCameraNode()->SetParent(robot_follow_cam);
+    robot_follow_cam->SetRotation({90, {0, 0, -1}});
 
     // Child of base link
     auto chassis_link = mp->base_link->CreateChild(CHASSIS_LINK.c_str());
@@ -220,7 +220,7 @@ intern void setup_scene(map_panel *mp, urho::ResourceCache *cache, urho::Scene *
     auto offset_link = chassis_link->CreateChild("offset_link");
     offset_link->Translate({0.0f, 0.0f, -0.065f});
 
-    // Children of chassis linkg
+    // Children of chassis link
     mp->node_lut[FRONT_FENDER_LINK] = chassis_link->CreateChild(FRONT_FENDER_LINK.c_str());
     mp->node_lut[FRONT_LEFT_WHEEL_LINK] = offset_link->CreateChild(FRONT_LEFT_WHEEL_LINK.c_str());
     mp->node_lut[FRONT_RIGHT_WHEEL_LINK] = offset_link->CreateChild(FRONT_RIGHT_WHEEL_LINK.c_str());
@@ -329,10 +329,11 @@ intern void update_scene_map_from_occ_grid(occ_grid_map *map, const occ_grid_upd
              resized.y_,
              grid.meta.width,
              grid.meta.height);
-        map->image->Resize(resized.x_, resized.y_);
+        map->image->SetSize(resized.x_, resized.y_, 4);
         for (int y = 0; y < resized.y_; ++y) {
-            for (int x = 0; x < resized.x_; ++x)
+            for (int x = 0; x < resized.x_; ++x) {
                 map->image->SetPixel(x, y, map->cols.undiscovered);
+            }
         }
     }
 
@@ -346,7 +347,12 @@ intern void update_scene_map_from_occ_grid(occ_grid_map *map, const occ_grid_upd
     billboard->position_ = pos + vec3{billboard->size_};
     billboard->enabled_ = true;
 
-    // Go through and use the arriving delta packet to set the current map values
+    ilog("Received update for map type %d with %d elements for %dx%d map",
+         map->map_type,
+         grid.meta.change_elem_count,
+         grid.meta.width,
+         grid.meta.height);
+
     for (int i = 0; i < grid.meta.change_elem_count; ++i) {
         u32 map_ind = (grid.change_elems[i] >> 8);
         u8 prob = (u8)grid.change_elems[i];
@@ -436,7 +442,6 @@ intern void update_node_transform(map_panel *mp, const node_transform &tform)
              tform.name,
              tform.parent_name);
     }
-
     node->SetPositionSilent(vec3_from(tform.pos));
     node->SetRotationSilent(quat_from(tform.orientation));
 }
@@ -515,6 +520,10 @@ intern void draw_measure_path(const measure_points &mp, urho::DebugRenderer *dbg
 intern void update_and_draw_nav_goals(map_panel *mp, float dt, urho::DebugRenderer *dbg, net_connection *conn)
 {
     float marker_rad = animate_marker_circles(&mp->glob_npview.goal_marker, dt);
+
+    // If the current goal is in an active state (ie 0, 1, or -2 sort of) draw a circle for it. If the robot position
+    // is within 0.25 meters, issue a stop command to the server. Once the stop command completes, the server will
+    // send us a message where we change our mp->goals.cur_goal_status to a terminated state.
     if (mp->goals.cur_goal_status == 0 || mp->goals.cur_goal_status == 1 || mp->goals.cur_goal_status == -2) {
         dbg->AddCircle(mp->goals.cur_goal, {0, 0, -1}, marker_rad, mp->glob_npview.goal_marker.color);
         auto dist_to_goal = (mp->base_link->GetWorldPosition() - mp->goals.cur_goal).Length();
@@ -524,6 +533,9 @@ intern void update_and_draw_nav_goals(map_panel *mp, float dt, urho::DebugRender
         }
     }
     else {
+        // If our current goal is no longer active and there are goals in our queue, we move the goal
+        // from the queue to our active goal and set the goal status to -2
+        // -2 indicates that we sent the server our active goal but have yet to receive a response
         mp->glob_npview.goal_marker.cur_anim_time = 0.0f;
         mp->glob_npview.entry_count = 0;
         if (!mp->goals.queued_goals.empty()) {
@@ -536,6 +548,8 @@ intern void update_and_draw_nav_goals(map_panel *mp, float dt, urho::DebugRender
         }
     }
 
+    // Draw the lines connecting our active goal and any queued goals. These lines are just to indicate to the
+    // user the order of the queued goals.
     for (int i = mp->goals.queued_goals.size() - 1; i >= 0; --i) {
         vec3 from = mp->goals.cur_goal;
         if (i != mp->goals.queued_goals.size() - 1)
@@ -698,7 +712,6 @@ intern void update_meta_stats(map_panel *mp, const misc_stats &updated_stats)
                              avg_bw_100,
                              avg_bw_10);
         mp->conn_text->SetText(str);
-        ilog("Got str %s", str.CString());
     }
 }
 

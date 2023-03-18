@@ -15,7 +15,7 @@
 #include <emscripten/websocket.h>
 EM_JS(void, toggle_input_visibility, (int rows, int cols), {
     let ta = document.getElementById('text-area');
-    if (ta.style.display == = "block") {
+    if (ta.style.display === "block") {
         ta.style.display = "none";
     }
     else {

@@ -12,7 +12,7 @@ class Context;
 class Engine;
 } // namespace Urho3D
 
-struct jackal_control_ctxt
+struct robot_control_ctxt
 {
     urho::Context *urho_ctxt{};
     urho::Engine *urho_engine{};
@@ -28,6 +28,6 @@ struct jackal_control_ctxt
     ss_router router;
 };
 
-bool jctrl_init(jackal_control_ctxt *ctxt, const urho::StringVector &args);
-void jctrl_term(jackal_control_ctxt *ctxt);
-void jctrl_exec(jackal_control_ctxt *ctxt);
+bool robot_ctrl_init(robot_control_ctxt *ctxt, const urho::StringVector &args);
+void robot_ctrl_term(robot_control_ctxt *ctxt);
+void robot_ctrl_exec(robot_control_ctxt *ctxt);

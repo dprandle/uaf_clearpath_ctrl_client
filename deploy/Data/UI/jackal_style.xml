@@ -321,7 +321,6 @@
         <attribute name="Font" value="Font;Fonts/Roboto-Medium.ttf" />
         <attribute name="Enable Anchor" value="True" />
         <attribute name="Max Anchor" value="1 1" />
-        <attribute name="Pivot" value="0 0" />
         <attribute name="Is Visible" value="false" />
     </element>
     <element type="ConnText">

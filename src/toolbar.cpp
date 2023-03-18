@@ -87,7 +87,7 @@ void toolbar_handle_toggle(map_panel *mp, urho::UIElement *elem)
 
         auto cam_node = mp->view->GetCameraNode();
         if (mp->toolbar.enable_follow->IsChecked()) {
-            cam_node->SetParent(mp->base_link->GetChild("jackal_follow_cam"));
+            cam_node->SetParent(mp->base_link->GetChild("robot_follow_cam"));
             auto cam_pos = cam_node->GetPosition();
             cam_pos.x_ = 0.0f;
             cam_pos.y_ = 0.0f;

@@ -6,7 +6,7 @@
 #include <Urho3D/Graphics/Zone.h>
 #include <Urho3D/UI/UI.h>
 
-#include "jackal_control.h"
+#include "robot_control.h"
 #include "logging.h"
 
 #if defined(__EMSCRIPTEN__)
@@ -17,14 +17,14 @@ int main(int argc, char **argv)
 {
     auto args = urho::ParseArguments(argc, argv);
     auto urho_ctxt = new urho::Context;
-    jackal_control_ctxt jctrl{};
-    jctrl.urho_ctxt = urho_ctxt;
+    robot_control_ctxt robot_ctrl{};
+    robot_ctrl.urho_ctxt = urho_ctxt;
 
-    if (!jctrl_init(&jctrl, args))
+    if (!robot_ctrl_init(&robot_ctrl, args))
         return 0;
 
-    jctrl_exec(&jctrl);
-    jctrl_term(&jctrl);
+    robot_ctrl_exec(&robot_ctrl);
+    robot_ctrl_term(&robot_ctrl);
 }
 
 intern bool init_urho_engine(urho::Engine *urho_engine, float ui_scale)
@@ -56,7 +56,7 @@ intern void setup_ui_info(ui_info *ui_inf, urho::Context *uctxt)
     ui_inf->ui_sys = uctxt->GetSubsystem<urho::UI>();
 }
 
-intern void setup_main_renderer(jackal_control_ctxt *ctxt)
+intern void setup_main_renderer(robot_control_ctxt *ctxt)
 {
     auto graphics = ctxt->urho_ctxt->GetSubsystem<urho::Graphics>();
     graphics->SetWindowTitle("Clearpath Control");
@@ -91,13 +91,13 @@ intern void parse_command_line_args(int *port, urho::String *ip, float *ui_scale
     }
 }
 
-intern void jctrl_run_frame(jackal_control_ctxt *ctxt)
+intern void robot_ctrl_run_frame(robot_control_ctxt *ctxt)
 {
     net_rx(&ctxt->conn);
     ctxt->urho_engine->RunFrame();
 }
 
-bool jctrl_init(jackal_control_ctxt *ctxt, const urho::StringVector &args)
+bool robot_ctrl_init(robot_control_ctxt *ctxt, const urho::StringVector &args)
 {
     ctxt->urho_engine = new urho::Engine(ctxt->urho_ctxt);
 
@@ -110,7 +110,7 @@ bool jctrl_init(jackal_control_ctxt *ctxt, const urho::StringVector &args)
 
     log_init(ctxt->urho_ctxt);
 
-    ilog("Initializing jackal control");
+    ilog("Initializing robot control");
 
     log_set_level(urho::LOG_DEBUG);
     setup_ui_info(&ctxt->ui_inf, ctxt->urho_ctxt);
@@ -133,26 +133,26 @@ bool jctrl_init(jackal_control_ctxt *ctxt, const urho::StringVector &args)
     return true;
 }
 
-#if defined(IOS) || defined(TVOS) || defined(__EMSCRIPTEN__)
+#if defined(__EMSCRIPTEN__)
 intern void run_frame_proxy(void *data)
 {
-    auto ctxt = (jackal_control_ctxt *)data;
-    jctrl_run_frame(ctxt);
+    auto ctxt = (robot_control_ctxt *)data;
+    robot_ctrl_run_frame(ctxt);
 }
 #endif
 
-void jctrl_exec(jackal_control_ctxt *ctxt)
+void robot_ctrl_exec(robot_control_ctxt *ctxt)
 {
 #if !defined(__EMSCRIPTEN__)
     while (!ctxt->urho_engine->IsExiting()) {
-        jctrl_run_frame(ctxt);
+        robot_ctrl_run_frame(ctxt);
     }
 #else
     emscripten_set_main_loop_arg(run_frame_proxy, ctxt, -1, true);
 #endif
 }
 
-void jctrl_term(jackal_control_ctxt *ctxt)
+void robot_ctrl_term(robot_control_ctxt *ctxt)
 {
     ilog("Terminating jackal control");
     net_disconnect(&ctxt->conn);

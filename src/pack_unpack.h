@@ -82,10 +82,8 @@ typename std::enable_if<std::is_integral_v<T>, const char *>::type get_flag_for_
 }
 
 template<class ArchiveT, class T>
-typename std::enable_if<std::is_arithmetic_v<T> && is_binary_archive<ArchiveT>::value, void>::type pack_unpack(
-    ArchiveT &ar,
-    T &val,
-    const pack_var_info &vinfo)
+typename std::enable_if<std::is_arithmetic_v<T> && is_binary_archive<ArchiveT>::value, void>::type
+pack_unpack(ArchiveT &ar, T &val, const pack_var_info &vinfo)
 {
     char logging_statement[]{"Packing %s %d bytes for %s with value xx"};
     const char *flag = get_flag_for_type(val);

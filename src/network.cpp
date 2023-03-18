@@ -556,10 +556,15 @@ void net_rx(net_connection *conn)
         return;
 #endif
 
+    // While there are enough available bytes to read in a message header and we
+    // are not waiting for more data
     bool need_more_data = false;
     while (conn->rx_buf->available >= packet_header::size && !need_more_data) {
+        // Current packet size of 0 indicates we are searching for a header
         if (current_packet_size == 0) {
             current_packet_size = matching_packet_size(conn->rx_buf->read_buf.data + conn->rx_buf->read_buf.cur_offset);
+
+            // If no header match is found
             if (current_packet_size == 0) {
                 --conn->rx_buf->available;
                 ++conn->rx_buf->read_buf.cur_offset;
@@ -574,6 +579,9 @@ void net_rx(net_connection *conn)
         else if (conn->rx_buf->available >= current_packet_size) {
             sizet bytes_processed = dispatch_received_packet(conn->rx_buf->read_buf, conn->rx_buf->available, conn);
             if (bytes_processed > 0) {
+                // Bytes processed will be zero unless we have received ALL bytes required
+                // For messages with variable length data - bytes processed will only be non zero
+                // if ALL data (meta and payload) for the variable length message was received
                 conn->rx_buf->available -= bytes_processed;
                 packet_dlog("Read entire packet of %d bytes - ended at offset %d (packet size before was %d) - there "
                             "are %d remaining conn->rx_buf->available bytes to be read",

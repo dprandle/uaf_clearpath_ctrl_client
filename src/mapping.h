@@ -26,7 +26,7 @@ class Window;
 } // namespace Urho3D
 
 struct input_data;
-struct jackal_control_ctxt;
+struct robot_control_ctxt;
 
 struct ui_info
 {
@@ -46,7 +46,8 @@ struct updated_tform
 enum occ_grid_type
 {
     OCC_GRID_TYPE_MAP,
-    OCC_GRID_TYPE_COSTMAP
+    OCC_GRID_TYPE_GCOSTMAP,
+    OCC_GRID_TYPE_LCOSTMAP
 };
 
 struct ogmap_colors
@@ -143,7 +144,7 @@ struct map_panel
     urho::Node *base_link{};
     urho::Node *odom{};
     urho::Text *conn_text{};
-    jackal_control_ctxt *ctxt{};
+    robot_control_ctxt *ctxt{};
     misc_stats cur_stats{};
     ss_router router;
 

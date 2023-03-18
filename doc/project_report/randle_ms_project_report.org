@@ -11,6 +11,7 @@
 #+LaTeX_HEADER: \usepackage{xcolor}
 #+LaTeX_HEADER: \hypersetup{colorlinks, citecolor={blue!50!black}, linkcolor={blue!35!black}, urlcolor={blue!80!black}}
 #+LaTeX_HEADER: \usepackage[section]{placeins}
+#+LaTeX_HEADER: \usepackage{microtype}
 * Abstract
 
 * Introduction
@@ -55,7 +56,7 @@ If using a compatible linux distrobution (currently Ubuntu 20.04 is the latest s
   $ sudo apt update
 #+end_src
 
-Once installed, a bash setup script located at /opt/ros/kinetic/setup.bash must be sourced in order for ROS tools to be available on the command line. This is a pattern that ROS uses repeatedly; set environment variables and system values by sourcing bash scripts. This allows ROS to alter system settings and provide a convenient shell interface without invading or changing the system - the settings are dropped once the shell is terminated.
+oOnce installed, a bash setup script located at /opt/ros/kinetic/setup.bash must be sourced in order for ROS tools to be available on the command line. This is a pattern that ROS uses repeatedly; set environment variables and system values by sourcing bash scripts. This allows ROS to alter system settings and provide a convenient shell interface without invading or changing the system - the settings are dropped once the shell is terminated.
 
 In order to fully utilize ROS and build packages, some dependencies are needed. The following was used to install these dependencies on the development machine:
 
@@ -246,106 +247,11 @@ Using row major matrix layout, the transform matrix is created by first creating
   \end{bmatrix}
 \end{gather}
 
-The following C/C++ code creates a 4x4 transformation matrix given the translation vector and rotation quaternion of a frame:
-
-#+begin_src cpp
-  struct quaternion
-  {
-      float x;
-      float y;
-      float z;
-      float w;
-  };
-
-  struct vector3
-  {
-      float x;
-      float y;
-      float z;
-  };
-
-  struct matrix4
-  {
-      float data[4][4];
-  };
-
-  matrix4 create_transform(const quaternion &rotation, const vector3 &translation)
-  {
-    matrix4 ret {};
-
-    // Build the rotation basis from the passed in rotation quaternion
-    ret.data[0][0] = 1 - 2 * (rotation.y * rotation.y + rotation.z * rotation.z);
-    ret.data[0][1] = 2 * (rotation.x * rotation.y - rotation.z * rotation.w);
-    ret.data[0][2] = 2 * (rotation.x * rotation.z + rotation.y * rotation.w);
-
-    ret.data[1][0] = 2 * (rotation.x * rotation.y + rotation.z * rotation.w);
-    ret.data[1][1] = 1 - 2 * (rotation.x * rotation.x + rotation.z * rotation.z);
-    ret.data[1][2] = 2 * (rotation.y * rotation.z - rotation.x * rotation.w);
-
-    ret.data[2][0] = 2 * (rotation.x * rotation.z - rotation.y * rotation.w);
-    ret.data[2][1] = 2 * (rotation.y * rotation.z + rotation.x * rotation.w);
-    ret.data[2][2] = 1 - 2 * (rotation.x * rotation.x + rotation.y * rotation.y);
-
-    // Add the translation vector as the last column
-    ret.data[3][0] = translation.x;
-    ret.data[3][1] = translation.y;
-    ret.data[3][2] = translation.z;
-
-    // Finally leave 1 in the last matrix position (m44) from the identity
-    ret.data[3][3] = 1.0f;
-    return ret;
-  }
-#+end_src
-
-With the root node transform ready, we iterate over all child frames and build a transform as we did for the root frame. We then multiply the parent frame by the child frame as shown in equation 2 to get the child frame's world transform - which can be used to determine the child frame position and orientation in the same coordinates as the root frame.
+We iterate over all child frames and multiply the parent frame by the child frame as shown in equation 2 to get the child frame's world transform. This transform can be used to determine the child frame position and orientation in the same coordinates as the root frame.
 
 \begin{gather}
   Transform_{world} = Transform_{parent} \times Transform_{child}
 \end{gather}
-
-Getting the position from the matrix is easy - its the first three elements of the last column. The derivation for getting the orientation as a quaternion from the matrix is a bit more complicated but is detailed in \autocite{tform_matrix}, along with the coordinate transformation process. The code below shows an example of grabbing it:
-
-#+begin_src cpp
-  quaternion orientation(const matrix3 &rotation)
-  {
-      quaternion ret; 
-      float tr = rotation.data[0][0] + rotation.data[1][1] + rotation.data[2][2], s;
-
-      if (tr > 0)
-      {
-          s = sqrt(tr + 1.0) * 2;
-          ret.w = 0.25 * s;
-          ret.x = (rotation.data[2][1] - rotation.data[1][2]) / s;
-          ret.y = (rotation.data[0][2] - rotation.data[2][0]) / s;
-          ret.z = (rotation.data[1][0] - rotation.data[0][1]) / s;
-      }
-      else if ((rotation.data[0][0] > rotation.data[1][1]) & (rotation.data[0][0] > rotation.data[2][2]))
-      {
-          s = sqrt(1.0 + rotation.data[0][0] - rotation.data[1][1] - rotation.data[2][2]) * 2;
-          ret.w = (rotation.data[2][1] - rotation.data[1][2]) / s;
-          ret.x = 0.25 * s;
-          ret.y = (rotation.data[0][1] + rotation.data[1][0]) / s;
-          ret.z = (rotation.data[0][2] + rotation.data[2][0]) / s;
-      }
-      else if (rotation.data[1][1] > rotation.data[2][2])
-      {
-          s = sqrt(1.0 + rotation.data[1][1] - rotation.data[0][0] - rotation.data[2][2]) * 2;
-          ret.w = (rotation.data[0][2] - rotation.data[2][0]) / s;
-          ret.x = (rotation.data[0][1] + rotation.data[1][0]) / s;
-          ret.y = 0.25 * s;
-          ret.z = (rotation.data[1][2] + rotation.data[2][1]) / s;
-      }
-      else
-      {
-          s = sqrt(1.0 + rotation.data[2][2] - rotation.data[0][0] - rotation.data[1][1]) * 2;
-          ret.w = (rotation.data[1][0] - rotation.data[0][1]) / s;
-          ret.x = (rotation.data[0][2] + rotation.data[2][0]) / s;
-          ret.y = (rotation.data[1][2] + rotation.data[2][1]) / s;
-          ret.z = 0.25 * s;
-      }
-      return ret;
-  }
-#+end_src
 
 The transform heirarchy is crucial for mapping, localization, and navigation. Even without any simultaneous localization and mapping (SLAM) nodes enabled, the Jackal and Husky use odometry and the IMU information along with the transform heirarchy to produce an estimate as to where it is in the world. The root level frame in this case is called odom. The ekf localization node calculates the base_link rotation/translation (as relative to odom) and publishes the odom frame with the base_link as the child frame as shown in *Figure [[fig:ekf-localization]]*.
 
@@ -411,7 +317,7 @@ The OccupancyGrid message format is:
 This message type is used for costmaps in addition to maps. For maps, the values in data are either 0, 100, or -1; not the full range of [0-100]. With a map available, the navigation stack can run and create costmaps and use those costmaps to create drive paths.
 
 ** Navigation Stack
-The navigation stack on ROS refers to the move_base node, the plugins the move_base node uses, and all the topics published by move_base. *Figure [[fig:nav_stack]]* shows an overview of the node/topic relationship \autocite{nav_stack}. The move_base node is configurable; the ovals inside of the move_base rectangle indicate parts of the node which run using plugins. This means the user can create a shared library and, with some configuration, move_base will use the shared library in place of the default behaviour.
+The navigation stack on ROS refers to the move_base node, the plugins the move_base node uses, and all the topics published by /move_base/. *Figure [[fig:nav_stack]]* shows an overview of the node/topic relationship \autocite{nav_stack}. The /move_base/ node is configurable; the ovals inside of the /move_base/ rectangle indicate parts of the node which run using plugins. This means the user can create a shared library and, with some configuration, /move_base/ will use the shared library in place of the default behaviour.
 
 #+caption: Navigation stack overview
 #+name:   fig:nav_stack
@@ -420,7 +326,8 @@ The navigation stack on ROS refers to the move_base node, the plugins the move_b
 [[./images/overview_tf_small.png]]
 \FloatBarrier
 
-The move_base node only issues velocity commands to the robot if there is an active navigation path, and there is only an active navigation path if the global planner has received a PoseStamped goal message on topics move_base/goal or move_base_simple/goal. The PoseStamped message is the Pose message with a Header added. The move_base node will start trying to drive the robot to the target pose once a PoseStamped message is received on either topic. Move_base publishes goal status' to the move_base/status topic in the form of an array of GoalStatus messages:
+The /move_base/ node only issues velocity commands to the robot if there is an active navigation path, and there is only an active navigation path if the global planner has received a /PoseStamped/ goal message on topic /move_base_simple/goal/. Once a /PoseStamped/ message is received /move_base/ publishes a /MoveBaseGoalAction/ message with the goal and goal id to /move_base/goal/ and starts trying to drive the robot to the target pose. As /move_base/ drives the robot it publishes goal status' to the
+/move_base/status/ topic in the form of an array of /GoalStatus/ messages:
 
 #+begin_src python
   ## actionlib_msgs/GoalStatusArray
@@ -454,7 +361,7 @@ The move_base node only issues velocity commands to the robot if there is an act
   string id
 #+end_src
 
-The Jackal and Husky move_base implementations only work on a single goal at a time, but if a goal is cancelled and another goal issued quickly, multiple goals can appear in the status array. To get the correct goal in all cases, the goal id associated with the original goal pose as in the PoseStamped message is needed. On receiving a goal, move_base will publish a MoveBaseActionGoal message to the topic /move_base/goal which gives the pose and id of the goal:
+The /move_base/ node works on a single goal at a time, but if a goal is cancelled and another goal issued quickly, multiple goals can appear in the status array. To get the correct goal in all cases we need the goal id which can be obtained from the /MoveBaseGoalAction/ message posted to /move_base/goal/.
 
 #+begin_src python
   ## move_base_msgs/MoveBaseActionGoal
@@ -470,14 +377,14 @@ The Jackal and Husky move_base implementations only work on a single goal at a t
   geometry_msgs/Pose pose
 #+end_src
 
-Since the MoveBaseActionGoal message contains the goal id as generated by move_base for the pose published by the user to move_base_simple/goal, the user can store the goal id and use it to parse the goal status updates. The move_base node builds two costmaps, local and global, to aid in building a navigation path. The global costmap feeds the global planner, and the local costmap and global path as determined by the global planner feed the local planner. The local and global planners are specified as plugins which allow custom planner packages to be used. The default local planner package for the Jackal and Husky is base_local_planner, and the default global planner package is navfn.
+The /move_base/ node builds two costmaps, local and global, to aid in building a navigation path. The global costmap feeds the global planner, and the local costmap and global path as determined by the global planner feed the local planner. The local and global planners are specified as plugins which allow custom planner packages to be used. The default local planner package for the Jackal and Husky is /base_local_planner/, and the default global planner package is /navfn/.
 
-All planner nodes are put in a namespace within the package. For example, the node provided by base_local_planner is base_local_planner/TrajectoryPlannerROS, the node provided by navfn is navfn/NavfnROS, and the node provided by global_planner is global_planner/GlobalPlanner.
+All planner nodes are put in a namespace within the package. For example, the node provided by /base_local_planner/ is /base_local_planner/TrajectoryPlannerROS/, the node provided by navfn is /navfn/NavfnROS/, and the node provided by /global_planner/ is /global_planner/GlobalPlanner/.
 
 *** Costmaps
-Both the local and the global costmaps contain data about nearby obstacles - the difference between the costmaps is in the configuration. The global costmap is usually configured to use map as its global frame, be the same size as the OccupancyGrid published to the /map topic, and not move along with the robot. The local costmap uses odom as its global frame, is much smaller than the global costmap, and stays centered over the robot as the robot moves.
+Both the local and the global costmaps contain data about nearby obstacles - the difference between the costmaps is in the configuration. The global costmap is usually configured to use map as its global frame, be the same size as the /OccupancyGrid/ published to the /map/ topic, and not move along with the robot. The local costmap uses odom as its global frame, is much smaller than the global costmap, and stays centered over the robot as the robot moves.
 
-Move base publishes the local costmap to the move_base/local_costmap/costmap topic, and the global costmap to the move_base/global_costmap/costmap topic. The message type for both topics is OccupancyGrid, where the data member of the message contains probabilities of an obstacle being at that map location. Move base uses the laser scan, and if a map is being published to the /map topic the map, to find where obstacles are at and then inflates the obstacles by the robot's footprint. The resulting 8 bit probability values are divided in to ranges as shown in *Figure [[fig:costmap_spec]]* \autocite{costmap_spec}.
+Move base publishes the local costmap to the /move_base/local_costmap/costmap/ topic, and the global costmap to the /move_base/global_costmap/costmap/ topic. The message type for both topics is /OccupancyGrid/, where the data member of the message contains probabilities of an obstacle being at that map location. Move base uses the laser scan and the map (if published to the /map/ topic), to find where obstacles are at and then inflates the obstacles by the robot's footprint. The resulting 8 bit probability values are divided in to ranges as shown in *Figure [[fig:costmap_spec]]* \autocite{costmap_spec}.
 
 #+caption: Costmap 8 bit probability spec considering robot footprint
 #+name:   fig:costmap_spec
@@ -486,8 +393,28 @@ Move base publishes the local costmap to the move_base/local_costmap/costmap top
 [[./images/costmap_spec.png]]
 \FloatBarrier
 
+If the costmap parameter /always_send_full_costmap/ is set to false, instead of sending the cull costmap to the */costmap topic using the /OccupancyGrid/ message, just the costmap changes since the last update message are published to the */costmap_updates topic using the /OccupancyGridUpdate/ message.
+
+#+begin_src python
+  ## map_msgs/OccupancyGridUpdate
+  std_msgs/Header header
+
+  # The x/y indexes in to the source occupancy grid map where this update begins
+  int32 x
+  int32 y
+
+  # The width and hight of cells to update
+  uint32 width
+  uint32 height
+
+  # The cell data (width*height)
+  int8[] data  
+#+end_src
+
+The update must always be sub-rectangle within the source /OccupancyGrid/ so that /x/ plus the width is less than or equal to the source grid width and /y/ plus the height is less than or equal to the source grid height.
+
 *** Local Planner
-The local planner is responsible for issuing velocity commands to the robot given a higher level path from the robot to a goal. The base_local_planner package implements this functionality with two different algorithms; Trajectory Rollout \autocite{trajectory_rollout}, and Dynamic Window Approach \autocite{dwa}. Both algorithms do the following \autocite{local_planner}:
+The local planner is responsible for issuing velocity commands to the robot given a higher level path from the robot to a goal. The /base_local_planner/ package implements this functionality with two different algorithms; Trajectory Rollout \autocite{trajectory_rollout}, and Dynamic Window Approach \autocite{dwa}. Both algorithms do the following \autocite{local_planner}:
 
 1. Sample robot velocity control space,
 2. Simulate trajectory for each possible velocity command if applied for a short time
@@ -495,7 +422,7 @@ The local planner is responsible for issuing velocity commands to the robot give
 4. Send highest scoring velocity to robot
 
 *** Global Planner
-The global planner takes in the global costmap and a goal and produces a path from the robot's current location to the goal. To create a custom global planner in c++, for example, a class must be created inheriting from nav_core::BaseGlobalPlanner:
+The global planner takes in the global costmap and a goal and produces a path from the robot's current location to the goal. To create a custom global planner in c++, for example, a class must be created inheriting from /nav_core::BaseGlobalPlanner/:
 
 #+begin_src cpp
     class BaseGlobalPlanner{
@@ -508,7 +435,7 @@ The global planner takes in the global costmap and a goal and produces a path fr
 };  // namespace nav_core
 #+end_src
 
-The makePlan function, which must be implemented by every global planner (pure virtual), takes a starting pose and goal and must fill in plan which is a reference to a vector of poses. The worst planner, for example, could add the starting pose and goal pose to plan and return which would likely get the robot stuck. The package global_planner provides implementations of A* and Dijkstra's path planning algorithms (as well as a few others), which are selectable via parameters. Navfn only provides A*.
+The makePlan function, which must be implemented by every global planner (pure virtual), takes a starting pose and goal and must fill in plan which is a reference to a vector of poses. The worst planner, for example, could add the starting pose and goal pose to plan and return which would likely get the robot stuck. The package /global_planner/ provides implementations of A* and Dijkstra's path planning algorithms (as well as a few others), which are selectable via parameters. Navfn only provides A*.
 
 ** Simulation
 Simulating the Jackal and Husky is easy; Clearpath provides packages which launch and set up the ROS simulation tool, Gazebo \autocite{gazebo}, with everything needed to simulate the robots. The simulation is somewhat limited with sensor nodes and data, but it simulates laser scan data and driving which is enough for most development work on our app. To simulate the Jackal and Husky, first install the correct packages:
@@ -540,16 +467,16 @@ Text
 ** Upgrade ROS from ROS Indigo to ROS Noetic
 Text
 
-** Configure sensor nodes to run at startup
+** Robot Startup
 Text
 
-** Configure Bumblebee Camera (Jackal Only)
+** Navigation Package
 Text
 
-** Configure network using Netplan
+** Network
 Text
 
-** Configure Bluetooth PS4 Controllers (upgraded for Jackal)
+** Wireless Controller
 Text
 
 ** Fix Husky E-Stop malfunction
@@ -601,7 +528,7 @@ We use a forked copy of Urho3D based on tag 1.9.0. It is forked because the repo
 
 #+begin_src bash
   $ git clone https://github.com/dprandle/urho3d.git
-  $ cd urho3d && git checkout 1.9.0
+  $ cd urho3d && git checkout UI_Fix
 #+end_src
 
 We use two different build configurations; linux (aka desktop) and emscripten. The linux desktop build has debug symbols enabled, but the emscripten build does not as the target runs in a web browser. For both builds the samples are turned off as they signigicantly increase the build time. We export compile commands for the linux build (since it uses g++) for easy browsing of the urho source code in editors such as vscode or emacs which make use of clangd. The options are listed in *Table [[table:build_config]]*. The directory where Emscripten was cloned is shown as <ems_dir>.
@@ -752,24 +679,24 @@ int main(int argc, char **argv)
 {
     auto args = urho::ParseArguments(argc, argv);
     auto urho_ctxt = new urho::Context;
-    jackal_control_ctxt jctrl{};
-    jctrl.urho_ctxt = urho_ctxt;
+    robot_control_ctxt robot_ctrl{};
+    robot_ctrl.urho_ctxt = urho_ctxt;
 
-    if (!jctrl_init(&jctrl, args))
+    if (!robot_ctrl_init(&robot_ctrl, args))
         return 0;
 
-    jctrl_exec(&jctrl);
-    jctrl_term(&jctrl);
+    robot_ctrl_exec(&robot_ctrl);
+    robot_ctrl_term(&robot_ctrl);
 }
 #+end_src
 
-First we parse the command line arguements - this is for desktop builds. On the desktop build, the arguement -ip can be used to specify the ip address and -port for the port of the robot to connect to. If left out, these default to local host (127.0.0.1) and port 4000. For desktops with lower DPI/resolution, the -ui_scale option can be specified to scale all UI elements. The jackal_control_ctxt structure contains top level data structures required to run the app.
+First we parse the command line arguements - this is for desktop builds. On the desktop build, the arguement -ip can be used to specify the ip address and -port for the port of the robot to connect to. If left out, these default to local host (127.0.0.1) and port 4000. For desktops with lower DPI/resolution, the -ui_scale option can be specified to scale all UI elements. The robot_control_ctxt structure contains top level data structures required to run the app.
 
 #+begin_src cpp
-  struct jackal_control_ctxt
+  struct robot_control_ctxt
   {
-      urho::Context* urho_ctxt {};
-      urho::Engine * urho_engine {};
+      urho::Context *urho_ctxt{};
+      urho::Engine *urho_engine{};
 
       ui_info ui_inf;
 
@@ -783,14 +710,14 @@ First we parse the command line arguements - this is for desktop builds. On the 
   };
 #+end_src
 
-The app is entirely setup and initialized in the jctrl_init function, which takes the command line arguements and the jackal_control_ctxt structure as parameters. Each module is initialized within this initialization function:
+The app is entirely setup and initialized in the jctrl_init function, which takes the command line arguements and the robot_control_ctxt structure as parameters. Each module is initialized within this initialization function:
 
 #+begin_src cpp
-  bool jctrl_init(jackal_control_ctxt *ctxt, const urho::StringVector & args)
+  bool robot_ctrl_init(robot_control_ctxt *ctxt, const urho::StringVector &args)
   {
       ctxt->urho_engine = new urho::Engine(ctxt->urho_ctxt);
 
-      int port {4000};
+      int port{4000};
       urho::String ip{"127.0.0.1"};
       parse_command_line_args(&port, &ip, &ctxt->ui_inf.dev_pixel_ratio_inv, args);
 
@@ -799,7 +726,7 @@ The app is entirely setup and initialized in the jctrl_init function, which take
 
       log_init(ctxt->urho_ctxt);
 
-      ilog("Initializing jackal control");
+      ilog("Initializing robot control");
 
       log_set_level(urho::LOG_DEBUG);
       setup_ui_info(&ctxt->ui_inf, ctxt->urho_ctxt);
@@ -816,21 +743,19 @@ The app is entirely setup and initialized in the jctrl_init function, which take
       ctxt->mpanel.ctxt = ctxt;
       map_panel_init(&ctxt->mpanel, ctxt->ui_inf, &ctxt->conn, &ctxt->inp);
 
-      ss_connect(&ctxt->router, ctxt->js_panel.in_use, [ctxt](bool in_use) {
-          ctxt->mpanel.js_enabled = in_use;
-      });    
+      ss_connect(&ctxt->router, ctxt->js_panel.in_use, [ctxt](bool in_use) { ctxt->mpanel.js_enabled = in_use; });
 
       ilog("Device pixel ratio inverse: %f", ctxt->ui_inf.dev_pixel_ratio_inv);
       return true;
   }
 #+end_src
 
-The init_urho_function sets up the Urho3D window parameters, log file for desktop (no logging for web builds), and calls the Urho3D engine initialization function. This sets up all of the default Urho3D "sub-systems" which are obtained by calling GetSubsystem<SystemType> method of the Urho3D context.
+The init_urho_engine function sets up the Urho3D window parameters, log file for desktop (no logging for web builds), and calls the Urho3D engine initialization function. This sets up all of the default Urho3D "sub-systems" which are obtained by calling GetSubsystem<SystemType> method of the Urho3D context.
 
-The function jctrl_exec runs the main application loop which differs for Desktop vs web builds:
+The function robot_ctrl_exec runs the main application loop which differs for Desktop vs web builds:
 
 #+begin_src cpp
-  intern void jctrl_run_frame(jackal_control_ctxt *ctxt)
+  intern void robot_ctrl_run_frame(robot_control_ctxt *ctxt)
   {
       net_rx(&ctxt->conn);
       ctxt->urho_engine->RunFrame();
@@ -839,12 +764,12 @@ The function jctrl_exec runs the main application loop which differs for Desktop
   #if defined(__EMSCRIPTEN__)
   intern void run_frame_proxy(void *data)
   {
-      auto ctxt = (jackal_control_ctxt *)data;
-      jctrl_run_frame(ctxt);
+      auto ctxt = (robot_control_ctxt *)data;
+      robot_ctrl_run_frame(ctxt);
   }
   #endif
 
-  void jctrl_exec(jackal_control_ctxt *ctxt)
+  void robot_ctrl_exec(robot_control_ctxt *ctxt)
   {
   #if !defined(__EMSCRIPTEN__)
       while (!ctxt->urho_engine->IsExiting()) {
@@ -856,7 +781,7 @@ The function jctrl_exec runs the main application loop which differs for Desktop
   }
 #+end_src
 
-The =__EMSCRIPTEN__= preprocessor symbol is defined in web builds using Emscripten. The function emscripten_set_main_loop_arg is an Emscripten library function which takes a callback function pointer and a user void pointer as the first two parameters; the user pointer is passed as the arguement to the callback function. The web browser controls the application loop, the passed in callback function is called every frame. In either desktop or web builds, jctrl_run_frame is called every frame which reads in any incoming network data with net_rx and calls RunFrame on the urho::Engine which gathers all input, updates all objects in urho scene, updates all user interface items, and renders the results.
+The =__EMSCRIPTEN__= preprocessor symbol is defined in web builds using Emscripten. The function emscripten_set_main_loop_arg is an Emscripten library function which takes a callback function pointer and a user void pointer as the first two parameters; the user pointer is passed as the arguement to the callback function. The web browser controls the application loop, the passed in callback function is called every frame. In either desktop or web builds, robot_ctrl_run_frame is called every frame which reads in any incoming network data with net_rx and calls RunFrame on the urho::Engine which gathers all input, updates all objects in urho scene, updates all user interface items, and renders the results.
 
 The user interface is setup differently depending on whether or not the app is started as a controller or observer.
 
@@ -899,125 +824,1312 @@ Rendering is done by the urho::Renderer by gathering all nodes with urho::Drawab
 
 The urho::Renderer is setup in setup_main_renderer which is called from jctrl_init:
 #+begin_src cpp
-intern void setup_main_renderer(jackal_control_ctxt *ctxt)
+intern void create_3dview(map_panel *mp, urho::ResourceCache *cache, urho::UIElement *root, urho::Context *uctxt)
 {
-    auto graphics = ctxt->urho_ctxt->GetSubsystem<urho::Graphics>();
-    graphics->SetWindowTitle("Clearpath Control");
+    auto rpath = cache->GetResource<urho::XMLFile>("RenderPaths/simple.xml");
+    auto scene = new urho::Scene(uctxt);
+    auto cam_node = new urho::Node(uctxt);
 
-    auto cache = ctxt->urho_ctxt->GetSubsystem<urho::ResourceCache>();
-    auto rpath = cache->GetResource<urho::XMLFile>("RenderPaths/clear_only.xml");
-    urho::Renderer *rnd = ctxt->urho_ctxt->GetSubsystem<urho::Renderer>();
-    urho::Viewport *vp = new urho::Viewport(ctxt->urho_ctxt, nullptr, nullptr);
-    vp->SetRenderPath(rpath);
-    rnd->SetViewport(0, vp);
+    mp->view = root->CreateChild<urho::View3D>();
+    mp->view->SetEnableAnchor(true);
+    mp->view->SetMinAnchor({0.0f, 0.0f});
+    mp->view->SetMaxAnchor({1.0f, 1.0f});
 
-    auto zn = rnd->GetDefaultZone();
-    zn->SetFogColor({0.0, 0.0, 0.0, 1.0});
+    auto dbg = scene->CreateComponent<urho::DebugRenderer>();
+    dbg->SetLineAntiAlias(true);
+    scene->CreateComponent<urho::Octree>();
+
+    auto cam = cam_node->CreateComponent<urho::Camera>();
+    mp->view->SetView(scene, cam, true);
+    mp->view->GetViewport()->SetRenderPath(rpath);
+
+    cam_node->SetPosition({0, 0, -10});
+    cam_node->SetRotation(quat(-1.0, {1, 0, 0}));
+    cam_node->SetRotation(quat(0.0, {1, 0, 0}));
+
+    auto zone_node = scene->CreateChild("Zone");
+    auto zone = zone_node->CreateComponent<urho::Zone>();
+    zone->SetBoundingBox({-1000.0f, 1000.0f});
+    zone->SetAmbientColor({0.3f, 0.3f, 0.3f});
+    zone->SetFogColor({0.4f, 0.4f, 0.4f});
+    zone->SetFogStart(10.0f);
+    zone->SetFogEnd(200.0f);
+
+    // Create a directional light
+    auto light_node = scene->CreateChild("Dir_Light");
+    light_node->SetDirection({0.0f, 0.5f, 1.0f});
+    auto *light = light_node->CreateComponent<urho::Light>();
+    light->SetLightType(urho::LIGHT_DIRECTIONAL);
+    light->SetSpecularIntensity(5.0f);
+    light->SetBrightness(0.7f);
+}
+#+end_src
+
+We setup the renderer by creating a View3D, creating and attaching a scene and camera, creating a light and zone in the scene, and setting the viewport render path. As mentioned, the renderer creates a list of things to draw by looking at the nodes in the scene with drawable components attached. The renderer also requires a camera to create the proper projection matrix to transform the scene item positions/orientations to screen space. Without a light in the scene, everything will be black (since our render path uses lighting), and the zone creates a background grey color for the area speficied.
+
+A render path is an object which declares a number of rendering commands, where each command describes some operation to apply to a render target \autocite{urho_render_path}. For example, a scenepass command specifies rendering all nodes in the scene that reference a technique (through a referenced material, which is referenced by a static model component) that contains the specified "pass" to the render target specified by "output". A clear command clears the render target specified by "output" to the specified "color". If a render target is not specified in a command the output is the viewport, the default render target is used. All commands are executed in the order listed in the XML file. The render path used for the app is simple:
+
+#+begin_src xml
+<renderpath>
+    <command type="clear" color="fog" depth="1.0" stencil="0" />
+    <command type="scenepass" pass="base" vertexlights="true" metadata="base" />
+    <command type="forwardlights" pass="light" />
+    <command type="scenepass" pass="alpha" vertexlights="true" sort="backtofront" metadata="alpha" />
+</renderpath>
+#+end_src
+
+This clears the render target, renders all opaque items, renders all lights, and then all translucent items which is only the laser scan billboard set.
+
+Static models and billboard sets (and other drawables as well) reference a material which tells the renderer how to draw the item; the material specifies textures, shader parameters, and references one or more techniques. The textures, if present, are sampled in shaders using model UV coordinates; this app doesn't use any material textures. If no textures are present, the material specifies a color which will be used. Each attached technique specifies a "pass" the object should be rendered with (see render paths above), additional shader state parameters such as blending/depth/etc., and which shaders to use to render the object in the specified pass.
+
+All materials used for this app specifiy one of the Urho default techniques and, at most, a color or texture. The maps, which are billboard sets with a single billboard, use a material with the diffuse texture slot set to a dynamic texture. This texture is updated from an urho::Image as map data comes in. The robot model materials are hard coded to colors.
+
+*** Transform Tree
+The ROS robot transform heirarchy is replicated on the client app. The replication is slightly different for the Jackal than for the Husky. On the server we use rosnodejs to subscribe to the transform topic:
+
+#+begin_src js
+  let frame_tforms = {};
+  
+  setInterval(send_tforms, 16, frame_tforms);
+
+  // Subscribe to the transform topic - send packets for each transform
+  ros_node.subscribe("/tf", "tf2_msgs/TFMessage",
+                     (tf_message) => {
+                         convert_tforms_key_val(tf_message, frame_tforms);
+                     });
+
+  function convert_tforms_key_val(tf_message, converted) {
+      for (let i = 0; i < tf_message.transforms.length; ++i) {
+          converted[tf_message.transforms[i].child_frame_id] = tf_message.transforms[i];
+      }
+  }
+
+  function send_tforms(tforms) {
+      const packet = new Buffer.alloc(get_transforms_packet_size(tforms));
+      add_transforms_to_packet(tforms, packet, 0);
+      send_packet_to_clients(packet);
+  }
+#+end_src
+
+ROS generates the transforms at a much higher frequency than needed, so we replace each transform in frame_tforms with the latest and send the complete tranform bundle once every 16 ms (about 30 fps). All of the transform frames except for odom, the wheel frames, and base_link are static (for example the laser doesn't move relative to the base link). The static tranforms are sent out only once on first connecting:
+
+#+begin_src js
+  let static_tforms = {};
+
+  ros_node.subscribe("/tf_static", "tf2_msgs/TFMessage",
+                     (tf_message) => {
+                         convert_tforms_key_val(tf_message, static_tforms);
+                     });
+
+  function send_static_tforms_to_new_client(tforms, socket, func_to_use) {
+      const item_count = Object.keys(tforms).length;
+      if (item_count !== 0) {
+          let packet_size = get_transforms_packet_size(tforms);
+          let offset = 0;
+          const packet = new Buffer.alloc(packet_size);
+          add_transforms_to_packet(tforms, packet, offset);
+          func_to_use(socket, packet);
+          dlog(`Sent ${item_count} static transforms (${packet.length} bytes) to newly connected client`);
+      }
+      else {
+          dlog("No static transforms stored from ROS to send to newly connected client");
+      }
+  }
+#+end_src
+
+When a new client connects send_static_tforms_to_new_client is called passing static_tforms as the tforms parameter. We store the transforms, rather than sending on receiving from ROS, because ROS only sends the static transforms once an subscribing. Since multiple clients can connect/disconnect, these must be stored.
+
+On the client side, we build the scene to mimick the ROS transform structure naming the nodes associated with each transform frame:
+
+#+begin_src cpp
+  const std::string MAP{"map"};
+  const std::string ODOM{"odom"};
+  const std::string BASE_LINK{"base_link"};
+  const std::string CHASSIS_LINK{"chassis_link"};
+  const std::string FRONT_FENDER_LINK{"front_fender_link"};
+  const std::string FRONT_LEFT_WHEEL_LINK{"front_left_wheel_link"};
+  const std::string FRONT_RIGHT_WHEEL_LINK{"front_right_wheel_link"};
+  const std::string IMU_LINK{"imu_link"};
+  const std::string MID_MOUNT{"mid_mount"};
+  const std::string NAVSAT_LINK{"navsat_link"};
+  const std::string REAR_FENDER_LINK{"rear_fender_link"};
+  const std::string REAR_LEFT_WHEEL_LINK{"rear_left_wheel_link"};
+  const std::string REAR_RIGHT_WHEEL_LINK{"rear_right_wheel_link"};
+  const std::string REAR_MOUNT{"rear_mount"};
+  const std::string FRONT_MOUNT{"front_mount"};
+  const std::string FRONT_LASER_MOUNT{"front_laser_mount"};
+  const std::string FRONT_LASER{"front_laser"};
+#+end_src
+
+We also create a hashmap to quickly look up the nodes by name, rather than recursively searching scene for each update. The code creating the transform heirarchy is:
+
+#+begin_src cpp
+  struct map_panel
+  {
+      //...
+      std::unordered_map<std::string, urho::Node *> node_lut;
+  };
+
+  intern void setup_scene(map_panel *mp, urho::ResourceCache *cache, urho::Scene *scene, urho::Context *uctxt)
+  {
+      //...
+      mp->node_lut[MAP] = mp->map.node;
+      //...
+
+      // Odom frame is smoothly moving while map may experience discreet jumps
+      mp->odom = mp->map.node->CreateChild(ODOM.c_str());
+      mp->node_lut[ODOM] = mp->odom;
+
+      // Base link is main node tied to the jackal base
+      mp->base_link = mp->odom->CreateChild(BASE_LINK.c_str());
+      mp->node_lut[BASE_LINK] = mp->base_link;
+
+      // Child of base link
+      auto chassis_link = mp->base_link->CreateChild(CHASSIS_LINK.c_str());
+      mp->node_lut[CHASSIS_LINK] = chassis_link;
+
+      auto offset_link = chassis_link->CreateChild("offset_link");
+      offset_link->Translate({0.0f, 0.0f, -0.065f});
+
+      // Children of chassis and offset link
+      mp->node_lut[FRONT_FENDER_LINK] = chassis_link->CreateChild(FRONT_FENDER_LINK.c_str());
+      mp->node_lut[FRONT_LEFT_WHEEL_LINK] = offset_link->CreateChild(FRONT_LEFT_WHEEL_LINK.c_str());
+      mp->node_lut[FRONT_RIGHT_WHEEL_LINK] = offset_link->CreateChild(FRONT_RIGHT_WHEEL_LINK.c_str());
+      mp->node_lut[IMU_LINK] = chassis_link->CreateChild(IMU_LINK.c_str());
+      mp->node_lut[NAVSAT_LINK] = chassis_link->CreateChild(NAVSAT_LINK.c_str());
+      mp->node_lut[REAR_FENDER_LINK] = chassis_link->CreateChild(REAR_FENDER_LINK.c_str());
+      mp->node_lut[REAR_LEFT_WHEEL_LINK] = offset_link->CreateChild(REAR_LEFT_WHEEL_LINK.c_str());
+      mp->node_lut[REAR_RIGHT_WHEEL_LINK] = offset_link->CreateChild(REAR_RIGHT_WHEEL_LINK.c_str());
+      auto mid_mount = chassis_link->CreateChild(MID_MOUNT.c_str());
+      mp->node_lut[MID_MOUNT] = mid_mount;
+
+      // Children of mid mount
+      mp->node_lut[REAR_MOUNT] = mid_mount->CreateChild(REAR_MOUNT.c_str());
+      auto front_mount = mid_mount->CreateChild(FRONT_MOUNT.c_str());
+      mp->node_lut[FRONT_MOUNT] = front_mount;
+
+      // Child of front mount
+      auto front_laser_mount = front_mount->CreateChild(FRONT_LASER_MOUNT.c_str());
+      mp->node_lut[FRONT_LASER_MOUNT] = front_laser_mount;
+
+      // Child of front_laser_mount - This also has our billboard set for the scan
+      mp->front_laser = front_laser_mount->CreateChild(FRONT_LASER.c_str());
+      mp->node_lut[FRONT_LASER] = mp->front_laser;
+  }
+#+end_src
+
+The offset link shown (which is not in ROS heirarchy) is required to correct the wheels for the robot - they are slightly off without the offset. The LUT is used every time a transform frame comes in to grab the node and set the associated position/orientation "silently". Silently as we don't update the entire transform tree yet; If a node with children is updated, the children will need their transform recomputed. To avoid updating the entire transform tree multiple times per frame, we silently update each node and then update the root node once every 16 ms.
+
+#+begin_src cpp
+  intern void update_node_transform(map_panel *mp, const node_transform &tform)
+  {
+      auto node = mp->node_lut.find(tform.name)->second;
+      //...
+      node->SetPositionSilent(vec3_from(tform.pos));
+      node->SetRotationSilent(quat_from(tform.orientation));
+  }
+
+  intern void mark_transforms_for_update_if_needed(map_panel *mp, float dt)
+  {
+      static float counter = 0.0f;
+      counter += dt;
+      if (counter >= 0.016f) {
+          mp->odom->MarkDirty();
+          counter = 0.0f;
+      }
+  }
+
+  intern void map_panel_run_frame(map_panel *mp, float dt, net_connection *conn)
+  {
+      //...
+      mark_transforms_for_update_if_needed(mp, dt);
+      //...
+  }
+#+end_src
+
+*** Jackal/Husky Models
+The Jackal and Husky models are converted to from STL files to Urho3D mdl files using a tool called AssetImporter \autocite{asset_importer}. AssetImporter builds with Urho3D and is located in the build/linux/bin/tool subdirectory if the build_urho3d script is used. The resulting mdl files are placed in the deploy/Data/Models subfolder and loaded using urho::ResourceCache. An example showing loading the jackal front left wheel is listed below:
+
+#+begin_src cpp
+  auto jackal_base_mat = cache->GetResource<urho::Material>("Materials/jackal_base.xml");
+  auto jackal_wheel_model = cache->GetResource<urho::Model>("Models/jackal-wheel.mdl");
+  //...
+  auto fl_wheel_node = mp->node_lut[FRONT_LEFT_WHEEL_LINK]->CreateChild("fl_wheel_model");
+  smodel = fl_wheel_node->CreateComponent<urho::StaticModel>();
+  smodel->SetModel(jackal_wheel_model);
+  smodel->SetMaterial(jackal_base_mat);
+  fl_wheel_node->Rotate({90, {-1, 0, 0}});
+#+end_src
+
+It's possible to correct model offsets and orientations by creating a node as a child of the associated ROS transform frame node rather than using it directly. When converting models from one format to another, sometimes things get flipped or rotated.
+
+*** Camera
+By default the camera node is set as a child node of a node called "robot_follow_cam", which is the child of base_link frame. As the robot moves, the base_link transform is updated which, through the transform heirarchy, causes the camera's transform to update as well following the robot. The extra node is so that the camera can be rotated about the base_frame by rotating the robot_follow_cam node, which will leave base_link unmodified. The top toolbar button disables this behavior by setting the parent node of the camera to the root scene node.
+
+The camera controls are shown in *Figure [[fig:control_interface_overview]]*. To enable camera movement on holding the arrows/zoom buttons, a direction vector is set based on which button is pressed and the current camera orientation. When the button is released, the vector is cleared.
+
+For the up/down buttons, we check the angle between the camera up vector (the camera's local y axis) and the global z axis and differ the movement accordingly: If the camera is looking mostly down then the camera up vector is projected on the global xy plane for movement; if the camera is looking mostly straight in to the horizon, the global z axis is used for movement. Without this, looking straight makes the up vector projection on to the xy plane too small for movement.
+
+#+begin_src cpp
+  //...
+  auto world_right = cam_node->GetWorldRight().Normalized();
+  auto world_up = cam_node->GetWorldUp().Normalized();
+
+  // The resulting angle will be close to 90 if looking down, and close to 0 or 180 if looking straight, or straight upside down...
+  // Subtract by 90 so we can use -90 to 0 to 90 - the absolute value of the result will be close to 90 when looking straight or
+  // close to zero when looking down.
+  float angle = std::abs(world_up.Angle({0, 0, 1}) - 90.0f);
+  if (std::abs(angle) > 70) {
+      mp->cam_cwidget.cam_move_widget.world_trans = vec3(0, 0, -trans);
+      if (std::abs(trans) == 2)
+          mp->cam_cwidget.cam_move_widget.world_trans = world_right * trans / 2;
+  }
+  else {
+      mp->cam_cwidget.cam_move_widget.world_trans = vec3(world_up.x_, world_up.y_, 0.0) * trans;
+      if (std::abs(trans) == 2)
+          mp->cam_cwidget.cam_move_widget.world_trans = world_right * trans / 2;
+  }  
+#+end_src
+
+For left/right buttons the movement is always along the camera right vector (camera local x axis), and for the zoom buttons the movement is always along the camera target vector (camera local z axis).
+
+The camera rotates when holding the mouse down and dragging on desktop, or with finger dragging on mobile. If follow mode is enabled the camera's parent node "robot_follow_cam" is rotated, and if not the camera node is rotated. In either case, up/down motion rotates the node about the node local x axis, and left/right motion rotates the node about the world z axis. The snippet below shows how the mouse movement is handled:
+
+#+begin_src cpp
+  // Camera parent node will be scene if follow mode is turned off
+  auto rot_node = cam_node;
+  auto parent = cam_node->GetParent();
+  if (parent != mp->view->GetScene())
+      rot_node = parent;
+
+  // Rotate around the local x axis and world space z axis
+  rot_node->Rotate(quat(tevent.vp.vp_norm_mdelta.y_ * 100.0f, {1, 0, 0}));
+  rot_node->Rotate(quat(tevent.vp.vp_norm_mdelta.x_ * 100.0f, {0, 0, -1}), urho::TransformSpace::World);  
+#+end_src
+
+** UI
+The user interface elements are created using Urho3D's user interface system \autocite{ui}, while the icons are created using Inkscape \autocite{inkscape}. The UI system in Urho3D is a heirarchy similar to the scene, except in two dimensions rather than three. Rather than urho::Node, each UI object is an urho::UIElement and the root item in the UI system is just an urho::UIElement (unlike with nodes how the root item is a scene which inherits from a node). UI elements can have their settings loaded directly from XML files which allows editing UI sizes/positions without recompiling the app.
+
+Inkscape allows pixel level manipulation of element sizes and positioning which is great for icons. The icons are exported on a single texture with the icon positions, offsets, and sizes coded in to the Urho3D UI XML file.
+
+*** Creating Icons/Sprites with Inkscape
+The icon texture is shown in *Figure [[fig:icon_texture]]*.
+
+#+caption: UI texture containing all icons
+#+name: fig:icon_texture
+#+attr_latex: :width 5in
+#+ATTR_HTML:  :width 70% :height auto
+[[./images/ui.png]]
+\FloatBarrier
+
+The texture is 1024 by 1024 (the figure is cropped as the bottom half of the texture is unused) and contains each needed state for each icon. The texture is generated from a source vector graphics file and can be generated at any size - currently each icon is set to 128 by 128 and works well on all devices tested so far. The joystick sprite texture is shown in *Figure [[fig:joystick]]*.
+
+#+caption: UI texture with joystick spites
+#+name: fig:joystick
+#+attr_latex: :width 3in
+#+ATTR_HTML:  :width 43% :height auto
+[[../../deploy/Data/Textures/joystick.png]]
+\FloatBarrier
+
+*** UI File and Anchoring
+UI elements in Urho3D can use either anchor or normal positioning; in this app most UI elements use anchor positioning. In normal positioning mode, the position and size of the UI element are expressed in pixels and the position is the element's top left corner position relative to the parent UI element. If the parent is the root element, therefor, the position is relative to the top level application canvas (or window in desktop).
+
+In anchor positioning, the element size and position are ignored and minimum and maximum anchors are used instead. The element size and position are calculated each frame based on the minimum/maximum anchors and pivot, which are all two dimensional floating point vectors normalized from zero to one. Both anchors are multiplied by the parent element's pixel size yeilding a rectangle with the top left corner giving the child element position relative to the parent and the rectangle dimensions the size. The child element size is then multiplied by the pivot, and this value is subtracted from the position to determine the final element position.
+
+The anchor is further customizable using minimum/maximum offsets; these are two dimensional integer vectors which get applied to the final element size/position afer the above operations. Equations 3 and 4 show are used calculate the window/canvas space position and size of the anchored element.
+
+\scriptsize
+\begin{align}
+  position_{element} = position_{parent} + size_{parent} * (anchor_{min} - pivot * (anchor_{max} - anchor_{min})) - offset_{min} \\
+  size_{element} = size_{parent} * (anchor_{max} - anchor_{min}) + offset_{max} + offset_{min}
+\end{align}
+\normalsize
+
+An XML style file is used to store all UI element settings. The XML format allows specifying general settings that can be referenced by other elements. For example, buttons use anchoring, reference the same UI texture file, and store the pressed version of the button image 128 pixels to the right. Rather than specifying that for every button, a single button style is used and then referenced by other buttons.
+
+#+begin_src xml
+  <element type="ButtonBI">
+    <attribute name="Texture" value="Texture2D;Textures/ui.png" />
+    <attribute name="Blend Mode" value="alpha" />
+    <attribute name="Focus Mode" value="NotFocusable" />
+    <attribute name="Border" value="0 0 0 0" />
+    <attribute name="Pressed Image Offset" value="128 0" />
+    <attribute name="Priority" value="4" />
+    <attribute name="Enable Anchor" value="true" />
+  </element>
+  ...
+  <element type="ArrowButtonForward" style="ButtonBI">
+    <attribute name="Image Rect" value="0 0 128 128" />
+    <attribute name="Name" value="CamMoveForward" />
+    <attribute name="Min Anchor" value="0.5 0" />
+    <attribute name="Max Anchor" value="0.5 0" />
+    <attribute name="Pivot" value="0.5 0" />
+  </element>  
+#+end_src
+
+The arrow button forward is the camera up arrow. The following code snippet shows how the style is applied to the element:
+
+#+begin_src cpp
+  struct ui_info
+  {
+      //...
+      urho::XMLFile *style{};
+  };
+
+  intern void setup_ui_info(ui_info *ui_inf, urho::Context *uctxt)
+  {
+      //...
+      auto rcache = uctxt->GetSubsystem<urho::ResourceCache>();
+      ui_inf->style = rcache->GetResource<urho::XMLFile>("UI/jackal_style.xml");
+      //...
+  }
+
+  mp->cam_cwidget.cam_move_widget.forward = new urho::Button(uctxt);
+  mp->cam_cwidget.cam_move_widget.forward->SetStyle("ArrowButtonForward", ui_inf.style);
+#+end_src
+
+All UI elements have an associated style entry in the style XML file. Generally, each icon button element uses the same minimum and maximum anchors with the maximum offset set to the pixel size {128, 128}. This causes the icon to retain a fixed size {128,128} while the position stays at a relative position to the parent (using the anchors).
+
+*** Input
+Urho3D and Emscripten use Simple DirectMedia Layer (SDL) \autocite{sdl} to handle operating system input. Within the UI system Urho3D translates SDL events directly to UI system events. UI system events are handled by providing a callback function for the event type. Urho3D does not send out separate events for different UI elements; the UI system sends out E_CLICKEND events, for example, when any element is clicked and provides information about which element was clicked in the event parameters.
+
+#+begin_src cpp
+  mp->view->SubscribeToEvent(urho::E_CLICKEND, [mp, conn](urho::StringHash type, urho::VariantMap &ev_data) {
+      auto elem = (urho::UIElement *)ev_data[urho::Pressed::P_ELEMENT].GetPtr();
+      cam_handle_mouse_released(mp, elem);
+      param_handle_mouse_released(mp, elem, conn);
+      toolbar_handle_mouse_released(mp, elem, conn);
+      map_toggle_views_handle_mouse_released(mp, elem);
+  });
+
+  mp->view->SubscribeToEvent(urho::E_TOGGLED, [mp, conn](urho::StringHash type, urho::VariantMap &ev_data) {
+      auto elem = (urho::UIElement *)ev_data[urho::Toggled::P_ELEMENT].GetPtr();
+      toolbar_handle_toggle(mp, elem);
+      map_toggle_views_handle_toggle(mp, elem, conn);
+  });
+#+end_src
+
+The event data is passed in the ev_data variant map, which includes a pointer to the element that was clicked. In the above code we handle all E_CLICKEND events, which are sent when a UI element is pressed and released with the pointer over the element, by sending the element to each system to system. We do the same for E_TOGGLED events which occur when buttons are configured as toggle buttons, and the button is pressed. Below shows the toolbar snippet which handles changing the camera settings for follow mode as described in the camera section.
+
+#+begin_src cpp
+  //...
+  else if (elem == mp->toolbar.enable_follow) {
+
+      auto cam_node = mp->view->GetCameraNode();
+      if (mp->toolbar.enable_follow->IsChecked()) {
+          cam_node->SetParent(mp->base_link->GetChild("robot_follow_cam"));
+          auto cam_pos = cam_node->GetPosition();
+          cam_pos.x_ = 0.0f;
+          cam_pos.y_ = 0.0f;
+          cam_node->SetPosition(cam_pos);
+          cam_node->SetRotation({});
+      }
+      else {
+          cam_node->SetParent(mp->view->GetScene());
+      }
+  }  
+#+end_src
+
+*** Scaling for different pixel ratios
+Mobile device web browsers, desktop web browsers, and desktop windowing systems all use different device pixel ratios depending on the device resolution. The device pixel ratio is the ratio of how many physical device pixels are allocated to each logical application pixel. Urho3D handles the device pixel ratio on desktop, but not on web. To handle the device pixel ratio on web, we store obtain and store it on startup:
+
+#+begin_src cpp
+  struct ui_info
+  {
+      //...
+      float dev_pixel_ratio_inv{1.0};
+  };
+
+  intern void setup_ui_info(ui_info *ui_inf, urho::Context *uctxt)
+  {
+      //...
+  #if defined(__EMSCRIPTEN__)
+      ui_inf->dev_pixel_ratio_inv = 1.0 / emscripten_get_device_pixel_ratio();
+  #endif
+      //...
+  }
+#+end_src
+
+We store the inverse since thats the needed value when multiplying by UI pixel sizes and movements (we are manually converting device pixels to logical pixels so we need logical pixels/device pixels instead of device pixels/logical pixels). If we don't do this conversion, the UI on mobile web browsers is much smaller than on desktop. All UI elements have their max offsets multiplied by this ratio so that their fixed size is in logical pixels rather than device pixels.
+
+#+begin_src cpp
+  //...
+  auto offset = (*btn)->GetImageRect().Size();
+  offset.x_ *= ui_inf.dev_pixel_ratio_inv;
+  offset.y_ *= ui_inf.dev_pixel_ratio_inv;
+  (*btn)->SetMaxOffset(offset);
+#+end_src
+
+*** Toolbar
+The toolbar with descriptions of each button is shown in *Figure [[fig:toolbar]]*.
+
+#+caption: Toolbar with descriptions for each button
+#+name: fig:toolbar
+#+attr_latex: :width 4in
+#+ATTR_HTML:  :width 57% :height auto
+[[./images/toolbar.png]]
+\FloatBarrier
+
+The toolbar background is a UI element which parents each toolbar button. The parent UI element for the toolbar is unique in that it's max offset and child element y anchor components are set dynamically to exactly fit all child element buttons. It also uses anchoring so that the top left corner is always located at 1% of the screen width offset from the left, and 22% of the screen height offset from the top. The code snippet below accomplishes this:
+
+#+begin_src cpp
+    ivec2 tb_offset = {mp->toolbar.enable_follow->GetMaxOffset().x_, 0};
+    float anchor_spacing = 1.0f / mp->toolbar.widget->GetNumChildren();
+    for (int i = 0; i < mp->toolbar.widget->GetNumChildren(); ++i) {
+        auto child = mp->toolbar.widget->GetChild(i);
+        child->SetMinAnchor(0, i * anchor_spacing);
+        child->SetMaxAnchor(0, i * anchor_spacing);
+        tb_offset.y_ += child->GetMaxOffset().y_ + 10;
+    }
+    mp->toolbar.widget->SetMaxOffset(tb_offset);  
+#+end_src
+
+Adding new buttons to the toolbar is easy - just add a child button and the toolbar will grow accordingly.
+
+*** Output and View Panels
+The output panel and view panel are shown in *Figure [[fig:output_view_panels]]*. They are both hidden by default and have small arrow buttons to hide/show the panel.
+
+#+caption: The output and view panels expanded
+#+name: fig:output_view_panels
+#+attr_latex: :width 4in
+#+ATTR_HTML:  :width 57% :height auto
+[[./images/output_view_panels.png]]
+\FloatBarrier
+
+Both panels use the same animation code to hide/show the panel. The algorithm increments a timer every frame, and once the timer has reached or exceeded the max animation time the panel element's anchor (either minimum anchor or maximum anchor depending on how it's configured) is set to either the anchor set point, or anchor rest point depending on if the panel is showing or hiding. The following frame animation code performs this task - comments explain each step:
+
+#+begin_src cpp
+bool animated_panel_run_frame(animated_panel *panel, float dt, const ui_info &ui_inf, const urho::String &prefix)
+{
+    if (panel->anim_state == PANEL_ANIM_INACTIVE)
+        return false;
+
+    // By default we animate the element's max anchor, but if the rest point is greater than the set point we animate
+    // the min anchor. This allows the panel to show and hide correctly no matter the direction.
+    auto set_anchor = &set_max_anchor;
+    auto get_anchor = &get_max_anchor;
+    if (panel->anchor_rest_point > panel->anchor_set_point) {
+        set_anchor = &set_min_anchor;
+        get_anchor = &get_min_anchor;
+    }
+
+    // Get our normalized animation state from 0 to 1 - 0 being just starting and 1 being animation complete. If we are
+    // hiding the panel, 0 is complete and 1 is just starting.
+    float mult = panel->cur_anim_time / panel->max_anim_time;
+    if (panel->anim_state == PANEL_ANIM_HIDE)
+        mult = 1 - mult;
+
+    // Interpolate our current anchor position using the above multiplier
+    float cur_anchor = panel->anchor_rest_point + mult * (panel->anchor_set_point - panel->anchor_rest_point);
+
+    // If the panel is vertical, only animate the y component and just pass in the unchanged x component
+    // If the panel is horizontal, do the opposite.
+    if (panel->anim_dir == PANEL_ANIM_VERTICAL)
+        set_anchor(panel, get_anchor(panel).x_, cur_anchor);
+    else
+        set_anchor(panel, cur_anchor, get_anchor(panel).y_);
+
+    // Increment our time by the frame delta (dt)
+    panel->cur_anim_time += dt;
+    
+    // If the animation time has reached or exceeded the max animation time, set the panel accordingly and mark the
+    // animation as complete
+    if (panel->cur_anim_time >= panel->max_anim_time) {
+        if (panel->anim_state == PANEL_ANIM_SHOW) {
+            cur_anchor = panel->anchor_set_point;
+            panel->hide_show_panel->SetStyle(prefix + "Hide", ui_inf.style);
+        }
+        else {
+            cur_anchor = panel->anchor_rest_point;
+            panel->hide_show_panel->SetStyle(prefix + "Show", ui_inf.style);
+        }
+
+        if (panel->anim_dir == PANEL_ANIM_VERTICAL)
+            set_anchor(panel, get_anchor(panel).x_, cur_anchor);
+        else
+            set_anchor(panel, cur_anchor, get_anchor(panel).y_);
+
+        panel->anim_state = PANEL_ANIM_INACTIVE;
+        panel->cur_anim_time = 0.0f;
+    }
+    return true;
 }  
 #+end_src
 
-We setup the renderer by creating a viewport, attaching a render path to the viewport, and setting the renderer's viewport to the created viewport. A render path is an object which declares a number of rendering commands, where each command describes some operation to apply to a render target \autocite{urho_render_path}. For example, a scenepass command specifies rendering all nodes in the scene that reference a technique (through a referenced material, which is referenced by a static model component) that contains the specified "pass" to the render target specified by "output". A clear command clears the render target specified by "output" to the specified "color". The default render target is used, which is the screen backbuffer, when output isn't specified. All commands are executed in the order listed in the XML file. The render path used for the app is simple:
-
-#+begin_src xml
-  
-#+end_src
-
-*** Transform Tree
-Text
-
-*** Jackal/Husky Models
-Text
-
-*** Camera
-Text
-
-** UI
-Text
-*** Creating Icons with Inkscape
-Text
-
-*** UI File and Anchoring
-Text
-
-*** Input
-Text
-
-*** Scaling for different pixel ratios
-Text
-
-*** Toolbar
-Text
-
-*** Console
-Text
-
-*** View Toggle Panel
-Text
+By default, the panel max animation time is set to 200 milliseconds. The output panel shows dynamically on receiving messages from the server and hides if the user does not interact with the panel after 5 seconds.
 
 ** Networking
-Text
+The networking system is responsible for all communication between the client application and the server. On the desktop build a POSIX socket connection is established on startup, while on the web build a web socket connection is established. All data is packetized using a fixed size string header by making use of a concept called packing/unpacking (or pupping) \autocite{pup}.
+
 *** Packing and Unpacking Data
-Text
+It's possible to directly send C structs over the network, but not portable as compilers are free to add padding to structs. On the server, all data must be explicitly unpacked and packed from/to a javascript buffer object. On the client, we use a method called PUP'ing to fill structs from byte arrays and byte arrays from structs unaffected by struct padding.
+
+The idea of PUPing is to create overloaded functions for each built in basic type that accept a pupping context object reference as the first parameter and a reference to the basic type value as the second parameter. The function determines the packing direction from the context object and does whatever is required to pack/unpack the basic type value to/from the context object. The pupping context object contains the specifics needed to pack/unpack the basic values. For example, a binary context object might contain an array of bytes, a file a file pointer, a network a socket, and so on. We write functions for each basic type for each type of pupping context object.
+
+For structs and classes to be pack/unpackable, we write a single overloaded function (with the same name as the pupping basic type functions) templated on the pupping context object type. Within the function we call the overloaded pupping function for each object member. If an object contains a member which is an object of another type, a pupping function must also be written for the other object. In effect, each member is recursively packed/unpacked to/from the pupping context object until we reach the fundemental type functions. Since the object pup functions are templated they must only be written once and will work for any new type of pupping context object.
+
+We use the term "archive" in place of pupping context object. For this app only a single archive type is used;
+
+#+begin_src cpp
+  template<sizet N>
+  struct binary_fixed_buffer_archive
+  {
+      static constexpr sizet size = N;
+      int dir;
+      sizet cur_offset{0};
+      u8 data[size];
+  };
+#+end_src
+
+Templates and c++11 type traits are used to write all of the basic type functions in one block:
+
+#+begin_src cpp
+  template<class ArchiveT, class T>
+  typename std::enable_if<std::is_arithmetic_v<T>, void>::type
+  pack_unpack(ArchiveT &ar, T &val, const pack_var_info &vinfo)
+  {
+      sizet sz = sizeof(T);
+      if (ar.dir == PACK_DIR_IN)
+          memcpy(&val, ar.data + ar.cur_offset, sz);
+      else
+          memcpy(ar.data + ar.cur_offset, &val, sz);
+      ar.cur_offset += sz;
+  }  
+#+end_src
+
+This function will only be defined for basic arithmetic types. To make writing the pup functions for each type easier we define the following macros:
+
+#+begin_src cpp
+#define pup_func(type)                                                                  \
+    template<class ArchiveT>                                                            \
+    void pack_unpack(ArchiveT &ar, type &val, const pack_var_info &vinfo)
+
+#define pup_member(mem_name) pack_unpack(ar, val.mem_name, {#mem_name, {}})  
+#+end_src
+
+Each type can now be easily made pack/unpackable by using the macros:
+
+#+begin_src cpp
+  struct dvec3
+  {
+      double x{0.0};
+      double y{0.0};
+      double z{0.0};
+  };
+
+  pup_func(dvec3)
+  {
+      pup_member(x);
+      pup_member(y);
+      pup_member(z);
+  }
+
+  struct pose
+  {
+      dvec3 pos;
+      //...
+  };
+
+  pup_func(pose)
+  {
+      pup_member(pos);
+      //...
+  }
+#+end_src
+
+Data from the network is read directly in to the data member of the archive. It is then unpacked in to the correct struct based on a fixed size header.
 
 *** Packet Structure and Header
-Text
+Each message type has a unique fixed size header and struct. The header always precedes the data and is used to determine how to unpack the data following. When a packet is received on the server we route the packet to different routines based on the header value:
 
-*** Client/Server Routing with Sockets and WebSockets
-Text
+#+begin_src js
+  const vel_cmd_header = {
+      type: "VEL_CMD_PCKT_ID"
+  };
+
+  const goal_cmd_header = {
+      type: "GOAL_CMD_PCKT_ID"
+  };
+
+  //...
+  function parse_incoming_data(data, sckt) {
+      const hdr = parse_command_header(data);
+      if (hdr === vel_cmd_header.type) {
+          //...
+      }
+      else if (hdr === goal_cmd_header.type) {
+          //...
+      }
+      //...
+  }
+#+end_src
+
+On the client, the headers are declared with the same string value:
+
+#+begin_src cpp
+  struct velocity_info
+  {
+      float linear{0.0};
+      float angular{0.0};
+  };
+
+  struct command_velocity
+  {
+      packet_header header{"VEL_CMD_PCKT_ID"};
+      velocity_info vinfo{};
+  };
+
+  struct command_goal
+  {
+      packet_header header{"GOAL_CMD_PCKT_ID"};
+      pose goal_p;
+  }; 
+#+end_src
+
+Some packets, such as the Jackal camera message, the occupancy grid message, or the laser scan message, have variable size data fields. For these messages the data payload is split from the meta data which describes the payload data size:
+
+#+begin_src cpp
+  struct occ_grid_meta
+  {
+      float resolution;
+      u32 width;
+      u32 height;
+      pose origin_p;
+      i8 reset_map;
+      u32 change_elem_count;
+  };
+
+  struct occ_grid_update
+  {
+      static constexpr int MAX_CHANGE_ELEMS = MAX_MAP_SIZE * MAX_MAP_SIZE;
+      packet_header header{};
+      occ_grid_meta meta;
+      u32 change_elems[MAX_CHANGE_ELEMS];
+  };  
+#+end_src
+
+This allows packing the network data directly in to the meta data struct, and using that to determine the required byte count for the payload. All C message structs are defined in the client source src/network.h.
 
 *** Sending/Receiving Data
-Text
+On the server the data is received as a javascript buffer which is parsed and routed to the correct routine as shown above. On the client side data is sent to the server by packing the message struct to a binary archive and sending the archive using the open socket or web socket.
+
+#+begin_src cpp
+  void net_tx(const net_connection &conn, const u8 *data, sizet data_size)
+  {
+  #if defined(__EMSCRIPTEN__)
+      em_net_write(conn, data, data_size);
+  #else
+      write(conn.socket_handle, data, data_size);
+  #endif
+  }
+
+  template<class T>
+  void net_tx(const net_connection &conn, T &packet)
+  {
+      binary_fixed_buffer_archive<sizeof(T)> buf{PACK_DIR_OUT};
+      pack_unpack(buf, packet, {});
+      net_tx(conn, buf.data, buf.cur_offset);
+  }
+
+  // Example usage code
+  net_tx(*conn, command_stop{}});
+#+end_src
+
+To send data from the server to connected clients we allocate a javascript buffer and build the message exactly following the C struct schema. For each message type there is a function to get the packet size, and another to add the packet data to the buffer. As an example:
+
+#+begin_src js
+  const PACKET_STR_ID_LEN = 32;
+  //...
+  function get_misc_stats_packet_size() {
+      return PACKET_STR_ID_LEN + 1 + 4 + 4;
+  }
+  function add_misc_stats_to_packet(ms, packet, offset) {
+      offset = write_packet_header(misc_stats_pckt_id, packet, offset);
+      offset = packet.writeUInt8(ms.conn_count, offset);
+      offset = packet.writeFloatLE(ms.cur_bw_mbps, offset);
+      offset = packet.writeFloatLE(ms.avg_bw_mbps, offset);
+      return offset;
+  }
+  //...
+  const packet = new Buffer.alloc(get_misc_stats_packet_size());
+  add_misc_stats_to_packet(misc_stats, packet, 0);
+  send_packet_to_clients(packet); 
+#+end_src
+
+The associated C struct is:
+
+#+begin_src cpp
+  struct misc_stats
+  {
+      packet_header header{};
+      u8 conn_count{0};
+      float cur_bw_mbps{};
+      float avg_bw_mbps{};
+  };  
+#+end_src
+
+Receiving data on the client is similiar to recieving on the server, except more complicated because some messages from the server are variable size. On the desktop build we read data from the socket with /read/, and with the web build we register a callback thatd called when a web socket message is received. In either case, the raw data is copied in to the read_buf member of net_rx_buffer, which is a member of the net_connection struct:
+
+#+begin_src cpp
+  struct net_rx_buffer
+  {
+      static constexpr int MAX_PACKET_SIZE = occ_grid_update::MAX_CHANGE_ELEMS * 4 + 1000;
+      binary_fixed_buffer_archive<MAX_PACKET_SIZE> read_buf{PACK_DIR_IN};
+      sizet available;
+  };  
+#+end_src
+
+The available count is increased by the number of bytes read in. While there are enough available bytes (>=32), we attempt to match the first 32 bytes to a message header. If the match succeeds, we set the expected packet size based on the header. If the match fails, we increment the buffer offset, decrement the available byte count, and repeat starting at the buffer offset. If no message header is ever found (ie we receive a stream of random bytes), we continuously search for header matches. The header matching function returns false on the first non-matching character.
+
+Once a message is found and the current packet size set we do the following:
+
+*If enough bytes are avialable:*
+- Try to read the packet in to the message
+  - If the message is meta data containing a variable length payload
+    - If there is enough remaining available data to read in the payload
+      - Read in to the meta data and payload message and dispatch the message to the correct system
+      - Return the total number of bytes read (both meta and payload)
+    - Otherwise
+      - Return zero indicating we need to wait for more data
+  - Otherwise
+    - Read in to the message and dispatch to the correct system
+    - Return the total number of bytes read
+- If the byte count returned is > 0
+  - Subtract the number of bytes from the avialable count
+  - Reset the current packet size to 0
+- Otherwise
+  - Indicate more data is needed for the packet and break from the loop
+*Otherwise:*
+- Indicate more data is needed for the packet and break from the loop      
+
+If there are not enough bytes available to read in the message, we break from the loop indicating we need more data. The function source is shown below:
+
+#+begin_src cpp
+  void net_rx(net_connection *conn)
+  {
+      static sizet current_packet_size{0};
+
+      // The conn->rx_buf is filled here if desktop build, otherwise its filled in our
+      // web socket message received callback
+  #if !defined(__EMSCRIPTEN__)
+      if (!net_socket_read(conn))
+          return;
+  #endif
+
+      // While there are enough available bytes to read in a message header and we
+      // are not waiting for more data
+      bool need_more_data = false;
+      while (conn->rx_buf->available >= packet_header::size && !need_more_data) {
+          // Current packet size of 0 indicates we are searching for a header
+          if (current_packet_size == 0) {
+              current_packet_size = matching_packet_size(conn->rx_buf->read_buf.data + conn->rx_buf->read_buf.cur_offset);
+
+              // If no header match is found
+              if (current_packet_size == 0) {
+                  --conn->rx_buf->available;
+                  ++conn->rx_buf->read_buf.cur_offset;
+              }
+          }
+          else if (conn->rx_buf->available >= current_packet_size) {
+              // Bytes processed will be zero unless we have received ALL bytes required
+              // For messages with variable length data - bytes processed will only be non zero
+              // if ALL data (meta and payload) for the variable length message was received
+              sizet bytes_processed = dispatch_received_packet(conn->rx_buf->read_buf, conn->rx_buf->available, conn);
+              if (bytes_processed > 0) {
+                  conn->rx_buf->available -= bytes_processed;
+                  current_packet_size = 0;
+              }
+              else {
+                  need_more_data = true;
+              }
+          }
+          else {
+              need_more_data = true;
+          }
+      }
+  }  
+#+end_src
+
+The function net_rx is called on every update frame, and so it seems an if statement would work in place of the while loop. This is true for desktop builds, however on web builds the web socket message receive callback function is called more frequently than the frame update callback function. Without the while loop, the available bytes fill up faster than they are processed and grows unbounded. After a few minutes the client app becomes unusable as all time is spent looking at the bytes received buffer.
+
+*** Client/Server Routing with Sockets and WebSockets
+On the client a POSIX socket connection is established for the desktop build and a web socket connection for the web build. Emscripten provides a simple web socket API. The web socket connection is created by calling /emscripten_websocket_new/ and passing a filled in struct with the URL. A connection handle is returned and used to register callback functions on close events, on error events, on received message events, and on successful connection events. The handle can also be used to send data by calling /emscripten_websocket_send_binary/ passing in the handle, data, and data size.
+
+The client uses the URL from the browser address bar with http::// replaced with ws:// to ask the server to establish a new web socket connection. Web socket connections are established using HTTP, and once the connection is upgraded by the server, WebSocket takes the place of HTTP as the application layer protocol \autocite{rfc6455}.
+
+The server app uses express \autocite{express} to create the http server, net to create the desktop server, and ws \autocite{wslib} to establish a web socket connections. On each connection, the desktop or web socket is added to a global list, and removed when the connection is closed. Both arrays are used when sending data to send it to all connected clients. The code to create the http, web socket, and POSIX socket servers is shown below:
+
+#+begin_src js
+  const http = require('http');
+  const net = require('net');
+  const wss_lib = require('ws');
+  const app = express();  
+  const http_server = http.createServer(app);
+  const wss = new wss_lib.Server({ noServer: true });
+  const desktop_server_port = 4000;
+  const http_server_port = 8080;
+
+  const wsockets = [];
+  const dt_sockets = [];  
+  //...
+
+  wss.on("connection", web_sckt => {
+      web_sckt.on("message", data => {
+          parse_incoming_data(data, web_sckt);
+      });
+
+      web_sckt.on("close", (code, reason) => {
+          remove_socket_from_array(web_sckt, wsockets);
+          //...
+      });
+      wsockets.push(web_sckt);
+      //...
+  });
+
+  non_browser_server.on("connection", (dt_skt) => {
+      dt_skt.on("data", data => {
+          parse_incoming_data(data, dt_skt);
+      });
+
+      dt_skt.on("close", () => {
+          remove_socket_from_array(dt_skt, dt_sockets);
+          //...
+      });
+      dt_sockets.push(dt_skt);
+      //...
+  });
+
+  //...
+  http_server.on('upgrade', (request, socket, head) => {
+      wss.handleUpgrade(request, socket, head, socket => {
+          wss.emit('connection', socket, request);
+      });
+  });
+
+  http_server.listen(http_server_port);
+  non_browser_server.listen(desktop_server_port);  
+#+end_src
+
+The routing is set up using express. The only routes are / and /control which both serve emscripten/uaf_clearpath_ctrl.html. There is also a static route for / which serves any file in the emscripten folder which is needed because the html shell file references other files in the same directory.
+
+#+begin_src js
+  app.get('/', function (req, res) {
+      res.sendFile(path.join(__dirname, 'emscripten', 'uaf_clearpath_ctrl.html'));
+  });
+
+  app.get('/control', function (req, res) {
+      res.sendFile(path.join(__dirname, 'emscripten', 'uaf_clearpath_ctrl.html'));
+  });
+
+  app.use(express.static(path.join(__dirname, 'emscripten')));  
+#+end_src
 
 *** Bandwidth
-Text
+Average and current bandwidth approximations are shown as depicted in *Figure [[fig:control_interface_overview]]* under misc stats. This bandwidth does not include TCP or WebSocket packet overhead - it is purely the incoming/outgoing data payload.
 
-** Server ROS Interface with rosnodejs
-Text
+For every message that is sent or received, the total payload byte size is added to a global counter. Every second the current bandwidth in megabits per second is calculated by multiplying the byte count by 8 / 1048576 to convert to megabits. The result is pushed to the front of a shifting buffer with a max size of ten; once the buffer has ten items, new pushed items pop the back item. The average bandwidth is the average of the items in the shifting buffer. Since this routine is run once every second (and so a new item is shifted in every second), this is a ten second bandwidth average. *Figure [[fig:per_client_bandwidth]]* shows how the current and average bandwidth change as clients disconnect, waiting 10 seconds between each disconnect.
 
-** Joystick Driving
-Text
+#+caption: Starting with 10 clients, the current bandwidth as client connections are closed, waiting 10 seconds between each disconnect
+#+name: fig:per_client_bandwidth
+#+attr_latex: :width 7in
+#+ATTR_HTML:  :width 100% :height auto
+[[./images/per_client_bandwidth.png]]
+\FloatBarrier
 
-** Map Building
-Text
+** ROS Integration
+On server startup a ROS node is started called /command_server/. The server relays ROS information to the client by subscribing to ROS topics, combining and formatting data of interest, and sending it to all connected clients. The server relays client commands to ROS by converting the client messages to ROS message formats and publishing to ROS topics. *Figure [[fig:command_server_rqt_graph]]* shows the ROS node/topic graph with the server running.
 
-** Autonomous Waypoint Navigation
-Text
+#+caption: ROS node/topic graph with control_server running; published topics are shown in green and subscribed topics in red
+#+name: fig:command_server_rqt_graph
+#+attr_latex: :width 7in
+#+ATTR_HTML:  :width 100% :height auto
+[[./images/command_server_rqt_graph.png]]
+\FloatBarrier
 
-** Getting and Setting ROS Parameters
-:PROPERTIES:
-:ID:       a893a693-0450-4f2b-a804-09e9b6167990
-:END:
-Text
 
-** Live Camera Feed (Jackal Only)
-Text
+*** Joystick Driving
+The client can drive the robot by using the joystick shown in *Figure [[fig:control_interface_overview]]*. Movement on the joystick is converted to a two dimensional vector in the direction of the drag. The mouse position is cached on drag start and subtracted from the updated mouse position. The magnitude of the resulting vector is in pixels; its then normalized by, or clamped to if greater than, one third of the pixel diameter of the joystick outer ring (the dashed line). The joystick position is also updated to follow this vector.
+
+#+begin_src cpp
+  intern void handle_jostick_move(const ivec2 &cur_mpos, joystick_panel *jspanel)
+  {
+      float max_r = jspanel->outer_ring->GetMaxOffset().x_ / 3.0f;
+      vec2 dir_vec = vec2{cur_mpos.x_, cur_mpos.y_} - jspanel->cached_mouse_pos;
+      auto l = dir_vec.Length();
+      if (l > max_r)
+          dir_vec = dir_vec * (max_r / l);
+      ivec2 new_pos = jspanel->cached_js_pos + ivec2(dir_vec.x_, dir_vec.y_);
+      jspanel->js->SetPosition(new_pos);
+      jspanel->velocity = dir_vec * (-1.0f / max_r);
+  }  
+#+end_src
+
+The resulting velocity vector has a magnitude between zero and one depending on how close the joystick is to the outer ring, and a direction aligned with the drag motion. The velocity is sent to the server using the /command_velocity/ struct.
+
+#+begin_src cpp
+  static command_velocity pckt{};
+  pckt.vinfo.linear = jspanel->velocity.y_;
+  pckt.vinfo.angular = jspanel->velocity.x_;
+  net_tx(*conn, pckt);  
+#+end_src
+
+On the server, the velocity command is converted to a /Twist/ message, scaled by the proper factor for the Jackal or Husky, and published to the /cmd_vel/ topic.
+
+*** Starting/Restarting the Navigation Node
+The /move_base/ and /slam_gmapping/ ROS nodes are spawned at server startup through calling roslaunch with the /uaf_clearpath_navigation/ package /move_base.launch/ and /gmapping.launch/ launch files. The spawn commands return process ids which are globally stored and used to kill and restart the processes when the clear maps command is issued by the client. The clear maps command is on the toolbar, which is shown in *Figure [[fig:toolbar]]*. 
+
+#+begin_src js
+  // On startup set global vars with the navigation processes
+  gmapping_proc = run_navigation_gmapping();
+  navigation_proc = run_navigation_move_base();
+
+  //... On receiving the clear maps command we kill and restart
+  else if (hdr === clear_maps_cmd_header.type) {
+      navigation_proc.kill('SIGINT');
+      gmapping_proc.kill('SIGINT');
+      //...
+      gmapping_proc = run_navigation_gmapping();
+      navigation_proc = run_navigation_move_base();
+  }  
+#+end_src
+
+The standard error stream is ignored for /slam_gmapping/ but sent to clients for /move_base/. The stream is ignored for /slam_gmapping/ because the node pollutes the stream with unimportant information.
+
+*** Maps
+There are three different occupancy grids sent to connected clients; the map, the global costmap, and the local costmap. These are assembled by the server by subscribing to the topics shown in *Table [[table:map_topics]]*. The map/costmap topics, messages, and associated ROS nodes are documented in [[SLAM GMapping]] and [[Navigation Stack]].
+
+#+caption: Map topics and their associated message types, nodes, and update/publish frequencies
+#+name:   table:map_topics
+#+attr_latex: :width 5in :font \scriptsize
+| *Topic*                                   | *Message Type*      | *Publishing Node* | *Update (Hz)* | *Publish (Hz)* |
+|-------------------------------------------+---------------------+-------------------+---------------+----------------|
+| /map                                      | OccupancyGrid       | slam_gmapping     |           0.2 |            0.2 |
+| /move_base/global_costmap/costmap_updates | OccupancyGridUpdate | move_base         |            NA |              5 |
+| /move_base/global_costmap/costmap         | OccupancyGrid       | move_base         |            20 |    Once on sub |
+| /move_base/local_costmap/costmap          | OccupancyGrid       | move_base         |            20 |              5 |
+
+All maps are displayed on the client device using textures with pixel data filled from the occupancy grid. The map occupancy grid becomes large as the robot explores. The default resolution is set to 0.05 meters per cell, so after exploring a 100 by 100 meter area the map would be larger than 4x10^{6} cells. A byte is required to represent the value of each cell as shown in *Figure [[fig:costmap_spec]]*. The global cost map is the same size as the map, and the local cost map is 10 by 10 meters, or 4x10^{4} elements. The global costmap is published with costmap update (/OccupancyGridUpdate/) messages rather than entire costmap (/OccupancyGrid/) messages. The updates come as sub-rectangle sections indicating the changed portion of the costmap since the last update.
+
+To quantify the amount of data resulting from map updates, we drove the robot around in a simulated environment and recorded the results. On the server we subscribe to the map topics and log map update byte size and topic name with a timestamp for every message received.  The results are shown in *Figure [[fig:map_raw_data]]*.
+
+#+caption: Map data size as received from ROS on map topics. The top plot shows the data sizes over 200 seconds of driving around the simulated world, and the bottom plot shows a zoomed in section
+#+name: fig:map_raw_data
+#+attr_latex: :width 7in
+#+ATTR_HTML:  :width 100% :height auto
+[[./images/map_raw_data.png]]
+\FloatBarrier
+
+Even with the global costmap configured to only send costmap updates, /move_base/ publishes the entire global costmap after every map update (sometimes twice). The total average bandwidth for the simulated data after 200 seconds is *4.46 Mbps per client*. This does not include anything else such as the laser scan, live camera feed (for the Jackal), transforms, etc. This does not scale well to many connected clients.
+
+Rather than send the full map, we only send the changed cell values with the map index for each cell, and never include values indicating undiscovered (255). We pack the map index and cell value in a four byte integer. The least significant byte stores the cell value and the most significant bytes stores the map index. This limits the maximum map size to 2^{24} (16,777,216) cells, or 204.8 x 204.8 meters using 0.05 meters per cell resolution. The resolution can be lessened if larger maps are needed as discussed in [[Navigation Package]]; lesser resolution comes at the cost of less precise maps and worse path planning.
+
+To send only the changes, the map, global costmap, and local costmaps are stored locally. For every map message received, we compare the occupancy grid to the stored global grid, create an array of changed map index to cell value objects, and update the global grid.
+
+#+begin_src js
+  function get_occ_grid_delta(cur_occ_grid, prev_occ_grid) {
+      let changes = [];
+      changes.length = 0;
+      for (let i = 0; i < cur_occ_grid.length; ++i) {
+          // For any new items in the map in the map, i will not exist so they will be included
+          // in the changes, unless they are -1 indicating unknown. If i is in prev_occ_grid, only
+          // include it if it's value is different than the previous update.
+          if (!(i in prev_occ_grid) && (cur_occ_grid[i] !== -1)) {
+              changes.push({ ind: i, val: cur_occ_grid[i] })
+          }
+          else if ((i in prev_occ_grid) && cur_occ_grid[i] !== prev_occ_grid[i]) {
+              changes.push({ ind: i, val: cur_occ_grid[i] })
+          }
+      }
+      return changes;
+  }  
+#+end_src
+
+For the global costmap updates we loop over the subrectangle grid data in the /OccupancyGridUpdate/ message and do the following:
+- Map the sub-rectangle grid index to the global grid index
+- Compare the sub-rectangle cell value to the global cell value and add the global grid index and cell value to the changes array if it changed
+- Update the global grid cell value with the sub-rectangle grid cell value
+
+#+begin_src js
+  function get_changes_and_apply_update_to_occgrid(update_msg, prev_occ_grid) {
+      let changes = [];
+      for (let y = 0; y < update_msg.height; ++y) {
+          for (let x = 0; x < update_msg.width; ++x) {
+              // update_msg.x and update_msg.y are the offsets in the source grid where the update sub-rectangle starts
+              let full_map_x = update_msg.x + x;
+              let full_map_y = update_msg.y + y;
+              let update_ind = y * update_msg.width + x;
+              let full_map_update_ind = full_map_y * prev_occ_grid.info.width + full_map_x;
+              if (prev_occ_grid.data[full_map_update_ind] !== update_msg.data[update_ind]) {
+                  prev_occ_grid.data[full_map_update_ind] = update_msg.data[update_ind];
+                  changes.push({ ind: full_map_update_ind, val: update_msg.data[update_ind] });
+              }
+          }
+      }
+      return changes;
+  }  
+#+end_src
+
+The tradeoff for sending only the changes is that if every cell in the map changed, the changes would be 4x the map data size as each cell requires 4 bytes instead of 1 due to the map index. For example, the entire map must be sent when clients initially connect. Most of the time the majority of the map data is unknown (255 or -1) so this is mitigated by never sending that value and implying all unsent values are unknown. However, in the case where there is a very large explored map, new connecting clients is expensive.
+
+*Figure [[fig:map_change_data]]* shows the same simulation as *Figure [[fig:map_raw_data]]* but with sending only the changed map data instead of the raw map data as received from ROS.
+
+#+caption: Map change data sizes. The top plot shows the data sizes over 200 seconds of driving around the simulated world, the middle plot is after the initial large data send to the client, and the last plot is zoomed in
+#+name: fig:map_change_data
+#+attr_latex: :width 7in
+#+ATTR_HTML:  :width 100% :height auto
+[[./images/map_change_data.png]]
+\FloatBarrier
+
+The total average bandwidth for the simulated data over 200 secods is improved to *0.31 Mbps per client*. As clients connect, this average takes a large hit but this tradeoff is acceptable. The entire simulation area was mapped after about 135 seconds - after this the map and global costmap changes flatten out. The occupancy grid message meta data is still sent as the client needs to know the overall map size in case it has changed.
+
+#+begin_src cpp
+  // The client side messages include the occupancy grid meta data
+  struct occ_grid_meta
+  {
+      float resolution;
+      u32 width;
+      u32 height;
+      pose origin_p;
+      i8 reset_map;
+      u32 change_elem_count;
+  };
+
+  struct occ_grid_update
+  {
+      static constexpr int MAX_CHANGE_ELEMS = MAX_MAP_SIZE * MAX_MAP_SIZE;
+      packet_header header{};
+      occ_grid_meta meta;
+      u32 change_elems[MAX_CHANGE_ELEMS];
+  };  
+#+end_src
+
+On the client the occupancy grid is stored as an urho::Image where each cell is an image pixel. On receiving an occupancy grid update the incoming grid size is compared to the image size; while the grid is larger the image is reallocated to the next power of two texture and all pixels set to the undiscovered cell color. The scene billboard (which the map texture is rendered to) is resized to match the grid size so that one world space unit equals one grid cell equals one meter. We then loop through the 32 bit change elements and do the following for each element:
+- Set the grid index to the element shifted 1 byte to the right
+- Set the grid cell value to the element LSB
+- Convert the grid index to texture coordinates
+- If the grid is a map use the cell value to set the image pixel to a greyscale color (black means obstacle)
+- If the grid is a costmap use the cell value to set the image color according to the different obstacle probability regions listed in *Figure [[fig:costmap_spec]]*
+- Upload the image data to the video device texture attached to the billboard
+
+Power of two textures are used because video devices work better with them - this is knowledge from prior project experience. With maps available to provide visual feedback from /move_base/ and /slam_gmapping/, its possible to create waypoints and monitor the robot as it autonomously drives.
+
+*** Autonomous Waypoint Navigation
+Navigation waypoints are added to the map by pressing the waypoint toolbar button as shown in *Figure [[fig:toolbar]]* and clicking on the map. If there are no other waypoints, the waypoint is immediately sent to the server and relayed to ROS as a /PoseStamped/ message published to the /move_base_simple/goal/ topic. If there is an existing waypoint, the waypoint is pushed to the back of a queue. Once the active ROS goal is moved to a terminal state, the waypoint associated with the active goal is
+replaced by the next waypoint in the queue and sent to the server/relayed to ROS. Only the active goal/waypoint interacts with the server, the other waypoints are local to the client.
+
+Once an active goal is set the local and global navigation paths are computed by /move_base/ and published to topics as outlined in [[Navigation Stack]]. The server subscribes to these topics and relays the paths to the client who stores them. Once per frame the client loops over the local and global path arrays and draws lines connecting each point. The client also loops over the waypoint queue and draws lines connecting the last point in the global navigation point to the first point in the waypoint queue, and lines connecting each subsequent waypoint to the previous. The result is shown in *Figure [[fig:waypoints]]*.
+
+#+caption: Navigation waypoints; waypoints are shown as circles, the global navigation path is the bendy path to the first waypoint, and the local navigation path is the small orange path
+#+name: fig:waypoints
+#+attr_latex: :width 4in
+#+ATTR_HTML:  :width 57% :height auto
+[[./images/waypoints.png]]
+\FloatBarrier
+
+The client local waypoints in the waypoint queue don't have calculated navigation paths. The connecting lines are drawn to show the order of the waypoint queue. Clicking the clear waypoints toolbar button will remove all waypoints from the waypoint queue and send a stop command to the server.
+
+The /PoseStamped/ message expects an orientation. We want the orientation be set based on the calculated path (the robot should stay oriented with the final path segment) but the path isn't available until the goal is provided. The robot will turn once it reaches the goal position to align with the orientation specified in /PoseStamped/, which is annoying behavior. Setting the orientation to an identity quaternion still indicates a final orientation that is usually different than the path aligned orientation. We could dynamically update the goal orientation by calculating it based on the path, but our approach is simpler: Once the robot has arrived within 0.25 meters of the goal, a stop command is sent to the server.
+
+#+begin_src cpp
+  intern void update_and_draw_nav_goals(map_panel *mp, float dt, urho::DebugRenderer *dbg, net_connection *conn)
+  {
+      float marker_rad = animate_marker_circles(&mp->glob_npview.goal_marker, dt);
+
+      // If the current goal is in an active state (ie 0, 1, or -2 sort of) draw a circle for it. If the robot position
+      // is within 0.25 meters, issue a stop command to the server. Once the stop command completes, the server will
+      // send us a message where we change our mp->goals.cur_goal_status to a terminated state.
+      if (mp->goals.cur_goal_status == 0 || mp->goals.cur_goal_status == 1 || mp->goals.cur_goal_status == -2) {
+          dbg->AddCircle(mp->goals.cur_goal, {0, 0, -1}, marker_rad, mp->glob_npview.goal_marker.color);
+          auto dist_to_goal = (mp->base_link->GetWorldPosition() - mp->goals.cur_goal).Length();
+          if (dist_to_goal < 0.25) {
+              command_stop stop{};
+              net_tx(*conn, stop);
+          }
+      }
+      else {
+          // If our current goal is no longer active and there are goals in our queue, we move the goal
+          // from the queue to our active goal and set the goal status to -2
+          // -2 indicates that we sent the server our active goal but have yet to receive a response
+          mp->glob_npview.goal_marker.cur_anim_time = 0.0f;
+          mp->glob_npview.entry_count = 0;
+          if (!mp->goals.queued_goals.empty()) {
+              command_goal cg;
+              mp->goals.cur_goal = mp->goals.queued_goals.back();
+              mp->goals.queued_goals.pop_back();
+              cg.goal_p.pos = dvec3_from(mp->goals.cur_goal);
+              mp->goals.cur_goal_status = -2;
+              net_tx(*conn, cg);
+          }
+      }
+
+      // Draw the lines connecting our active goal and any queued goals. These lines are just to indicate to the
+      // user the order of the queued goals.
+      for (int i = mp->goals.queued_goals.size() - 1; i >= 0; --i) {
+          vec3 from = mp->goals.cur_goal;
+          if (i != mp->goals.queued_goals.size() - 1)
+              from = mp->goals.queued_goals[i + 1];
+          dbg->AddLine(from, mp->goals.queued_goals[i], mp->glob_npview.color);
+          dbg->AddCircle(mp->goals.queued_goals[i], {0, 0, -1}, marker_rad * 0.75, mp->glob_npview.goal_marker.queued_color);
+      }
+  }
+#+end_src
+
+The server subscribes to the /move_base/goal/ topic and stores the goal id of the most recent goal when published by /move_base/ (see [[Navigation Stack]] for more details). It also subscribes to the /move_base/status/ topic and uses the goal id to reference the correct goal in the goal status array. If the goal is found, it is sent to client. This is required because the goal id is only published once on goal creation. If a client created a navigation goal, and subsequently another client connected, the new client would only see the navigation path but no goal if the goal status wasn't relayed to clients.
+
+The server also uses the most recent goal id to cancel goals. When a controlling client sends a stop command to the server, the server sends a /GoalID/ message filled with the most recent goal id to the ROS topic /move_base/cancel/.
+
+*** Getting and Setting Parameters
+To view the parameter text editor press the parameter toolbar button as shown in *Figure [[fig:toolbar]]*. Pressing "Get Params" will get all available ROS parameters on the robot. Pressing "Set Params" will attempt to set all parameters to the specified values on the robot. The easiest way to use this tool is to get the parameters, delete all items except the parameters of interest, and set the values for the remaining parameters as desired.
+
+The paremeter text is formatted as a json object where each node is a subobject with the node name as the key and the available parameters as values. *Figure [[fig:params]]* shows an example of using the tool to change the global planner from /navfn/NavfnROS/ to /global_planner/GlobalPlanner/.
+
+#+caption: Setting a different global planner; First get parameters, then delete everything besides the global planner and set it to the new value, and finally set parameters and verify it worked with the returned messages from the server
+#+name: fig:params
+#+attr_latex: :width 6in
+#+ATTR_HTML:  :width 85% :height auto
+[[./images/params.png]]
+\FloatBarrier
+
+To generate the list of parameters the server spawns a child process to run /rosrun dynamic_reconfigure dynparam list/ and parses the output. The rosnodejs library does provide a ROS parameter interface, but not a dynamic parameter interface. Dynamic parameters differ in that the tool /dynamic_reconfigure/ can be used to make normally static parameters dynamic (usually by killing and restarting the associated node).
+
+To set node parameters the server parses the text from the client and for each node/parameter pair it pushes an entry with the node name, parameter name, and parameter value to the back of a queue. Every one hundred milliseconds a separate routine checks if the queue has items. The routine is shown below:
+
+#+begin_src js
+  function update_param_check(cur_param_proc, pstack) {
+      // If param items are available and we aren't waiting on another parameter
+      // process to finish, process the next item.
+      if (!cur_param_proc && pstack.length !== 0) {
+          const pobj = pstack.shift();
+          let msg = `Setting node ${pobj.node} parameter ${pobj.param_name} to ${JSON.stringify(pobj.param_val)}`;
+
+          // Spawn a child process using dynamic_reconfigure to set the parameter for the node - this will most likely
+          // kill and restart the node
+          cur_param_proc = run_child_process("rosrun", ["dynamic_reconfigure", "dynparam", "set", pobj.node, pobj.param_name, pobj.param_val], true, true, true, msg);
+          setTimeout(proc_timeout, 20000, cur_param_proc);
+          ilog(msg);
+      }
+  }         
+#+end_src
+
+The /proc_timeout/ function is called if the child process doesn't complete within twenty seconds. This function sends a /SIGINT/ to the proces and sets a flag in the /cur_param_proc/ object to indicate timeout failure to the on close message handler. Our on close message handler uses this flag to send a timeout error message to connected clients. On success the on close message handler also sends a message to clients indicating the node, parameter, and value that was successfully set.
+
+*** Live Camera Feed (Jackal Only)
+A live camera feed is avialable if connecting to the Jackal. Toggle the Live Cam checkbox as shown in *Figure [[fig:control_interface_overview]]* to show the feed. The camera view window is shown in *Figure [[fig:cam_view]]* - it is movable and resizable.
+
+#+caption: Jackal camera feed window
+#+name: fig:cam_view
+#+attr_latex: :width 4in
+#+ATTR_HTML:  :width 57% :height auto
+[[./images/cam_view.png]]
+\FloatBarrier
+
+The uncompressed camera data is published to /image_color/ but its too much data to even consider. Subscribing to this topic with any standard ROS tool, such as rviz, stalls out the connection. Instead, we use /image_proc/ \autocite{image_proc} to compress the image and send that to the clients. However, even with compression, if more than two clients connect the app becomes unusable.
+
+To mitigate this we throttle the /CompressedImage/ message from ROS based on the number of connected clients and the number of clients viewing the camera. The equation was developed experimentally and tuned to allow full frame rate for a single client viewing the camera while keeping the overall bandwidth usage under 10 Mbps.
+
+\begin{align}
+T_{update} (ms) = 100*(cam_{viewers} + connections) - 150
+\end{align}
+
+Throttling the camera message update rate works well enough for the app to remain usable with at least 5 clients connected. To measure the bandwidth usage we started the server on the Jackal and performed the following steps:
+1) Add client, wait 10 seconds
+2) Enable camera for client and wait 10 more seconds
+3) Repeat steps 1 and 2 until 10 clients are connected
+4) After the 10th client has been added and 10 seconds have passed, turn off their camera
+5) Turn off the remaining clients camera, waiting 10 seconds between each client
+6) After the last camera has been disabled for 10 seconds, close each client connection waiting 10 seconds between each client
+
+The results of the above steps are shown in *Figure [[fig:cam_throttle_bandwidth]]*.
+
+#+caption: The current and average bandwidth over intervals of adding a new client, waiting 10 seconds, subscribing the client to the camera, and repeating up to 10 clients.
+#+name: fig:cam_throttle_bandwidth
+#+attr_latex: :width 7in
+#+ATTR_HTML:  :width 100% :height auto
+[[./images/cam_throttle_bandwidth.png]]
+\FloatBarrier
+
+There are steps in bandwidth usage as the first clients connect, but the usage plateaus as more clients connect. There are a few peaks that rise about 10 Mbps, but the average bandwidth stays below.
 
 ** Misc
-Text
+There are a few miscellaneous convenience features worth mentioning; connection tracking, path measuring, and text message broadcasting.
 
-*** Connection tracking
-Text
+*** Connection Tracking
+The server sends the number of connected clients with the current and average bandwidth once per second in the /misc_stats/ message. On receiving the message, the client updates the misc stats section of the user interface.
 
-*** Measuring paths
-Text
+*** Measuring Paths
+The measurement tool is enabled by pressing the yellow ruler toolbar button as shown in *Figure [[fig:toolbar]]*. With the tool enabled clicking on the map will push new measurement points, depicted as small blue circles, to a stack. With two or more points added lines will connect the points in the order they were added and the path length is shown below the toolbar as depicted in *Figure [[fig:measure_path]]*.
+
+#+caption: Path measurement tool
+#+name: fig:measure_path
+#+attr_latex: :width 4in
+#+ATTR_HTML:  :width 57% :height auto
+[[./images/measure_path.png]]
+\FloatBarrier
+
+The length is found by using the map resolution included in the /occ_grid_meta/ message which is in meters per cell. When clicking a point on the map, a ray is cast from the mouse postion screen coordinates in to the scene and checked against the map plane for collision. If the ray collides the point is added to the measurement stack. Every frame we loop over the measurement stack and draw a circle and connecting lines for each point. Add the line lengths to a running sum, and convert the total to feet and inches for displaying the path length:
+
+#+begin_src cpp
+  intern void draw_measure_path(const measure_points &mp, urho::DebugRenderer *dbg)
+  {
+      float path_len = 0.0f;
+      for (int i = 0; i < mp.entry_count; ++i) {
+          // Only add a line if we have at least two entries - after adding the line add its length
+          // to the running path length sum
+          if (i > 0) {
+              dbg->AddLine(mp.entries[i - 1], mp.entries[i], mp.color);
+              path_len += (mp.entries[i - 1] - mp.entries[i]).Length();
+          }
+          dbg->AddCircle(mp.entries[i], {0, 0, -1}, mp.marker_rad, mp.color);
+      }
+      // Hide the path length text if there is no path - otherwise convert
+      // the length to feet and inches and display
+      mp.path_len_text->SetVisible(path_len > FLOAT_EPS);
+      if (path_len > FLOAT_EPS) {
+          path_len *= METERS_TO_FEET;
+          int feet = int(path_len);
+          path_len -= feet;
+          int inches = int(path_len * 12.0);
+
+          urho::String text;
+          text.AppendWithFormat("%d'%d\"", feet, inches);
+          mp.path_len_text->SetText(text);
+      }
+  }  
+#+end_src
+
+The paths and marker colors are easily changeable, but only through the source code. Measurement points can be removed from the stack in the opposite order they were added by pressing the pop measurement toolbar button.
 
 *** Broadcast messages
-Text
+If the first character of the parameters interface is not an open curly bracket to indicate the beginning of a json object, the contents of the parameter text edit box is sent to all connected clients as a message. Observer clients cannot send messages as they don't have access to the paremeter window, but they do receive messages. *Figure [[fig:message]]* shows an example of a controlling client sending a message to several observing clients.
+
+#+caption: Controlling client sending message to other clients using the parameter window
+#+name: fig:message
+#+attr_latex: :width 6in
+#+ATTR_HTML:  :width 85% :height auto
+[[./images/message.png]]
+\FloatBarrier
 
 * Conclusion
-Text
+In this project we restored and upgraded the UAF Clearpath platform assets, developed a web application for convenient visualization and control of the platforms, and thoroughly documented the entire process. The client and server applications are easily extended and customized using this documentation as reference, and the build process is streamlined with bash scripts to aid future developers.
 
-** Project Summary
-Text
+The web application runs in web browsers with the user interface tailored to work on both desktop and mobile browsers. Only machines connected to the same WiFi network as the Clearpath robots can connect, with different URL endpoints provided for passive observers and controllers. Both observer and controller endpoints show the map and costmaps as they are built, the laser scan data, local and global navigation paths when the robot is autonomously driving, on the Jackal the camera feed, and provide an interface for moving the camera and measuring paths. The controller endpoint additionally provides a joystick for driving the robot, a waypoint system for autonomous navigation, an interface for getting and setting ROS parameters, and a button to clear the maps and restart the ROS /move_base/ and /slam_gmapping/ nodes.
 
 ** Lessons Learned
-Text
+Throughout the project there were several learning moments. These moments helped generate the following list of lessons learned:
+- Always test code that commands a robot by simulation, and then in a safe environment
+- Always structure code that commands a robot so that if communication is lost, the robot stops
+- Don't issue drive commands to the robot when it's connected to sure power
+- The real behavior is always different than simulated
+- If something is wrong or buggy with your robot or your software, the issue is almost always with YOUR code (not the OS, not third pary libraries, not the web browser)
+- Don't upgrade dependencies unless required; things will break
 
 ** Future Work
-Text
+The clearpath platforms have further potential. With this project serving as the foundation, there are endless future project possibilities. Some possible features or enhancements to the client/server might include:
+- Add ability to save generated maps
+- Add 
 
 ** Final Remarks
-Text
+We hope this project is useful to the UAF CEM department as a supplement to the Clearpath assets, if only as an in depth reference on how the platforms work. All source code and documents, this writeup included, will remain available as long as GitHub is available at \autocite{client_repo} for the client application and \autocite{server_repo} for the server application.
 
 \newpage
 

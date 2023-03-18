@@ -28,6 +28,8 @@ bool animated_panel_run_frame(animated_panel *panel, float dt, const ui_info &ui
     if (panel->anim_state == PANEL_ANIM_INACTIVE)
         return false;
 
+    // By default we animate the element's max anchor, but if the rest point is greater than the set point we animate
+    // the min anchor. This allows the panel to show and hide correctly no matter the direction.
     auto set_anchor = &set_max_anchor;
     auto get_anchor = &get_max_anchor;
     if (panel->anchor_rest_point > panel->anchor_set_point) {
@@ -35,19 +37,27 @@ bool animated_panel_run_frame(animated_panel *panel, float dt, const ui_info &ui
         get_anchor = &get_min_anchor;
     }
 
+    // Get our normalized animation state from 0 to 1 - 0 being just starting and 1 being animation complete. If we are
+    // hiding the panel, 0 is complete and 1 is just starting.
     float mult = panel->cur_anim_time / panel->max_anim_time;
     if (panel->anim_state == PANEL_ANIM_HIDE)
         mult = 1 - mult;
 
+    // Interpolate our current anchor position using the above multiplier
     float cur_anchor = panel->anchor_rest_point + mult * (panel->anchor_set_point - panel->anchor_rest_point);
 
+    // If the panel is vertical, only animate the y component and just pass in the unchanged x component
+    // If the panel is horizontal, do the opposite.
     if (panel->anim_dir == PANEL_ANIM_VERTICAL)
         set_anchor(panel, get_anchor(panel).x_, cur_anchor);
     else
         set_anchor(panel, cur_anchor, get_anchor(panel).y_);
 
+    // Increment our time by the frame delta (dt)
     panel->cur_anim_time += dt;
-
+    
+    // If the animation time has reached or exceeded the max animation time, set the panel accordingly and mark the
+    // animation as complete
     if (panel->cur_anim_time >= panel->max_anim_time) {
         if (panel->anim_state == PANEL_ANIM_SHOW) {
             cur_anchor = panel->anchor_set_point;
