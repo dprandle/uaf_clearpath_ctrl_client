@@ -204,7 +204,7 @@ pup_func(command_set_params)
     pup_member_meta(blob_data, pack_va_flags::FIXED_ARRAY_CUSTOM_SIZE, &val.blob_size);
 }
 
-struct sicklms_laser_scan_meta
+struct lidar_scan_meta
 {
     float angle_min;
     float angle_max;
@@ -213,12 +213,12 @@ struct sicklms_laser_scan_meta
     float range_max;
 };
 
-inline sizet sicklms_get_range_count(const sicklms_laser_scan_meta &meta)
+inline sizet lidar_get_range_count(const lidar_scan_meta &meta)
 {
     return (sizet)((meta.angle_max - meta.angle_min) / meta.angle_increment) + 1;
 }
 
-pup_func(sicklms_laser_scan_meta)
+pup_func(lidar_scan_meta)
 {
     pup_member(angle_min);
     pup_member(angle_max);
@@ -227,15 +227,15 @@ pup_func(sicklms_laser_scan_meta)
     pup_member(range_max);
 }
 
-struct sicklms_laser_scan
+struct lidar_scan
 {
     static constexpr int MAX_SCAN_POINTS = 1000;
     packet_header header{};
-    sicklms_laser_scan_meta meta;
+    lidar_scan_meta meta;
     float ranges[MAX_SCAN_POINTS];
 };
 
-pup_func(sicklms_laser_scan)
+pup_func(lidar_scan)
 {
     pup_member(header);
     pup_member(meta);
@@ -388,7 +388,7 @@ struct reusable_packets
 {
     // Packets for receiving
     occ_grid_update *gu{};
-    sicklms_laser_scan *scan{};
+    lidar_scan *scan{};
     node_transform *ntf{};
     nav_path *navp{};
     current_goal_status *cur_goal_stat{};
@@ -415,7 +415,7 @@ struct net_connection
     reusable_packets pckts{};
     bool can_control{true};
 
-    ss_signal<const sicklms_laser_scan &> scan_received;
+    ss_signal<const lidar_scan &> scan_received;
     ss_signal<const occ_grid_update &> map_update_received;
     ss_signal<const occ_grid_update &> glob_cm_update_received;
     ss_signal<const occ_grid_update &> loc_cm_update_received;

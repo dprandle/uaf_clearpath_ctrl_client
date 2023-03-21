@@ -394,16 +394,18 @@ intern void update_scene_map_from_occ_grid(occ_grid_map *map, const occ_grid_upd
     map->rend_texture->SetData(map->image);
 }
 
-intern void update_scene_from_scan(map_panel *mp, const sicklms_laser_scan &packet)
+intern void update_scene_from_scan(map_panel *mp, const lidar_scan &packet)
 {
-    sizet range_count = sicklms_get_range_count(packet.meta);
+    // Resize the billboard count to match the received scan
+    sizet range_count = lidar_get_range_count(packet.meta);
     mp->scan_bb->SetNumBillboards(range_count);
 
+    // Loop over each ange and convert the polar angle/distance to cartesian coordinates
     float cur_ang = packet.meta.angle_min;
-    for (int i = 0; i < range_count; ++i)
-
-    {
+    for (int i = 0; i < range_count; ++i) {
         auto bb = mp->scan_bb->GetBillboard(i);
+
+        // Verify the range is within tolerance of the LIDAR - otherwise 
         if (packet.ranges[i] < packet.meta.range_max && packet.ranges[i] > packet.meta.range_min) {
             bb->position_ = {packet.ranges[i] * cos(cur_ang), packet.ranges[i] * sin(cur_ang), 0.0f};
             bb->enabled_ = true;
@@ -414,6 +416,7 @@ intern void update_scene_from_scan(map_panel *mp, const sicklms_laser_scan &pack
         }
         cur_ang += packet.meta.angle_increment;
     }
+    // Send billboard to the GPU
     mp->scan_bb->Commit();
 }
 
@@ -751,7 +754,7 @@ void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, 
     setup_path_length_text(mp, ui_inf);
 
     ss_connect(
-        &mp->router, conn->scan_received, [mp](const sicklms_laser_scan &pckt) { update_scene_from_scan(mp, pckt); });
+        &mp->router, conn->scan_received, [mp](const lidar_scan &pckt) { update_scene_from_scan(mp, pckt); });
 
     ss_connect(&mp->router, conn->map_update_received, [mp](const occ_grid_update &pckt) {
         update_scene_map_from_occ_grid(&mp->map, pckt);

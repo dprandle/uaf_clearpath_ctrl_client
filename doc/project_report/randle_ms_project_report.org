@@ -161,7 +161,7 @@ A topic is created by publishing a message to the topic - this can be done in c+
   /rosout_agg
 #+end_src
 
-This message/topic system is the most fundemental thing that makes ROS useful. For example, a vendor can build a LIDAR device any way they want; to make it ROS compatible the vendor would write a node which publishes LaserScan messages to the scan topic. Usually there is a way to configure which topic the message would publish to, in case there are multiple LIDARs or scan is being used for something else. One way to provide a customization point is through parameters.
+This message/topic system is the most fundemental thing that makes ROS useful. For example, a vendor can build a LIDAR device any way they want; to make it ROS compatible the vendor would write a node which publishes /LaserScan/ messages to the scan topic. Usually there is a way to configure which topic the message would publish to, in case there are multiple LIDARs or scan is being used for something else. One way to provide a customization point is through parameters.
 
 As part of roscore, ROS starts a parameter server. The server provides an API for nodes to register variables that are customizable and stores these variables and their values as a dictionary. Parameters can be set and retreived via c++ and python API, as well as through the command line tool rosparam. What paremeters do exactly is node dependent, but usually they provide a way to alter the node's behaviour at runtime. The navigation stack, for example, makes use of parameters to configure things like which navigation algorithm should be used, or how often should the pathfinding loop execute. Parameters can also be set for nodes using launch files, but only on node startup.
 
@@ -1736,6 +1736,8 @@ For every message that is sent or received, the total payload byte size is added
 [[./images/per_client_bandwidth.png]]
 \FloatBarrier
 
+Though TCP is used, a UDP like method is utilized to stream most data to clients. Web sockets buffer data that hasn't been sent out yet. When data is to be sent on a web socket the buffer is first checked; if the buffer is empty the data is sent and if it's not empty it is thrown away. On desktop sockets there is no accessible buffer to check so a flag is set on writing data and cleared when the write completes. Since maps and costmaps operate on incremental changes, all clients must be ready for more data or else no client
+
 ** ROS Integration
 On server startup a ROS node is started called /command_server/. The server relays ROS information to the client by subscribing to ROS topics, combining and formatting data of interest, and sending it to all connected clients. The server relays client commands to ROS by converting the client messages to ROS message formats and publishing to ROS topics. *Figure [[fig:command_server_rqt_graph]]* shows the ROS node/topic graph with the server running.
 
@@ -1745,7 +1747,6 @@ On server startup a ROS node is started called /command_server/. The server rela
 #+ATTR_HTML:  :width 100% :height auto
 [[./images/command_server_rqt_graph.png]]
 \FloatBarrier
-
 
 *** Joystick Driving
 The client can drive the robot by using the joystick shown in *Figure [[fig:control_interface_overview]]*. Movement on the joystick is converted to a two dimensional vector in the direction of the drag. The mouse position is cached on drag start and subtracted from the updated mouse position. The magnitude of the resulting vector is in pixels; its then normalized by, or clamped to if greater than, one third of the pixel diameter of the joystick outer ring (the dashed line). The joystick position is also updated to follow this vector.
@@ -1794,6 +1795,64 @@ The /move_base/ and /slam_gmapping/ ROS nodes are spawned at server startup thro
 #+end_src
 
 The standard error stream is ignored for /slam_gmapping/ but sent to clients for /move_base/. The stream is ignored for /slam_gmapping/ because the node pollutes the stream with unimportant information.
+
+*** Laser Scan
+Both Jackal and Husky have LIDAR's attached to their base frames as part of their sensor packages. The Jackal uses the SICK LMS151 LIDAR while the Husky uses the Velodyne VLP16. The scans are published to /front/scan/ at 10 Hz on both robots. The server subscribes to /front/scan and directly relays the scan message to all connected clients.
+
+#+begin_src cpp
+  struct lidar_scan_meta
+  {
+      float angle_min;
+      float angle_max;
+      float angle_increment;
+      float range_min;
+      float range_max;
+  };
+
+  struct lidar_scan
+  {
+      static constexpr int MAX_SCAN_POINTS = 1000;
+      packet_header header{};
+      sicklms_laser_scan_meta meta;
+      float ranges[MAX_SCAN_POINTS];
+  };
+#+end_src
+
+The scan is packed on the server in to the /lidar_scan/ schema. On receiving the scan packet header the client waits for the remaining byte count necessary to recieve the scan meta (20 bytes). The element count is obtained by subtracting the minimum angle from the maximum angle, dividing by the angle increment, and adding one. The ranges are then copied from the socket (or web socket) stream to the ranged array using the obtained element account. The /MAX_SCAN_POINTS/ constant was chosen experimentally as larger than any scan element count received from the Jackal or Husky.
+
+An urho::BillboardSet component attached to a scene node is used to render the scan to small screen facing billboards. The billboards are in screen space; their size is specified in pixels and does not change as the camera moves closer/further away. The billboard set contains an array of billboards each with a color and position. The position of each billboard is relative to the node and specified in Cartesian coordinates. The ranges array in the received scan contains floating point distances in meters where the first element is at the minimum angle and the last element is at the maximum angle and the distance is from the LIDAR to the reflection point.
+
+For every scan received the billboard array is resized to the scan range array size. The ranges are converted to polar coordinates and assigned as the billboard positions, and each billboard color is set.
+
+#+begin_src cpp
+intern void update_scene_from_scan(map_panel *mp, const lidar_scan &packet)
+{
+    // Resize the billboard count to match the received scan
+    sizet range_count = lidar_get_range_count(packet.meta);
+    mp->scan_bb->SetNumBillboards(range_count);
+
+    // Loop over each ange and convert the polar angle/distance to cartesian coordinates
+    float cur_ang = packet.meta.angle_min;
+    for (int i = 0; i < range_count; ++i) {
+        auto bb = mp->scan_bb->GetBillboard(i);
+
+        // Verify the range is within tolerance of the LIDAR - otherwise 
+        if (packet.ranges[i] < packet.meta.range_max && packet.ranges[i] > packet.meta.range_min) {
+            bb->position_ = {packet.ranges[i] * cos(cur_ang), packet.ranges[i] * sin(cur_ang), 0.0f};
+            bb->enabled_ = true;
+            bb->size_ = {6, 6};
+        }
+        else {
+            bb->enabled_ = false;
+        }
+        cur_ang += packet.meta.angle_increment;
+    }
+    // Send billboard to the GPU
+    mp->scan_bb->Commit();
+}
+#+end_src
+
+To show the billboards correctly in world coordinates these billboard positions must be transformed from the LIDAR's frame to the world transform frame. To do this we assign the laser scan node as a child of the robot's LIDAR model node.
 
 *** Maps
 There are three different occupancy grids sent to connected clients; the map, the global costmap, and the local costmap. These are assembled by the server by subscribing to the topics shown in *Table [[table:map_topics]]*. The map/costmap topics, messages, and associated ROS nodes are documented in [[SLAM GMapping]] and [[Navigation Stack]].

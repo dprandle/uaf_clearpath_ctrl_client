@@ -182,7 +182,7 @@ intern void em_net_connect(net_connection *conn)
 intern void alloc_connection(net_connection *conn)
 {
     conn->rx_buf = (net_rx_buffer *)malloc(sizeof(net_rx_buffer));
-    conn->pckts.scan = (sicklms_laser_scan *)malloc(sizeof(sicklms_laser_scan));
+    conn->pckts.scan = (lidar_scan *)malloc(sizeof(lidar_scan));
     conn->pckts.ntf = (node_transform *)malloc(sizeof(node_transform));
     conn->pckts.gu = (occ_grid_update *)malloc(sizeof(occ_grid_update));
     conn->pckts.navp = (nav_path *)malloc(sizeof(nav_path));
@@ -193,7 +193,7 @@ intern void alloc_connection(net_connection *conn)
     conn->pckts.ms = (misc_stats *)malloc(sizeof(misc_stats));
 
     memset(conn->rx_buf, 0, sizeof(net_rx_buffer));
-    memset(conn->pckts.scan, 0, sizeof(sicklms_laser_scan));
+    memset(conn->pckts.scan, 0, sizeof(lidar_scan));
     memset(conn->pckts.ntf, 0, sizeof(node_transform));
     memset(conn->pckts.gu, 0, sizeof(occ_grid_update));
     memset(conn->pckts.navp, 0, sizeof(nav_path));
@@ -306,8 +306,7 @@ intern void handle_scan_packet(binary_fixed_buffer_archive<net_rx_buffer::MAX_PA
 
     sizet meta_and_header_size = read_buf.cur_offset - cached_offset;
     sizet range_count = (sizet)((conn->pckts.scan->meta.angle_max - conn->pckts.scan->meta.angle_min) /
-                                conn->pckts.scan->meta.angle_increment) +
-                        1;
+                                conn->pckts.scan->meta.angle_increment) + 1;
     sizet total_packet_size = range_count * sizeof(float) + meta_and_header_size;
 
     if (available >= total_packet_size) {
@@ -442,7 +441,7 @@ intern bool matches_packet_id(const char *packet_id, const u8 *data)
 // Add different packet types to these two functions using helper macros
 intern sizet matching_packet_size(u8 *data)
 {
-    static sizet scan_size = packed_sizeof<sicklms_laser_scan_meta>();
+    static sizet scan_size = packed_sizeof<lidar_scan_meta>();
     static sizet occ_meta = packed_sizeof<occ_grid_meta>();
     static sizet node_tform = packed_sizeof<node_transform>();
     static sizet nav_path_meta = sizeof(u32);
