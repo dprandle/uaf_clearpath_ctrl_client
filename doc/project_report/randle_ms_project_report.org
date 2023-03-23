@@ -479,23 +479,60 @@ Text
 ** Wireless Controller
 Text
 
-** Fix Husky E-Stop malfunction
-Text
-
 * Wifi Network
-Text
+The WiFi network consists of the Jackal, the Husky, and two base stations. A base station is a weather sealed pelican junction box on a collapsable tripod stand. In and on the junction box there is a Ubiquity Bullet M2 router powered over ethernet, a 24V battery, an adaptor connecting the battery to the router, a button to switch the power, and a dipole antenna. On the bottom of the junction box there is an ethernet port connected through the battery adaptor to the router. The base station is shown in *Figure [[fig:base_station]]*.
 
-** Network Overview
-Text
+#+caption: Base station
+#+name:   fig:base_station
+#+attr_latex: :width 4in
+#+ATTR_HTML:  :width 57% :height auto
+[[./images/base_station.png]]
+\FloatBarrier
 
-** Restore Base Stations
-Text
+The network is set up so that any client can join the network when any one or more of the four devices are on. This is preferrable to the default Clearpath network setup as the Jackal and/or the Husky can operate the WiFi network without requiring any base stations. To accomplish this the routers are configured as access point repeaters with their DHCP servers handing out IP addresses from unique sets.
 
 ** Router Firmware Upgrade
-Text
+We applied the latest firmware uprgade to all Ubiquity Bullet M2 routers. The router has long been discontinued so finding the latest firmware revision is tricky. The firmware update section of the system tab in the router configuration application is shown in *Figure [[fig:router_fw_update]]*.
+
+#+caption: Firware update section of router configuration system page
+#+name:   fig:router_fw_update
+#+attr_latex: :width 6in
+#+ATTR_HTML:  :width 86% :height auto
+[[./images/router_fw_update.png]]
+\FloatBarrier
+
+Clicking "Check Now" does not work, but it does provide a link to the Ubiquity downloads page. Searching for the XM portion of the firmware finds /XM.v6.3.6/, the last (and only) revision of the firmware available on the site. Once downloaded the firmware is installed with "Choose File", selecting the downloaded file, and then clicking "Upload". After uploading a notice appears above the firmware update section. Clicking "update" will start performing the update as shown in *Figure [[fig:fw_update_progress]]*.
+
+#+caption: Firware update progress page
+#+name:   fig:fw_update_progress
+#+attr_latex: :width 4in
+#+ATTR_HTML:  :width 57% :height auto
+[[./images/fw_update_progress.png]]
+\FloatBarrier
+
+The Ubiquity Bullet M2 v.6.3.6 firmware file is saved as part of the project github repo \autocite{client_repo}.
 
 ** Router Configuration
-Text
+Each host device on the network is configured with a static IP address on the subnet 192.168.10.0/24. The base station LAN ports are set to DHCP with a fallback IP in case there is no DHCP server. *Table [[table:ip_addresses]]* shows the device IP settings.
+
+#+caption: Device IP addresses - netmask for all devices is 255.255.255.0
+#+name:   table:ip_addresses
+#+attr_latex: :width 7in :font \scriptsize
+| *Device*       | *Port*           | *Address*                                   |
+|----------------+------------------+---------------------------------------------|
+| Base Station 1 | Wireless (WLAN0) | 192.168.10.1                                |
+| Base Station 1 | Wired (LAN0)     | DHCP (192.168.1.20 fallback)                |
+| Base Station 2 | Wireless (WLAN0) | 192.168.10.2                                |
+| Base Station 2 | Wired (LAN0)     | DHCP (192.168.1.21 fallback)                |
+| Jackal Router  | Wireless (WLAN0) | Bridged LAN0                                |
+| Jackal Router  | Wired (LAN0)     | Bridged WLAN0 (192.168.10.3 for management) |
+| Jackal CPU     | Wired (eth0)     | 192.168.10.5                                |
+| Jackal LIDAR   | Wired            | 192.168.10.6                                |
+| Husky Router   | Wireless (WLAN0) | Bridged LAN0                                |
+| Husky Router   | Wired (LAN0)     | Bridged WLAN0 (192.168.10.4 for management) |
+| Husky CPU      | Wired (eth0)     | 192.168.10.7 (bridged to eth1)              |
+| Husky CPU      | Wired (eth1)     | 192.168.131.1 (bridged to eth0)             |
+| Husky LIDAR    | Wired            | 192.168.131.201                             |
 
 ** Custom DNS Servers
 Text
