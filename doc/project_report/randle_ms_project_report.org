@@ -40,7 +40,6 @@ ROSboard
 
 * System Overview
 
-Each Clearpath robot is configured to connect or establish a Wifi hostspt with SSID "clearpath". When the base stations are powered up, they connect and extend the clearpath network
 
 * Robot Operating System (ROS)
 From the front page of ros.org, ROS is "a set of software libraries and tools that help you build robot applications". There are tutorials and explanations on how every part of ROS works available here \autocite{rosmain}, but here we summarize the parts of ROS utilized in this project.
@@ -462,10 +461,10 @@ The default jackal_world.launch and husky_playground.launch files create the wor
 It is worth mentioning, before launching Gazebo, the machine running the simulation must be configured as the ROS master with roscore running.
 
 * Clearpath Robot Configuration
-Text
+The Clearpath Jackal and Husky UGVs have various sensors attached the their 
 
 ** Upgrade ROS from ROS Indigo to ROS Noetic
-Text
+Both robots were 
 
 ** Robot Startup
 Text
@@ -477,7 +476,7 @@ Text
 Text
 
 ** Wireless Controller
-Text
+The Jackal and Husky 
 
 * Wifi Network
 The WiFi network consists of the Jackal, the Husky, and two base stations. A base station is a weather sealed pelican junction box on a collapsable tripod stand. In and on the junction box there is a Ubiquity Bullet M2 router powered over ethernet, a 24V battery, an adaptor connecting the battery to the router, a button to switch the power, and a dipole antenna. On the bottom of the junction box there is an ethernet port connected through the battery adaptor to the router. The base station is shown in *Figure [[fig:base_station]]*.
@@ -489,9 +488,50 @@ The WiFi network consists of the Jackal, the Husky, and two base stations. A bas
 [[./images/base_station.png]]
 \FloatBarrier
 
-The network is set up so that any client can join the network when any one or more of the four devices are on. This is preferrable to the default Clearpath network setup as the Jackal and/or the Husky can operate the WiFi network without requiring any base stations. To accomplish this the routers are configured as access point repeaters with their DHCP servers handing out IP addresses from unique sets.
+The network is setup with base station one configured as the router and base station two, the Jackal, and the Husky configured as access point repeaters. Only base station one is setup to connect to another router for internet; its LAN port is set to obtain an IP through DHCP with a fallback address set for management. The LAN port on base station one is not bridged to the WLAN port like it is on base station two, the Jackal, and the Husky. Each host device on the network is configured with a static IP address on the subnet 192.168.10.0/24. This is used because it is within the class C network private address range, and is different than the commmon home router subnet 192.168.1.0/24. *Table [[table:ip_addresses]]* shows the device IP and DHCP server settings for the routers.
 
-** Router Firmware Upgrade
+#+caption: Device IP addresses - netmask for all devices is 255.255.255.0
+#+name:   table:ip_addresses
+#+attr_latex: :width 7in :font \scriptsize
+| *Device*              | *Port*           | *IP Address*                      | *MAC Address*     |
+|-----------------------+------------------+-----------------------------------+-------------------|
+| Base Station 1 Router | Wireless (WLAN0) | 192.168.10.1                      | 68:72:51:2A:80:15 |
+| Base Station 1 Router | Wired (LAN0)     | DHCP (192.168.1.20 fallback)      | 68:72:51:2B:80:15 |
+| Base Station 2 Router | Wireless (WLAN0) | 192.168.10.2 (bridged LAN0)       | 68:72:51:40:01:DA |
+| Base Station 2 Router | Wired (LAN0)     | Bridged WLAN0                     | 68:72:51:41:01:DA |
+| Jackal Router         | Wireless (WLAN0) | 192.168.10.3 (bridged LAN0)       | 68:72:51:2C:1D:6E |
+| Jackal Router         | Wired (LAN0)     | Bridged WLAN0                     | 68:72:51:2D:1D:6E |
+| Jackal CPU (br0)      | Wired (eno1)     | 192.168.10.5 (bridged enp4s0)     | 00:0B:AB:B1:FA:D1 |
+| Jackal CPU (br0)      | Wired (enp4s0)   | 192.168.2.1 (bridged eno1)        | 00:0B:AB:B1:FA:D2 |
+| Jackal LIDAR          | Wired            | 192.168.2.14                      | 00:06:77:20:81:B8 |
+| Husky Router          | Wireless (WLAN0) | Bridged LAN0                      | 00:0F:92:FA:29:AA |
+| Husky Router          | Wired (LAN0)     | Bridged WLAN0 (192.168.10.4 mgmt) | 00:0F:92:02:A6:AA |
+| Husky CPU             | Wired (eth0)     | 192.168.10.6                      | 00:30:18:c6:ec:f3 |
+| Husky CPU             | Wired (eth1)     | 192.168.131.1                     | 00:30:18:c6:ec:f4 |
+| Husky LIDAR           | Wired            | 192.168.131.201                   | 60:76:88:10:30:64 |
+
+DHCP servers are enabled on the Jackal and Husky wireless routers though they are configured to be layer two switches rather than layer three routers. This allows clients to connect to the Jackal and/or Husky without base stations and without clients having to set static IPs. The Husky router is a Microhard VIP2-2400, which is now discontinued. It provides a DHCP server even when configured as a layer two switch/bridge. The Jackal (along with the base stations) uses the Ubiquiti Bullet M2 which does not provide a DHCP server when the device is configured as a layer two switch/bridge. To get around this, the Jackal computer is configured to run a dhcp server using isc-dhcp-server. Each DHCP server on the network is configured to hand out IP addresses in a sub-part of the full subnet range so there are no IP address conflicts.
+
+Clients can still connect to the Bullet M2 and the VIP2 when configured as repeaters. The only caveat is that if the Husky (VIP2 router) is powered on first and a client connects to the network, and then another device with the Bullet M2 is subsequently added to the network, the client can only ping the added device if he/she reconnects to the network. The opposite is not true. If any other device is powered on before the Husky, no reconnects are necessary.
+
+** Ubiquiti Bullet M2 Router
+The Bullet M2 router is used in both base stations and the Jackal. It is powered over ethernet and provides an N-type female connector for an antenna. Each unit is connected to a dipole antenna. 
+
+*** Firmware Upgrade
+When starting this project, only base station 1 did not have working Ubiquiti firmware - it had a non functional version of dd-wrt. As dd-wrt web interface does not provide any option to install the original firmware, to return from dd-wrt to Ubiquiti firmware we had to use a tftp client from a host connected to the unit's ethernet port through a switch. First we put the unit in firmware flash mode by powering on the unit while holding down the small reset button for about 12 seconds. The unit's connection LEDs start flashing in an alternating pattern, and the ethernet port can be pinged at 192.168.1.20. To upload this firmware to the device using tftp:
+
+#+begin_src bash
+  $ mkdir tmp && cd tmp
+  $ cp <path/to/firmware/file.bin> ./firmware
+  $ tftp 192.168.1.20
+  $ bin
+  $ put firmware
+  # After some time a confirm message shows
+  $ quit
+#+end_src
+
+Then wait for a few minutes until the unit resets and the LEDs are no longer blinking. The router configure page is available at the default IP address 192.168.1.20.
+
 We applied the latest firmware uprgade to all Ubiquity Bullet M2 routers. The router has long been discontinued so finding the latest firmware revision is tricky. The firmware update section of the system tab in the router configuration application is shown in *Figure [[fig:router_fw_update]]*.
 
 #+caption: Firware update section of router configuration system page
@@ -510,32 +550,91 @@ Clicking "Check Now" does not work, but it does provide a link to the Ubiquity d
 [[./images/fw_update_progress.png]]
 \FloatBarrier
 
-The Ubiquity Bullet M2 v.6.3.6 firmware file is saved as part of the project github repo \autocite{client_repo}.
+The Ubiquity Bullet M2 v.6.3.6 firmware file is saved as part of the project github repo \autocite{client_repo} in /doc/bullet_m2_router/firmware/ folder. 
 
-** Router Configuration
-Each host device on the network is configured with a static IP address on the subnet 192.168.10.0/24. The base station LAN ports are set to DHCP with a fallback IP in case there is no DHCP server. *Table [[table:ip_addresses]]* shows the device IP settings.
+*** Configuration
+In order for the routers to work with non Ubiquiti devices at all (even clients), airMAX must be turned off as shown in *Figure [[fig:air_max]]*.
 
-#+caption: Device IP addresses - netmask for all devices is 255.255.255.0
-#+name:   table:ip_addresses
-#+attr_latex: :width 7in :font \scriptsize
-| *Device*       | *Port*           | *Address*                                   |
-|----------------+------------------+---------------------------------------------|
-| Base Station 1 | Wireless (WLAN0) | 192.168.10.1                                |
-| Base Station 1 | Wired (LAN0)     | DHCP (192.168.1.20 fallback)                |
-| Base Station 2 | Wireless (WLAN0) | 192.168.10.2                                |
-| Base Station 2 | Wired (LAN0)     | DHCP (192.168.1.21 fallback)                |
-| Jackal Router  | Wireless (WLAN0) | Bridged LAN0                                |
-| Jackal Router  | Wired (LAN0)     | Bridged WLAN0 (192.168.10.3 for management) |
-| Jackal CPU     | Wired (eth0)     | 192.168.10.5                                |
-| Jackal LIDAR   | Wired            | 192.168.10.6                                |
-| Husky Router   | Wireless (WLAN0) | Bridged LAN0                                |
-| Husky Router   | Wired (LAN0)     | Bridged WLAN0 (192.168.10.4 for management) |
-| Husky CPU      | Wired (eth0)     | 192.168.10.7 (bridged to eth1)              |
-| Husky CPU      | Wired (eth1)     | 192.168.131.1 (bridged to eth0)             |
-| Husky LIDAR    | Wired            | 192.168.131.201                             |
+#+caption: Air max disabled or else the router won't talk to any non Ubiquiti devices. This setting only appears once the device is placed in access point or access point repeater mode; station mode doesn't show the option. 
+#+name:   fig:air_max
+#+attr_latex: :width 6in
+#+ATTR_HTML:  :width 86% :height auto
+[[./images/air_max.png]]
+\FloatBarrier
+
+All Bullet M2 routers are configured as access point repeaters. The MAC addresses for other AP repeaters (including the Microhard VIP2) is given as WDS peers so the device can directly communicate with the other devices over the wireless link. If no other devices are found, the device still provides an access point to the network. The wireless link is secured using WEP 128 bit ASCII key set to uafclearpath1. WEP is the most secure option for this router when operating in access point repeater mode. The routers are configured to use 20 MHz channel width - they will not work together otherwise. *Figure [[fig:bullet_wireless_settings]]* shows the wireless configuration page for base station 1. These settings are the same for all routers except for the WDS peers.
+
+#+caption: Ubiquiti Bullet M2 device wireless settings for base station 1. The other devices share these settings except for the WDS peers.
+#+name:   fig:bullet_wireless_settings
+#+attr_latex: :width 4in
+#+ATTR_HTML:  :width 57% :height auto
+[[./images/bullet_wireless_settings.png]]
+\FloatBarrier
+
+Base station 1 router network mode is set to SOHO Router. In this mode, network address translation and all firewall rules are applied such that the wireless adaptor is the LAN and the wired adaptor connects to the WAN. The wired adaptor is configured to use DHCP to obtain an IP, with a backup IP in case no DHCP server is found. The WLAN adaptor is configured with the IP address 192.168.10.1, and other network devices use this IP address as their gateway. Connecting the ethernet port to another router with internet access will provide the wireless network with internet access, and the network is hidden behind NAT.
+
+Base station 2 and the Jackal router network modes are set to Bridge. In bridge mode the device acts like a layer 2 switch; all network traffic is transparently routed between the WLAN and LAN. The device only has an IP address for management purposes. Base station 2 ethernet port can be used as a network switch port, much like the ethernet ports provided on the Husky top plate. The SOHO Router (base station 1) and the Bridge (Jackal router) network settins are shown in *Figure [[fig:bullet_network_settings]]*. The Jackal router network settings and base station 2 network settings are the same except for the IP address - all IP addresses are given in *Table [[table:ip_addresses]]*. 
+
+#+caption: Ubiquiti Bullet M2 device network settings for base station 1 (left) and Jackal (right). Base station 2 shares the Jackal settings except for IP address.
+#+name:   fig:bullet_network_settings
+#+attr_latex: :width 6in
+#+ATTR_HTML:  :width 86% :height auto
+[[./images/bullet_network_settings.png]]
+\FloatBarrier
+
+** Microhard VIP2-2400
+The VIP2 router is used in the Husky. It is powered from the internal Husky user power and has an RP-TNC RF connector which is connected to a dipole antenna mounted on the Husky. The manufacturer had no new firmware available for the device as it has been discontinued since 2014.
+
+The VIP2 is set as a bridged repeater. When turned on it searches for another access point with the same SSID and attempts to connect using the configured security settings (WEP with uafclearpath1 encoded from ASCII to hexidecimal as the key). As with the Bullet M2 routers, the wireless channel bandwidth is set to 20 MHz. The IP address of the LAN port is static (refer to *Table [[table:ip_addresses]]*) though a DHCP server is running to serve a subgroup of IP addresses as mentioned earlier. All of the relavant VIP2 router settins are shown in *Figure [[fig:vip_settings]]* - any settings not shown are configured as default.
+
+#+caption: Microhard VIP2-2400 router settings. In repeater mode the LAN is bridged to the WAN with an IP address for management.
+#+name:   fig:vip_settings
+#+attr_latex: :width 6in
+#+ATTR_HTML:  :width 67% :height auto
+[[./images/vip2_settings.png]]
+\FloatBarrier
 
 ** Custom DNS Servers
-Text
+Both the Jackal and the Husky use dnsmasq to create DNS servers. This is to allow hosts to be entered directly in client browser address bars without needing to know the IP address. The host to ip address mapping is configured in the Jackal and Husky /etc/hosts/ file and looks like this:
+
+#+begin_src bash
+192.168.10.1    base-station-1
+192.168.10.2    base-station-2
+192.168.10.3    jackal-router
+192.168.10.4    husky-router
+192.168.10.5    jackal
+192.168.10.6    husky  
+#+end_src
+
+To connect to any of the above, type them in the web browser prefixed by http. For example, to open the jackal app type http://jackal for the observer app and http://jackal/control for the control app.
+
+To set up dnsmasq DNS server to run on robot startup:
+
+#+begin_src bash
+  sudo apt install dnsmasq
+  # The resolver conflicts with dnsmasq on port 53 so we stop it and prevent it from restarting on reboot  
+  sudo systemctl stop systemd-resolved.service
+  sudo systemctl mask systemd-resolved.service
+  sudo systemctl enable dnsmasq.service
+#+end_src
+
+The following needs to be added and/or uncommented in the /etc/dnsmasq.conf file on both robots; these entries are scattered throughout the file.
+
+#+begin_src bash
+  port=53
+  domain-needed
+  bogus-priv
+  no-resolv
+  server=192.168.10.1
+  # On the Jackal
+  interface=br0
+  # On the Husky
+  interface=eno1
+  no-dhcp-interface=br0
+  cache-size=1000
+#+end_src
+
+Once this is complete, reboot the robot. The DNS servers should now be operational. If the routers are configured using the DNS configuration settings outline in [[Ubiquiti Bullet M2 Router]] and [[Microhard VIP2-2400]], network clients will use the mapping in /etc/hosts/ on either robot.
 
 * UAF Clearpath Control Web Application
 The web application provides an interface to ROS control and navigation data for the Jackal and Husky through a web browser. The basic driving/mapping/autonomous navigation interface does not require any ROS knowledge. There is an interface for getting/setting ROS parameters for users who need more control.
