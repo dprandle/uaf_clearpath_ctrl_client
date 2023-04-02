@@ -1,3 +1,4 @@
+#+OPTIONS: toc:nil
 #+LATEX_CLASS: article
 #+LaTeX_HEADER: \usepackage[a4paper, total={7in, 10in}]{geometry}
 #+LaTeX_HEADER: \usepackage{minted}
@@ -12,42 +13,70 @@
 #+LaTeX_HEADER: \hypersetup{colorlinks, citecolor={blue!50!black}, linkcolor={blue!35!black}, urlcolor={blue!80!black}}
 #+LaTeX_HEADER: \usepackage[section]{placeins}
 #+LaTeX_HEADER: \usepackage{microtype}
-* Abstract
+#+LaTeX_HEADER: \title{A Web Interface for Clearpath Jackal and Husky Navigation, Mapping, and Control}
+#+LaTeX_HEADER: \author{Daniel Randle}
+
+#+begin_abstract
+This project aims to restore and upgrade the UAF Clearpath platform assets, develop a web application for visualization and control, and document the process. The platforms were upgraded with the latest Clearpath Linux distributions and ROS packages, and their base stations were restored with correctly configured routers. A web application was created to provide convenient visualization and control of the UGVs through a user interface tuned for desktop and smartphone web browsers. The system allows for full control/visualization and read-only visualization through different endpoints, with driving and autonomous navigation features available through the control endpoint. The system also provides a two-dimensional map with the robot and obstacles localized on the map, and an interface for setting autonomous navigation goals. The project was thoroughly documented, and the source code and documents will remain available on GitHub for future use. The system is easily extendable and customized, allowing for the development of new navigation algorithms, user interface features, and endless other possibilities future projects involving Clearpath platforms.
+#+end_abstract
+\newpage
+
+#+toc: headlines 2
+\newpage
+
+\listoffigures
+\listoftables
+\newpage
 
 * Introduction
 ** Background
-UAF purchased the Clearpath Jackal and Husky as assets to aid in mining emergency operations. Pogo Mine expressed interest in 
-unmanned exploration and mapping facilities and Clearpath provided these platforms as turn key solutions. Several graduate students worked alongside ACUASI to further develop the platforms for UAF specific use, and to integrate UAS (unmanned ariel systems).
+UAF purchased the Clearpath Jackal and Husky as assets to aid in mining emergency operations. Pogo Mine expressed interest in unmanned exploration and mapping facilities and Clearpath provided these platforms as turn key solutions. Several graduate students worked alongside ACUASI to further develop the platforms for UAF specific use, and to integrate UAS (unmanned ariel systems).
 
-The Jackal and Husky provided many untapped capabilities largely due to inconvenient user interface and out-of-date software. The platforms utilize Robot Operating System (ROS) for communication and control. ROS versions are linked to specific versions of linux distributions - this is problematic and becomes more problematic as time goes by; a computer with with that specific linux distribution must be on hand to utilize ROS visualization and command capabilities (outside of using the hard-linked driving controller). Without these features, the Clearpath robots are of little value; they cannot be driven out of visual range and their included sensors are unusable.
+The Jackal and Husky provided many untapped capabilities largely due to inconvenient user interface and out-of-date software. The platforms utilize Robot Operating System (ROS) for communication and control. ROS versions are linked to specific versions of Linux distributions - this is problematic and becomes more problematic as time goes by; a computer with with that specific Linux distribution must be on hand to utilize ROS visualization and command capabilities (outside of using the hard-linked driving controller). Without these features, the Clearpath robots are of little value; they cannot be driven out of visual range and their included sensors are unusable.
 
 The platforms also include base station tripod WiFi extenders and long range WiFi antennas mounted on the robots in order to provide extended WiFi network range. In the original configuration, the clearpath robots combine with the base stations to create an adhoc WiFi network. The robots and base stations make use of Ubiquity Bullet M2 extended range routers; the firmware on several of these routers had been overwritten by OpenWRT firmware rendering them useless, and the remaining routers were configured incorrectly. Also The base station extenders were missing batteries and no longer operational.
 
 Finally, the Husky was no longer operational. The included controller no longer worked, and both clearpath robots are out of warranty.
 
 ** Project Scope
-Restore clearpath platforms to a working state. Upgrade the Jackal/Husky with the latest Clearpath linux distributions and ROS packages. Restore the base stations and setup/configure the Bullet M2 routers, along with the Jackal/Husky network cards using linux netplan. Document the process of restore, setup, and configuration.
+Restore clearpath platforms to a working state. Upgrade the Jackal/Husky with the latest Clearpath Linux distributions and ROS packages. Restore the base stations and setup/configure the Bullet M2 routers, along with the Jackal/Husky network cards using Linux netplan. Document the process of restore, setup, and configuration.
 
-Create a web app to provide visualization and control of the Jackal/Husky, with a user interface tuned for both smart phone and desktop through a web browser. Provide different end points for full control/visualization and visualization only to allow participants to view data in read only fashion - make endpoints available to anyone
-connected to the Clearpath WiFi network. Allow driving the Husky/Jackal through the control endpoint without disabling control through the wireless controller. Show a two-dimensional map with the robot and obstacles localized on the map, and provide an interface for setting autonomous navigation goals. Provide a way to reset the map without requiring robot restart.
+Create a web app to provide visualization and control of the Jackal/Husky, with a user interface tuned for both smart phone and desktop through a web browser. Provide different end points for full control/visualization and visualization only to allow participants to view data in read only fashion - make endpoints available to anyone connected to the Clearpath WiFi network. Allow driving the Husky/Jackal through the control endpoint without disabling control through the wireless controller. Show a two-dimensional map with the robot and obstacles localized on the map, and provide an interface for setting autonomous navigation goals. Provide a way to reset the map without requiring robot restart.
 
 ** Related Works
-There are several web and smart phone apps which provide ROS interfaces, allowing remote robot visualization and control.
-Foxglove
-ROSControlCenter
-ROSweb
-ROSboard
+There are several web apps which provide ROS interfaces, allowing remote robot visualization and control. Probably the most promising is Foxglove Studio Web \autocite{foxglove}. Almost all web based ROS interfaces require the ROS package /rosbridge_server/ \autocite{rosbridge} to be installed on the ROS host. Launching /rosbridge_server/ creates a WebSocket server which relays ROS communication over WebSockets using a custom protocol which wraps ROS messages in JSON objects. Foxglove Studio Web claims to work with /rosbridge_server/, and also provides its own server package called /foxglove_server/. We installed both on the Husky and tried to use the Foxglove web application with each from a supported browser (Chrome), but neither would work. The server processes gave no indications of failed connections - so it was hard to investigate Foxglove any further.
+
+WebViz \autocite{webviz} is another ROS web app. Foxglove looks very similar to WebViz as it is forked from it. WebViz also uses /rosbridge_server/. To connect, a special URL at their provided endpoint is required with the host IP address and port specified. An exception had to be added to the browser to run unsafe javascript to get the site to load. Unfortunately, this site also would not connect to either UGV.
+
+ROS Control Center \autocite{roscontrolcenter} did connect to both the Husky and Jackal using the /rosbridge_server/, but it took about 10 seconds to load. The web application interface is not great, especially on a smartphone, and provides no way to visualize any mapping, navigation, camera, or other data except raw data as ROS messages. The only way to drive the robot is to send the message manually as values, which is a bad idea.
+
+ROSboard \autocite{rosboard} is a project that opted to use a non /rosbridge_server/ solution. ROSboard has a few nice visualizations, but no way to control the robot. The user interface is tailored more for desktop than smartphones or tablets.
+
+It was clear that none of the available front end web tools would work well for the Jackal and Husky. We need more tailored control over the interface, and the ability to see mapping data alongside navigation data with the ability to drive the UGV. There are a few reasons we opt to use our own custom server rather than /rosbridge_server/:
+- The browser should not have superuser control to the ROS system
+- Provide more flexibility to perform non ROS tasks on the UGVs
+- Avoid hard linking the client/server communication protocol to ROS message protocol as ROS message formats change over time
+- Don't depend on /rosbridge_server/ - it may or may not be available on future ROS versions and distributions
+- Perform compression on maps and costmaps before sending to clients
+- Perform throttling on data
 
 * System Overview
+The Clearpath UGVs along with the base stations establish an adhoc wireless network using routers configured as access point repeaters. Using smartphone or dekstop web browsers, clients can connect to the WiFi network and use http://jackal or http://husky to view live data from the UGV. The page served to the client is generated by a server application running on each robot which communicates with the ROS master process using ROS topics and messages. Using http://jackal/control and http://husky/control, clients can also drive the UGVs and create waypoints for autonomous navigation. The top level system diagram is shown in *Figure [[fig:system_overview]]*.
 
+#+caption: System overview; controller links shown in green, observer links shown in blue, and ROS to robot links in orange
+#+name:   fig:system_overview
+#+attr_latex: :width 6in
+#+ATTR_HTML:  :width 87% :height auto
+[[./images/system_overview.png]]
+\FloatBarrier
 
 * Robot Operating System (ROS)
 From the front page of ros.org, ROS is "a set of software libraries and tools that help you build robot applications". There are tutorials and explanations on how every part of ROS works available here \autocite{rosmain}, but here we summarize the parts of ROS utilized in this project.
 
-Just like an operating system provides a standard platform/environment for applications to run, ROS provides a standard platform/environment for robot applications. All ROS tools run on top of a linux distribution, and are invoked with CLI (command line interface) just like native GNU tools (such as a C compiler, or grep). That begs the question - why not just use linux executables? That is basically what ROS is - except that it standardizes and abstracts inter-process and inter-machine communication. It does this mainly through nodes, topics, and messages.
+Just like an operating system provides a standard platform/environment for applications to run, ROS provides a standard platform/environment for robot applications. All ROS tools run on top of a Linux distribution, and are invoked with CLI (command line interface) just like native GNU tools (such as a C compiler, or grep). That begs the question - why not just use Linux executables? That is basically what ROS is - except that it standardizes and abstracts inter-process and inter-machine communication. It does this mainly through nodes, topics, and messages.
 
 ** Setup
-If using a compatible linux distrobution (currently Ubuntu 20.04 is the latest supported version) ROS can be installed using apt package manager \autocite{rosinstall}. ROS Noetic was installed on the development machine using:
+If using a compatible Linux distribution (currently Ubuntu 20.04 is the latest supported version) ROS can be installed using apt package manager \autocite{rosinstall}. ROS Noetic was installed on the development machine using:
 #+begin_src bash
   $ sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list'
   $ sudo apt install curl
@@ -55,7 +84,7 @@ If using a compatible linux distrobution (currently Ubuntu 20.04 is the latest s
   $ sudo apt update
 #+end_src
 
-oOnce installed, a bash setup script located at /opt/ros/kinetic/setup.bash must be sourced in order for ROS tools to be available on the command line. This is a pattern that ROS uses repeatedly; set environment variables and system values by sourcing bash scripts. This allows ROS to alter system settings and provide a convenient shell interface without invading or changing the system - the settings are dropped once the shell is terminated.
+Once installed, a bash setup script located at /opt/ros/kinetic/setup.bash must be sourced in order for ROS tools to be available on the command line. This is a pattern that ROS uses repeatedly; set environment variables and system values by sourcing bash scripts. This allows ROS to alter system settings and provide a convenient shell interface without invading or changing the system - the settings are dropped once the shell is terminated.
 
 In order to fully utilize ROS and build packages, some dependencies are needed. The following was used to install these dependencies on the development machine:
 
@@ -65,9 +94,9 @@ In order to fully utilize ROS and build packages, some dependencies are needed. 
   $ rosdep update
 #+end_src
 
-An ROS system can include multiple machines, but exactly one of the machines must be designated as the ROS Master (without complicated multi-master setup). Most ROS utilities provide command line arguements to specify which machine is the master, but specifying it this way is tedious and error prone. Since an ROS system includes several executables, all of which need to know who is designated master, the environment variable ROS_MASTER_URI can be set to specify the master globablly. The uri is in the format http://HOSTNAME:PORT where hostname can be either the machine name or IP address and the port can be any available open port of choice - but the docs suggest a default of 11311. ROS_MASTER_URI defaults to http://localhost:11311, so leaving it unset sets the ROS master to self.
+An ROS system can include multiple machines, but exactly one of the machines must be designated as the ROS Master (without complicated multi-master setup). Most ROS utilities provide command line arguments to specify which machine is the master, but specifying it this way is tedious and error prone. Since an ROS system includes several executables, all of which need to know who is designated master, the environment variable ROS_MASTER_URI can be set to specify the master globally. The uri is in the format http://HOSTNAME:PORT where hostname can be either the machine name or IP address and the port can be any available open port of choice - but the docs suggest a default of 11311. ROS_MASTER_URI defaults to http://localhost:11311, so leaving it unset sets the ROS master to self.
 
-An ROS system is started by running roscore in a terminal (after sourcing the setup script) on the designated master machine. Since ROS_MASTER_URI defaults to localhost, it can be left as default for the master. All other machines must set ROS_MASTER_URI in the terminal to the machine running roscore before invoking any ROS commands - leaving it as localhost in this case will fail with "Unable to communicate with master" as roscore has not been run on the machine. If roscore is started on multiple machines (all leaving ROS_MASTER_URI as localhost), then each machine would be running its own ROS system and ROS executables would be unable to communicate with eachother.
+An ROS system is started by running roscore in a terminal (after sourcing the setup script) on the designated master machine. Since ROS_MASTER_URI defaults to localhost, it can be left as default for the master. All other machines must set ROS_MASTER_URI in the terminal to the machine running roscore before invoking any ROS commands - leaving it as localhost in this case will fail with "Unable to communicate with master" as roscore has not been run on the machine. If roscore is started on multiple machines (all leaving ROS_MASTER_URI as localhost), then each machine would be running its own ROS system and ROS executables would be unable to communicate with each other.
 
 The Jackal and Husky run separate ROS systems - on startup they both run roscore with ROS_MASTER_URI pointing to localhost on port 11311. It is theoretically possible to use the same ROS system for both robots, but would be difficult and provide little benefit (this would be called a multi-master setup). The command roscore starts an ROS master daemon, a parameter server, and a node (a process) called rosout for logging. The ROS master daemon is responsible for connecting ROS nodes (processes) to eachother on request. Once the connection is made - nodes engage in peer to peer communication. The parameter server provides a server for nodes to register static and dynamic parameters, and the rosout node provides logging.
 
@@ -460,24 +489,6 @@ The default jackal_world.launch and husky_playground.launch files create the wor
 
 It is worth mentioning, before launching Gazebo, the machine running the simulation must be configured as the ROS master with roscore running.
 
-* Clearpath Robot Configuration
-The Clearpath Jackal and Husky UGVs have various sensors attached the their 
-
-** Upgrade ROS from ROS Indigo to ROS Noetic
-Both robots were 
-
-** Robot Startup
-Text
-
-** Navigation Package
-Text
-
-** Network
-Text
-
-** Wireless Controller
-The Jackal and Husky 
-
 * Wifi Network
 The WiFi network consists of the Jackal, the Husky, and two base stations. A base station is a weather sealed pelican junction box on a collapsable tripod stand. In and on the junction box there is a Ubiquity Bullet M2 router powered over ethernet, a 24V battery, an adaptor connecting the battery to the router, a button to switch the power, and a dipole antenna. On the bottom of the junction box there is an ethernet port connected through the battery adaptor to the router. The base station is shown in *Figure [[fig:base_station]]*.
 
@@ -488,7 +499,7 @@ The WiFi network consists of the Jackal, the Husky, and two base stations. A bas
 [[./images/base_station.png]]
 \FloatBarrier
 
-The network is setup with base station one configured as the router and base station two, the Jackal, and the Husky configured as access point repeaters. Only base station one is setup to connect to another router for internet; its LAN port is set to obtain an IP through DHCP with a fallback address set for management. The LAN port on base station one is not bridged to the WLAN port like it is on base station two, the Jackal, and the Husky. Each host device on the network is configured with a static IP address on the subnet 192.168.10.0/24. This is used because it is within the class C network private address range, and is different than the commmon home router subnet 192.168.1.0/24. *Table [[table:ip_addresses]]* shows the device IP and DHCP server settings for the routers.
+The network is setup with base station 1 configured as the router and base station two, the Jackal, and the Husky configured as access point repeaters. Only base station 1 is setup to connect to another router for internet; its LAN port is set to obtain an IP through DHCP with a fallback address set for management. The LAN port on base station 1 is not bridged to the WLAN port like it is on base station 2, the Jackal, and the Husky. Each host device on the network is configured with a static IP address on the subnet 192.168.10.0/24. This is used because it is within the class C network private address range, and is different than the commmon home router subnet 192.168.1.0/24. *Table [[table:ip_addresses]]* shows the device IP and DHCP server settings for the routers.
 
 #+caption: Device IP addresses - netmask for all devices is 255.255.255.0
 #+name:   table:ip_addresses
@@ -501,18 +512,27 @@ The network is setup with base station one configured as the router and base sta
 | Base Station 2 Router | Wired (LAN0)     | Bridged WLAN0                     | 68:72:51:41:01:DA |
 | Jackal Router         | Wireless (WLAN0) | 192.168.10.3 (bridged LAN0)       | 68:72:51:2C:1D:6E |
 | Jackal Router         | Wired (LAN0)     | Bridged WLAN0                     | 68:72:51:2D:1D:6E |
-| Jackal CPU (br0)      | Wired (eno1)     | 192.168.10.5 (bridged enp4s0)     | 00:0B:AB:B1:FA:D1 |
-| Jackal CPU (br0)      | Wired (enp4s0)   | 192.168.2.1 (bridged eno1)        | 00:0B:AB:B1:FA:D2 |
+| Jackal CPU            | Wired (eno1)     | 192.168.10.5                      | 00:0B:AB:B1:FA:D1 |
+| Jackal CPU            | Wired (enp4s0)   | 192.168.2.1                       | 00:0B:AB:B1:FA:D2 |
 | Jackal LIDAR          | Wired            | 192.168.2.14                      | 00:06:77:20:81:B8 |
 | Husky Router          | Wireless (WLAN0) | Bridged LAN0                      | 00:0F:92:FA:29:AA |
 | Husky Router          | Wired (LAN0)     | Bridged WLAN0 (192.168.10.4 mgmt) | 00:0F:92:02:A6:AA |
 | Husky CPU             | Wired (eth0)     | 192.168.10.6                      | 00:30:18:c6:ec:f3 |
-| Husky CPU             | Wired (eth1)     | 192.168.131.1                     | 00:30:18:c6:ec:f4 |
+| Husky CPU             | Wired (enp4s0)   | 192.168.131.1                     | 00:30:18:c6:ec:f4 |
 | Husky LIDAR           | Wired            | 192.168.131.201                   | 60:76:88:10:30:64 |
 
-DHCP servers are enabled on the Jackal and Husky wireless routers though they are configured to be layer two switches rather than layer three routers. This allows clients to connect to the Jackal and/or Husky without base stations and without clients having to set static IPs. The Husky router is a Microhard VIP2-2400, which is now discontinued. It provides a DHCP server even when configured as a layer two switch/bridge. The Jackal (along with the base stations) uses the Ubiquiti Bullet M2 which does not provide a DHCP server when the device is configured as a layer two switch/bridge. To get around this, the Jackal computer is configured to run a dhcp server using isc-dhcp-server. Each DHCP server on the network is configured to hand out IP addresses in a sub-part of the full subnet range so there are no IP address conflicts.
+DHCP servers are enabled on the Jackal and Husky wireless routers though they are configured to be layer 2 switches rather than layer 3 routers. This allows clients to connect to the Jackal and/or Husky without base stations and without clients having to set static IPs. The Husky router is a Microhard VIP2-2400, which is now discontinued. It provides a DHCP server even when configured as a layer 2 switch/bridge. The Jackal (along with the base stations) uses the Ubiquiti Bullet M2 which does not provide a DHCP server when the device is configured as a layer 2 switch/bridge. To get around this, the Jackal computer is configured to run a dhcp server using isc-dhcp-server. Each DHCP server on the network is configured to hand out IP addresses in a sub-part of the full subnet range so there are no IP address conflicts.
 
 Clients can still connect to the Bullet M2 and the VIP2 when configured as repeaters. The only caveat is that if the Husky (VIP2 router) is powered on first and a client connects to the network, and then another device with the Bullet M2 is subsequently added to the network, the client can only ping the added device if he/she reconnects to the network. The opposite is not true. If any other device is powered on before the Husky, no reconnects are necessary.
+
+The username and password for all routers is the same and shown in *Table [[table:router_username_password]]*.
+
+#+caption: All routers' login credentials.
+#+name:   table:router_username_password
+#+attr_latex: :width 7in :font \scriptsize
+| *Username* | *Password* |
+|------------+------------|
+| admin      | clearpath  |
 
 ** Ubiquiti Bullet M2 Router
 The Bullet M2 router is used in both base stations and the Jackal. It is powered over ethernet and provides an N-type female connector for an antenna. Each unit is connected to a dipole antenna. 
@@ -590,7 +610,7 @@ The VIP2 is set as a bridged repeater. When turned on it searches for another ac
 #+caption: Microhard VIP2-2400 router settings. In repeater mode the LAN is bridged to the WAN with an IP address for management.
 #+name:   fig:vip_settings
 #+attr_latex: :width 6in
-#+ATTR_HTML:  :width 67% :height auto
+#+ATTR_HTML:  :width 86% :height auto
 [[./images/vip2_settings.png]]
 \FloatBarrier
 
@@ -635,6 +655,223 @@ The following needs to be added and/or uncommented in the /etc/dnsmasq.conf file
 #+end_src
 
 Once this is complete, reboot the robot. The DNS servers should now be operational. If the routers are configured using the DNS configuration settings outline in [[Ubiquiti Bullet M2 Router]] and [[Microhard VIP2-2400]], network clients will use the mapping in /etc/hosts/ on either robot.
+
+* Clearpath Robot Configuration
+The Clearpath Jackal and Husky UGVs have various sensors attached the their internal computers. The computers run Clearpath specific distrobutions of linux which are very near to Ubuntu server with some minor modifications for communicating with the motor control board. As part of this project, we update the Jackal and Husky to the latest Clearpath Ubunutu image. This requires configuring the robots for their specific sensor packages, configuring the network adaptors using netplan, and re-syncing the wireless controllers. The wireless controller for the Jackal is upgraded to Playstation 4 controller and the Husky Logitech F710 controller is re-paired to the Husky. The Jackal and Husky and associated components are labeled in *Figure [[fig:jackal_husky_comps]]*.
+
+#+caption: The Jackal and Husky UGVs with relavant components labeled
+#+name:   fig:jackal_husky_comps
+#+attr_latex: :width 6in
+#+ATTR_HTML:  :width 87% :height auto
+[[./images/jackal_husky_comps.png]]
+\FloatBarrier
+
+The Clearpath UAF specific notes and the user manuals for both robots are avialable in the project repository \autocite{client_repo} under the /doc/ subfolder.
+
+** Fixing
+At project start, the Husky would not drive. The Jackal would intermittently startup to a state where it was unable to communicate with the motor control board. The Jackal also would shutoff inexplicably after approximately 20 minutes of runtime. Starting the Jackal's camera node would cause the master ROS process to stall.
+
+The Husky issue was caused by a loose connector on the MCU board. When the battery enable adaptor is plugged to the robot, it shorts a pin to ground indicating that the robot is powered on batteries and is able to drive. *Figure [[fig:mcu_board]]* shows the MCU board with the connector for this pin circled. In the weatherized package, both the battery enable and sure power plugs short this pin to ground. The connector was too loose causing the "Charge" indicator light to illumninate and disabling power to the motors. Since the weatherized package shorts this pin to ground on either plug, the fix was to solder a jumper to ground on the back of the MCU board. Replacing the connector was not an option as it was super-glued/apoxied to the MCU board.
+
+#+caption: Husky MCU board with the battery connected indicator pin circled
+#+name:   fig:mcu_board
+#+attr_latex: :width 4in
+#+ATTR_HTML:  :width 57% :height auto
+[[./images/mcu_board.png]]
+\FloatBarrier
+
+The Jackal issue of intermittently starting with no communications to the MCU was caused by a depleted CMOS battery. Connecting a display to the Jackal during startup revealed that sometimes a BIOS message indicating low CMOS battery would pop up, and the booting procedure would not continue without the user choosing "Yes" on the popup dialog. Replacing the battery fixed this issue; easy fix but difficult to figure out.
+
+The Jackal shutting down after approximately 20 minutes and the camera node stalling ROS were both caused by the same issue; the camera card was halfway seated in the PCI-e slot. To try and fix the issue we re-installed the operating system, and during install some kernal logging messages hinted to pci express issues. Seating the card properly fixed both issues.
+
+** Upgrade ROS from ROS Indigo to ROS Noetic
+The Jackal and Husky were upgraded to Clearpath's latest Ubuntu 20.04 image along with ROS noetic. This allows using the latest Clearpath ROS packages along with LIDAR and camera drivers. This also allows a development machine with Ubuntu 20.04 installed to communicate directly with the robots over ROS. Ubuntu 14.04 and ROS Indigo were previously installed. As mentioned in [[Robot Operating System (ROS)]], to make use of ROS with the Jackal/Husky operating as ROS master machines, connecting devices must be running the same version of ROS which implies the same Linux version. Ubuntu 14.04 would not correctly install on any of our machines due to unsupported hardware (in particular the network cards wouldn't work), and so a virtual machine had to be used. This would be fine for short lived robot access, but for app development and long term robot access this is impractical.
+
+Installing the uprgrade is outlined on the Clearpath website \autocite{clearpath_os_install}. Just download the ISO file, create a bootable USB disk from the ISO file, and then install as with any other OS. The installation procedure doesn't require internet access, but it's recommended as it will get the latest ROS package updates. The process isn't automatic; there are several questions about which sensors the robot is using, serial number, etc. But the process is straight forward.
+
+The username and password for both robots is set as the same initial Clearpath configuration outlined in the Robotsmith notes pdf, and is shown in *Table [[table:robot_login]]*.
+
+#+caption: Jackal and Husky login information. This is required for ssh connections or logging in directly with keyboard/display attached to the robots.
+#+name:   table:robot_login
+#+attr_latex: :width 7in :font \scriptsize
+| *Username*            | *Password*       |
+|-----------------------+------------------|
+| administrator         | clearpath        |
+
+After fresh OS install the following command is required to setup the base ROS sensor packages and create launch files that will run on startup:
+#+begin_src bash
+  $ rosrun husky_bringup install
+  # or
+  $ rosrun jackal_bringup install
+#+end_src
+
+This will setup most things. Some attached sensors require running specific configuration.
+
+** Robot Startup
+As outlined in [[Robot Operating System (ROS)]], the setup script /etc/ros/noetic/setup.bash/ is sourced to enable ROS commands and tools in a given shell. The Jackal and Husky use a systemd service to run ROS on startup, and this service sources a Clearpath authored script located at /etc/ros/setup.bash/ which in turn sources the main ROS setup script. The purpose of the Clearpath script is to allow user configuration before running the ROS setup script. The modified script used in the Jackal and Husky is:
+
+#+begin_src bash
+  # Mark location of self so that robot_upstart knows where to find the setup file.
+  export ROBOT_SETUP=/etc/ros/setup.bash
+
+  # Load the robot's model type and serial number
+  source /etc/clearpath-serial.bash
+
+  # Insert extra platform-level environment variables here. The six hashes below are a marker
+  # for scripts to insert to this file.
+  ######
+  source /home/administrator/setup_config.bash
+
+  # Pass through to the main ROS workspace of the system.
+  source /opt/ros/noetic/setup.bash
+
+  # If you have a catkin workspace, source it below. e.g.
+  source /home/administrator/custom_packages_ws/devel/setup.bash
+
+  # Any additional environment variables that depend on your workspace should be exported here  
+#+end_src
+
+This script requires admin to edit, so rather than placing the sensor configuration variables directly in the script we source the setup configuration script from the home directory for easier modification. The Jackal and Husky setup scripts are:
+#+begin_src bash
+  ### Jackal setup_config.bash
+  export JACKAL_GX5_IMU=1
+  export JACKAL_NAVSAT=1
+  export JACKAL_LASER=1
+  export JACKAL_LASER_MOUNT=mid
+  export JACKAL_LASER_HOST=192.168.2.14
+  export JACKAL_REAR_ACCESSORY_FENDER=1
+  export JACKAL_BB2=1
+
+  ### Husky setup_config.bash
+  # Wireless Controller
+  export HUSKY_JOY_DEVICE=/dev/input/f710
+  export HUSKY_LOGITECH=1
+  # Sensor arch
+  export HUSKY_SENSOR_ARCH=1
+  export HUSKY_SENSOR_ARCH_HEIGHT='300'
+  # Velodyne Laser
+  export HUSKY_LASER_3D_ENABLED=1
+  export HUSKY_LASER_3D_HOST='192.168.131.201'
+  export HUSKY_LASER_3D_PARENT='sensor_arch_mount_link'
+  export HUSKY_LASER_3D_XYZ='0 0 -0.01'
+  # Enable navsat serial port
+  export HUSKY_NAVSAT_PORT=/dev/clearpath/gps
+  export HUSKY_NAVSAT_BAUD=19200
+#+end_src
+
+These environment variables are documented on the Clearpath website \autocite{jackal_config} \autocite{husky_config}. The settings above enable the Navatel GPS ROS nodes, LIDAR nodes, and the Jackal bumblebee stereo camera node on startup. Some of these values, such as the Husky 3d laser mount offset, were obtained experimentally by editing the value and viewing the results in RVIZ.
+
+In the modified Clearpath setup script, after sourcing the main ROS setup script we also source the setup script for our custom packages workspace located in the home directory. This allows us to include any custom packages in the /~/custom_packages_ws/ workspace folder, build the workspace with catkin, and the packages will be available with all ROS commands as if they were installed.
+
+Launch files can be added to /etc/ros/noetic/ros.d/ to start nodes on ROS startup. On the Jackal we added a launch file called /jackal_startup_nodes.launch/ which launches the /image_proc/ node. This node subscribes to the /camera/left/image_color/ topic, processes the image, and publishes several processed image topics. We make use of the compressed image topic (published to /camera/left/image_color/compressed/) in the server application to send the compressed image to clients.
+
+To provide the ROS environment to ssh clients, we source the customized Clearpath setup script in ~/.bashrc for both the Husky and the Jackal.
+
+*** Server Application Service
+The server application is started as a systemd service so that it restarts on failure and starts on bootup. For this to work it has to start after the ROS service. The service file is called uaf_clearpath_ctrl_server.service and is located in the home directory:
+
+#+begin_src text
+[Unit]
+Description=Run the UAF clearpath control server Node application
+After=network-online.target ros.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/node /home/administrator/uaf_clearpath_ctrl_server/src/index.js
+RestartSec=5
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target          
+#+end_src
+
+This service file sets the server as a dependency of multi-user.target so that it is started when that target is started, but the startup will be delayed until after the ROS service startup is complete. This is required since the server application creates an ROS node on startup. If the server crashes it will be automatically restarted with a delay of 5 seconds.
+
+To use the service file, copy it as admin from the home directory to the systemd service directory. On first install, the service must be enabled after copy, but once enabled it can be updated by re-copying/restarting the service and reloading the systemctl daemon:
+
+#+begin_src bash
+  # Copy any edits to the service file in the home directory to the systemd service directory
+  $ sudo cp ~/uaf_clearpath_ctrl_server.service /etc/systemd/system/
+  # Re-read in the service file - this must be called on updating 
+  $ sudo systemctl daemon-reload
+  # Only need to enable and start once (enabling doesn't start automatically)
+  $ sudo systemctl enable uaf_clearpath_ctrl_server.service
+  $ sudo systemctl start uaf_clearpath_ctrl_server.service
+  # To restart the service
+  $ sudo systemctl restart uaf_clearpath_ctrl_server.service
+  # To disable/stop the service - may be needed during development/debugging (disabling doesn't stop automatically)
+  $ sudo systemctl disable uaf_clearpath_ctrl_server.service
+  $ sudo systemctl stop uaf_clearpath_ctrl_server.service
+#+end_src
+
+We can then check the status of our service at any time. It should be running on reboot.
+
+#+begin_src bash
+  $ sudo systemctl status uaf_clearpath_ctrl_server
+#+end_src
+
+Updating the application doesn't require editing the service - just replace the index.js file or the emscripten generated files as outlined in [[Client Application]].
+
+** Navigation Package
+Clearpath provides navigation packages for both the Jackal and Husky. The navigation packages start /move_base/ and initialize the local/global costmaps, /slam_gmapping/ nodes, and pathfinding plugins with Jackal/Husky specific settings. These settings almost work without modification, but the default costmap sizes are too large. Its also preferrable to be able to modify the slam_gmapping and pathfinding default settings without modifying the Clearpath source packages (which would require admin and could be overwritten on updates) so that we can commit the changes to source control.
+
+To accomplish this we copied the navigation package source to our custom package workspace and applied modifications. The Husky customized navigation package is called uaf_husky_navigation \autocite{uaf_husky_nav} and the Jackal customized navigation package is called uaf_jackal_navigation \autocite{uaf_jackal_nav}. The server application launches 
+
+** Network
+The network for both UGVs is configured using netplan \autocite {netplan}. The Husky and Jackal adaptor IP addresses are set as shown in *Table [[table:ip_addresses]]*. The Jackal has two ethernet ports; eno1 connected to the network and enp4s0 connected to the LIDAR. The Husky also has two ethernet ports eno1 for network and enp4s0 for LIDAR. The port connected to the Velodyne VLP16 LIDAR initially caused problems. If the ROS velodyne driver node fails or doesn't start, the Velodyne blasts the network with data. If connected by wireless, for example, pings fail intermittently and the network is extremely slow. By default Clearpath bridges the adaptors in a fresh OS install, so this made for fun troubleshooting.
+
+The netplan file is called 50-clearpath-bridge.yaml (as named by Clearpath due to the default bridge setting) and is located in /etc/netplan/ on both UGVs. The file is almost identical for the Jackal and the Husky except for the IP addresses:
+
+#+begin_src bash
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    enp4s0:
+      dhcp4: no
+      dhcp6: no
+      addresses:
+        - 192.168.2.1/24 # 192.168.131.1/24 for the Husky
+    eno1:
+      dhcp4: no
+      dhcp6: no
+      addresses:
+        - 192.168.10.5/24 # 192.168.10.6 for the Husky
+      nameservers:55
+        addresses: [192.168.10.1, 8.8.8.8]
+      routes:
+        - to: default
+          via: 192.168.10.1  
+#+end_src
+
+** Wireless Controller
+The Jackal originally used a PlayStation 3 controller and the Husky uses the Logitech 710 controller. The Jackal is now paired to two PlaysStation 4 controllers. Whichever controller is turned on first pairs and blocks out the other one - but with a backup controller battery life is not a concern. The Jackal was paired with Playstation 4 controllers because the PlayStation 3 controller is difficult to configure with the updated OS; The Clearpath Ubuntu image has udev rules setup to automatically link the PlayStation 4 controller to the /joy_teleop/ node which must be edited to make the PlayStation 3 controller work. PlayStation 4 controllers only require pairing using bluetoothctl, and then they just work.
+
+The Logitech 710 is easily configured, it pairs with a wireless USB reciever. In case the receiver is lost it can be paired to a new logitech USB receiver using tools provided on their website. The correct environment variables need to be set to tell ROS to use the Logitech controller, as outlined in [[Robot Startup]].
+
+To pair the PS4 controller, first put the controller in pairing mode by holding the /Share/ and /PS/ buttons until the main LED flashes white rapidly, then turn on bluetooth scanning with bluetoothctl and find the PS4's MAC address (sample output from pairing the controller to the Jackal shown):
+
+#+begin_src bash
+  $ sudo bluetoothctl
+  > scan on
+  ## Output - the Wireless Controller entry is the PS4 controller
+[NEW] Device 52:D4:91:A8:6E:AD 52-D4-91-A8-6E-AD
+[NEW] Device 69:BF:23:A5:DB:A8 69-BF-23-A5-DB-A8
+[NEW] Device 15:85:82:81:42:1C 15-85-82-81-42-1C
+[NEW] Device 41:E5:99:AF:BE:D2 41-E5-99-AF-BE-D2
+[NEW] Device D0:27:88:1B:52:18 Wireless Controller
+#+end_src
+
+Once the MAC address is found, for example above we see it is D0:27:88:1B:52:18, turn scanning off and pair/trust/connect to the controller:
+
+#+begin_src bash
+  $ scan off
+  $ pair D0:27:88:1B:52:18
+  $ trust D0:27:88:1B:52:18
+  $ connect D0:27:88:1B:52:18
+#+end_src
+
+The controller LED should be blue when its paired. To drive the robot hold L1 and move the joystick. The UGV automatically connects after reboot once the controller is turned on. This can be used to pair new controllers if one of the PS4 controllers breaks.
 
 * UAF Clearpath Control Web Application
 The web application provides an interface to ROS control and navigation data for the Jackal and Husky through a web browser. The basic driving/mapping/autonomous navigation interface does not require any ROS knowledge. There is an interface for getting/setting ROS parameters for users who need more control.
@@ -1995,7 +2232,7 @@ There are three different occupancy grids sent to connected clients; the map, th
 
 #+caption: Map topics and their associated message types, nodes, and update/publish frequencies
 #+name:   table:map_topics
-#+attr_latex: :width 5in :font \scriptsize
+#+attr_latex: :width 7in :font \scriptsize
 | *Topic*                                   | *Message Type*      | *Publishing Node* | *Update (Hz)* | *Publish (Hz)* |
 |-------------------------------------------+---------------------+-------------------+---------------+----------------|
 | /map                                      | OccupancyGrid       | slam_gmapping     |           0.2 |            0.2 |
@@ -2321,10 +2558,16 @@ Throughout the project there were several learning moments. These moments helped
 ** Future Work
 The clearpath platforms have further potential. With this project serving as the foundation, there are endless future project possibilities. Some possible features or enhancements to the client/server might include:
 - Add ability to save generated maps
-- Add 
+- Add GPS feed
+- Add camera for Husky
+- Further measure and improve system and bandwidth performance
+- Allow a single client application instance to simultaneously communicate with both UGVs
+- Convert camera communication to WebRTC
+
+With this platform it is easy to develop new navigation algorithms by creating ROS planner nodes and plugging them in to /move_base/. It's also well documented and easy to extend if other user interface features are needed. The client application could be extended, for example, to provide a macro level goal interface for the Clearpath UGVs such as drawing a rectangle on the map for exploration. Another possibility is a system for UGV to UGV coordination. A past project by Logan Graves explored automated UAV landing on the Husky - the app could be extended to provide a control interface for the system. With everything documented, any project invloving the Clearpath platforms would greatly benefit.
 
 ** Final Remarks
-We hope this project is useful to the UAF CEM department as a supplement to the Clearpath assets, if only as an in depth reference on how the platforms work. All source code and documents, this writeup included, will remain available as long as GitHub is available at \autocite{client_repo} for the client application and \autocite{server_repo} for the server application.
+We hope this project is useful to the UAF CEM department as a supplement to the Clearpath assets, if only as an in depth reference on how the platforms work. All source code and documents, this writeup included, will remain available as long as GitHub is available at \autocite{client_repo} for the client application and \autocite{server_repo} for the server application. We recommend forking the repositories to ensure their avialability moving in to the future.
 
 \newpage
 
