@@ -17,7 +17,7 @@
 #+LaTeX_HEADER: \author{Daniel Randle}
 
 #+begin_abstract
-This project aims to restore and upgrade the UAF Clearpath platform assets, develop a web application for visualization and control, and document the process. The platforms were upgraded with the latest Clearpath Linux distributions and ROS packages, and their base stations were restored with correctly configured routers. A web application was created to provide convenient visualization and control of the UGVs through a user interface tuned for desktop and smartphone web browsers. The system allows for full control/visualization and read-only visualization through different endpoints, with driving and autonomous navigation features available through the control endpoint. The system also provides a two-dimensional map with the robot and obstacles localized on the map, and an interface for setting autonomous navigation goals. The project was thoroughly documented, and the source code and documents will remain available on GitHub for future use. The system is easily extendable and customized, allowing for the development of new navigation algorithms, user interface features, and endless other possibilities future projects involving Clearpath platforms.
+This project aims to restore and upgrade the UAF Clearpath platform assets, develop a web application for visualization and control, and document the process. The platforms were upgraded with the latest Clearpath Linux distributions and ROS packages, and their base stations were restored with correctly configured routers. A web application was created to provide convenient visualization and control of the UGVs through a user interface tuned for desktop and smartphone web browsers. The system allows for full control/visualization and read-only visualization through different endpoints, with driving and autonomous navigation features available through the control endpoint. The system also provides a two-dimensional map with the robot and obstacles localized on the map, and an interface for setting autonomous navigation goals. The project was thoroughly documented, and the source code and documents will remain available on GitHub for future use. The system is easily extendable and customized, allowing for the development of new navigation algorithms, user interface features, and endless other possible future projects involving Clearpath platforms.
 #+end_abstract
 \newpage
 
@@ -30,29 +30,29 @@ This project aims to restore and upgrade the UAF Clearpath platform assets, deve
 
 * Introduction
 ** Background
-UAF purchased the Clearpath Jackal and Husky as assets to aid in mining emergency operations. Pogo Mine expressed interest in unmanned exploration and mapping facilities and Clearpath provided these platforms as turn key solutions. Several graduate students worked alongside ACUASI to further develop the platforms for UAF specific use, and to integrate UAS (unmanned ariel systems).
+UAF purchased the Clearpath Jackal and Husky as assets to aid in mining emergency operations. Pogo Mine expressed interest in unmanned exploration and mapping facilities and Clearpath provided these platforms as turnkey solutions. Several graduate students worked alongside ACUASI to further develop the platforms for UAF specific use, and to integrate UAS (unmanned aerial systems).
 
-The Jackal and Husky provided many untapped capabilities largely due to inconvenient user interface and out-of-date software. The platforms utilize Robot Operating System (ROS) for communication and control. ROS versions are linked to specific versions of Linux distributions - this is problematic and becomes more problematic as time goes by; a computer with with that specific Linux distribution must be on hand to utilize ROS visualization and command capabilities (outside of using the hard-linked driving controller). Without these features, the Clearpath robots are of little value; they cannot be driven out of visual range and their included sensors are unusable.
+The Jackal and Husky provided many untapped capabilities largely due to inconvenient user interface and out-of-date software. The platforms utilize Robot Operating System (ROS) for communication and control. ROS versions are linked to specific versions of Linux distributions - this is problematic and becomes more problematic as time goes by; a computer with that specific Linux distribution must be on hand to utilize ROS visualization and command capabilities (outside of using the hard-linked driving controller). Without these features, the Clearpath robots are of little value; they cannot be driven out of visual range and their included sensors are unusable.
 
-The platforms also include base station tripod WiFi extenders and long range WiFi antennas mounted on the robots in order to provide extended WiFi network range. In the original configuration, the clearpath robots combine with the base stations to create an adhoc WiFi network. The robots and base stations make use of Ubiquity Bullet M2 extended range routers; the firmware on several of these routers had been overwritten by OpenWRT firmware rendering them useless, and the remaining routers were configured incorrectly. Also The base station extenders were missing batteries and no longer operational.
+The platforms also include base station tripod WiFi extenders and long range WiFi antennas mounted on the robots in order to provide extended WiFi network range. In the original configuration, the Clearpath robots combine with the base stations to create an ad hoc WiFi network. The robots and base stations make use of Ubiquity Bullet M2 extended range routers; the firmware on several of these routers had been overwritten by OpenWRT firmware rendering them useless, and the remaining routers were configured incorrectly. Also the base station extenders were missing batteries and no longer operational.
 
-Finally, the Husky was no longer operational. The included controller no longer worked, and both clearpath robots are out of warranty.
+Finally, the Husky was no longer operational. The included controller no longer worked, and both Clearpath robots are out of warranty.
 
 ** Project Scope
-Restore clearpath platforms to a working state. Upgrade the Jackal/Husky with the latest Clearpath Linux distributions and ROS packages. Restore the base stations and setup/configure the Bullet M2 routers, along with the Jackal/Husky network cards using Linux netplan. Document the process of restore, setup, and configuration.
+Restore Clearpath platforms to a working state. Upgrade the Jackal/Husky with the latest Clearpath Linux distributions and ROS packages. Restore the base stations and setup/configure the Bullet M2 routers, along with the Jackal/Husky network cards using Linux netplan. Document the process of restoration, setup, and configuration.
 
-Create a web app to provide visualization and control of the Jackal/Husky, with a user interface tuned for both smart phone and desktop through a web browser. Provide different end points for full control/visualization and visualization only to allow participants to view data in read only fashion - make endpoints available to anyone connected to the Clearpath WiFi network. Allow driving the Husky/Jackal through the control endpoint without disabling control through the wireless controller. Show a two-dimensional map with the robot and obstacles localized on the map, and provide an interface for setting autonomous navigation goals. Provide a way to reset the map without requiring robot restart.
+Create a web app to provide visualization and control of the Jackal/Husky, with a user interface tuned for both smartphone and desktop through a web browser. Provide different end points for full control/visualization and visualization only to allow participants to view data in read only fashion - make endpoints available to anyone connected to the Clearpath WiFi network. Allow driving the Husky/Jackal through the control endpoint without disabling control through the wireless controller. Show a two-dimensional map with the robot and obstacles localized on the map, and provide an interface for setting autonomous navigation goals. Provide a way to reset the map without requiring robot restart.
 
 ** Related Works
-There are several web apps which provide ROS interfaces, allowing remote robot visualization and control. Probably the most promising is Foxglove Studio Web \autocite{foxglove}. Almost all web based ROS interfaces require the ROS package /rosbridge_server/ \autocite{rosbridge} to be installed on the ROS host. Launching /rosbridge_server/ creates a WebSocket server which relays ROS communication over WebSockets using a custom protocol which wraps ROS messages in JSON objects. Foxglove Studio Web claims to work with /rosbridge_server/, and also provides its own server package called /foxglove_server/. We installed both on the Husky and tried to use the Foxglove web application with each from a supported browser (Chrome), but neither would work. The server processes gave no indications of failed connections - so it was hard to investigate Foxglove any further.
+There are several web apps which provide ROS interfaces, allowing remote robot visualization and control. Probably the most promising is Foxglove Studio Web \autocite{foxglove}. Almost all web based ROS interfaces require the ROS package /rosbridge_server/ \autocite{rosbridge} to be installed on the ROS host. Launching /rosbridge_server/ creates a WebSocket server which relays ROS communication over WebSockets using a custom protocol which wraps ROS messages in JSON objects. Foxglove Studio Web claims to work with /rosbridge_server/, and also provides its own server package called /foxglove_server/. We installed both on the Husky and tried to use the Foxglove web application with each from a supported browser (Chrome), but neither worked. The server processes gave no indications of failed connections so it was hard to investigate Foxglove any further.
 
 WebViz \autocite{webviz} is another ROS web app. Foxglove looks very similar to WebViz as it is forked from it. WebViz also uses /rosbridge_server/. To connect, a special URL at their provided endpoint is required with the host IP address and port specified. An exception had to be added to the browser to run unsafe javascript to get the site to load. Unfortunately, this site also would not connect to either UGV.
 
-ROS Control Center \autocite{roscontrolcenter} did connect to both the Husky and Jackal using the /rosbridge_server/, but it took about 10 seconds to load. The web application interface is not great, especially on a smartphone, and provides no way to visualize any mapping, navigation, camera, or other data except raw data as ROS messages. The only way to drive the robot is to send the message manually as values, which is a bad idea.
+ROS Control Center \autocite{roscontrolcenter} did connect to both the Husky and Jackal using the /rosbridge_server/, but it took about 10 seconds to load. The web application interface is not great, especially on a smartphone, and provides no way to visualize any mapping, navigation, camera, or other data except raw data as ROS messages. The only way to drive the robot is to send messages manually, which is a bad idea.
 
-ROSboard \autocite{rosboard} is a project that opted to use a non /rosbridge_server/ solution. ROSboard has a few nice visualizations, but no way to control the robot. The user interface is tailored more for desktop than smartphones or tablets.
+ROSboard \autocite{rosboard} is a project that opted to use a non /rosbridge_server/ solution. ROSboard has a few nice visualizations but no way to control the robot. The user interface is tailored more for desktop than smartphones or tablets.
 
-It was clear that none of the available front end web tools would work well for the Jackal and Husky. We need more tailored control over the interface, and the ability to see mapping data alongside navigation data with the ability to drive the UGV. There are a few reasons we opt to use our own custom server rather than /rosbridge_server/:
+It was clear that none of the available front end web tools would work well for the Jackal and Husky. We need more tailored control over the interface and the ability to see mapping data alongside navigation data with the ability to drive the UGV. There are a few reasons we opt to use our own custom server rather than /rosbridge_server/:
 - The browser should not have superuser control to the ROS system
 - Provide more flexibility to perform non ROS tasks on the UGVs
 - Avoid hard linking the client/server communication protocol to ROS message protocol as ROS message formats change over time
@@ -61,7 +61,7 @@ It was clear that none of the available front end web tools would work well for 
 - Perform throttling on data
 
 * System Overview
-The Clearpath UGVs along with the base stations establish an adhoc wireless network using routers configured as access point repeaters. Using smartphone or dekstop web browsers, clients can connect to the WiFi network and use http://jackal or http://husky to view live data from the UGV. The page served to the client is generated by a server application running on each robot which communicates with the ROS master process using ROS topics and messages. Using http://jackal/control and http://husky/control, clients can also drive the UGVs and create waypoints for autonomous navigation. The top level system diagram is shown in *Figure [[fig:system_overview]]*.
+The Clearpath UGVs along with the base stations establish an ad hoc wireless network using routers configured as access point repeaters. Using smartphone or desktop web browsers, clients can connect to the WiFi network and use http://jackal or http://husky to view live data from the UGV. The page served to the client is generated by a server application running on each robot which communicates with the ROS master process using ROS topics and messages. Using http://jackal/control and http://husky/control, clients can also drive the UGVs and create waypoints for autonomous navigation. The top level system diagram is shown in *Figure [[fig:system_overview]]*.
 
 #+caption: System overview; controller links shown in green, observer links shown in blue, and ROS to robot links in orange
 #+name:   fig:system_overview
@@ -71,12 +71,12 @@ The Clearpath UGVs along with the base stations establish an adhoc wireless netw
 \FloatBarrier
 
 * Robot Operating System (ROS)
-From the front page of ros.org, ROS is "a set of software libraries and tools that help you build robot applications". There are tutorials and explanations on how every part of ROS works available here \autocite{rosmain}, but here we summarize the parts of ROS utilized in this project.
+From the front page of ros.org, ROS is "a set of software libraries and tools that help you build robot applications". There are tutorials and explanations on how every part of ROS works available \autocite{rosmain}, but here we summarize the parts of ROS utilized in this project.
 
 Just like an operating system provides a standard platform/environment for applications to run, ROS provides a standard platform/environment for robot applications. All ROS tools run on top of a Linux distribution, and are invoked with CLI (command line interface) just like native GNU tools (such as a C compiler, or grep). That begs the question - why not just use Linux executables? That is basically what ROS is - except that it standardizes and abstracts inter-process and inter-machine communication. It does this mainly through nodes, topics, and messages.
 
 ** Setup
-If using a compatible Linux distribution (currently Ubuntu 20.04 is the latest supported version) ROS can be installed using apt package manager \autocite{rosinstall}. ROS Noetic was installed on the development machine using:
+If using a compatible Linux distribution (currently Ubuntu 20.04 is the latest supported version) ROS can be installed using /apt/ package manager \autocite{rosinstall}. ROS Noetic was installed on the development machine using:
 #+begin_src bash
   $ sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list'
   $ sudo apt install curl
@@ -84,7 +84,7 @@ If using a compatible Linux distribution (currently Ubuntu 20.04 is the latest s
   $ sudo apt update
 #+end_src
 
-Once installed, a bash setup script located at /opt/ros/kinetic/setup.bash must be sourced in order for ROS tools to be available on the command line. This is a pattern that ROS uses repeatedly; set environment variables and system values by sourcing bash scripts. This allows ROS to alter system settings and provide a convenient shell interface without invading or changing the system - the settings are dropped once the shell is terminated.
+Once installed, a bash setup script located at /opt/ros/kinetic/setup.bash/ must be sourced in order for ROS tools to be available on the command line. In the ROS ecosystem it is common to source bash scripts to set environment variables. This allows ROS to alter system settings and provide a convenient shell interface without invading or changing the system - the settings are dropped once the shell is terminated.
 
 In order to fully utilize ROS and build packages, some dependencies are needed. The following was used to install these dependencies on the development machine:
 
@@ -94,13 +94,13 @@ In order to fully utilize ROS and build packages, some dependencies are needed. 
   $ rosdep update
 #+end_src
 
-An ROS system can include multiple machines, but exactly one of the machines must be designated as the ROS Master (without complicated multi-master setup). Most ROS utilities provide command line arguments to specify which machine is the master, but specifying it this way is tedious and error prone. Since an ROS system includes several executables, all of which need to know who is designated master, the environment variable ROS_MASTER_URI can be set to specify the master globally. The uri is in the format http://HOSTNAME:PORT where hostname can be either the machine name or IP address and the port can be any available open port of choice - but the docs suggest a default of 11311. ROS_MASTER_URI defaults to http://localhost:11311, so leaving it unset sets the ROS master to self.
+An ROS system can include multiple machines, but exactly one of the machines must be designated as the ROS Master (without complicated multi-master setup). Most ROS utilities provide command line arguments to specify which machine is the master, but specifying it this way is tedious and error-prone. Since an ROS system includes several executables, all of which need to know who is designated master, the environment variable ROS_MASTER_URI can be set to specify the master globally. The URI is in the format http://HOSTNAME:PORT where hostname can be either the machine name or IP address and the port can be any available open port of choice - but the docs suggest a default of 11311. ROS_MASTER_URI defaults to http://localhost:11311, so leaving it unset sets the ROS master to self.
 
 An ROS system is started by running roscore in a terminal (after sourcing the setup script) on the designated master machine. Since ROS_MASTER_URI defaults to localhost, it can be left as default for the master. All other machines must set ROS_MASTER_URI in the terminal to the machine running roscore before invoking any ROS commands - leaving it as localhost in this case will fail with "Unable to communicate with master" as roscore has not been run on the machine. If roscore is started on multiple machines (all leaving ROS_MASTER_URI as localhost), then each machine would be running its own ROS system and ROS executables would be unable to communicate with each other.
 
-The Jackal and Husky run separate ROS systems - on startup they both run roscore with ROS_MASTER_URI pointing to localhost on port 11311. It is theoretically possible to use the same ROS system for both robots, but would be difficult and provide little benefit (this would be called a multi-master setup). The command roscore starts an ROS master daemon, a parameter server, and a node (a process) called rosout for logging. The ROS master daemon is responsible for connecting ROS nodes (processes) to eachother on request. Once the connection is made - nodes engage in peer to peer communication. The parameter server provides a server for nodes to register static and dynamic parameters, and the rosout node provides logging.
+The Jackal and Husky run separate ROS systems - on startup they both run roscore with ROS_MASTER_URI pointing to localhost on port 11311. It is theoretically possible to use the same ROS system for both robots, but would be difficult and provide little benefit (this would be called a multi-master setup). The command roscore starts an ROS master daemon, a parameter server, and a node (a process) called /rosout/ for logging. The ROS master daemon is responsible for connecting ROS nodes (processes) to each other on request. Once the connection is made, nodes engage in peer-to-peer communication. The parameter server provides a server for nodes to register static and dynamic parameters, and the /rosout/ node provides logging.
 
-To setup the development machine to communicate with either the Jackal or the Husky easily, we add some lines to ~/.bashrc which is sourced on terminal startup. For convenience, we also source the ROS setup script.
+To set up the development machine to communicate with either the Jackal or the Husky easily, we add some lines to ~/.bashrc which is sourced on terminal startup. For convenience, we also source the ROS setup script.
 
 #+begin_src bash
   source /opt/ros/noetic/setup.bash
@@ -108,14 +108,15 @@ To setup the development machine to communicate with either the Jackal or the Hu
   #export ROS_MASTER_URI=http://cpr-uaf02-husky:11311
 #+end_src
 
-To choose which machine just comment out the appropriate line - commenting both will set the master to self (this is used for simulation as we will discuss later). Every terminal will now have ROS commands available.
+To choose which machine should be the ROS master, just comment out the appropriate line. Commenting both will set the master to self which is used for simulation as outlined in [[Simulation]]. Every new terminal will now have ROS commands available.
 
 ** Nodes, Packages, and Launch Files
-A node is a process which is started by running an executable file on disk (or forked from another process) just like any other system process. In order for an executable to qualify as a node, when its built it must link with the ROS library and register itself (with ROS master process) on startup. ROS nodes can be built using c++ or python; if using c++ the node must link with roscpp and if using python it must link with rospy. Once a node is installed (either through apt or by building from source) it can be started in a terminal by using "rosrun node_name".
+A node is a process which is started by running an executable file on disk (or forked from another process) just like any other system process. In order for an executable to qualify as a node, when its built it must link with the ROS library and register itself (with ROS master process) on startup. ROS nodes can be built using c++ or python; if using c++ the node must link with /roscpp/ and if using python it must link with /rospy/. Once a node is installed (either through apt or by building from source) it can be started in a terminal by using "rosrun node_name".
 
-The easist way to create a ROS node is by creating a package and placing the node source in the created package. Packages are the basic "project" unit in ROS - the most simple package would be a folder containing a file named package.xml and CMakeLists.txt. The xml file specifies package dependencies, name, author, and other such meta information. The CMakeLists.txt file is a file specifying how to build the project using CMake \autocite{cmake}. To build a node with c++, configure the CMakeLists.txt to point to the source code and build the project with catkin.
+The easiest way to build a ROS node is by creating a package and placing the node source in the package. Packages are the basic "project" unit in ROS - the simplest package would be a folder containing a file named package.xml and CMakeLists.txt. The xml file specifies package dependencies, name, author, and other such meta information. The CMakeLists.txt file is a file specifying how to build the project using CMake \autocite{cmake}. To build a node with c++, configure the CMakeLists.txt to point to the source code and build the project with /catkin/.
 
-ROS ships with a tool called catkin for creating the boiler plate code needed for a package, and for building one or many packages at once. Catkin calls in to CMake, and so uses CMakeLists.txt files for building. To use catkin, create a catkin workspace and place each package under a subfolder in the workspace called src. A typical workspace would look like:
+ROS ships with a tool called /catkin/ for creating the boiler plate code needed for a package, and for building one or many packages at once. /Catkin/ is built around CMake and uses CMakeLists.txt files for building. To build ROS packages create a /catkin/ workspace and place each package under a subfolder in the workspace called src. A typical workspace would look like:
+
 #+begin_src bash
   catkin_ws/
       build/ # Subfolders not listed - contains build artifacts
@@ -132,14 +133,18 @@ ROS ships with a tool called catkin for creating the boiler plate code needed fo
               package.xml
               ...
 #+end_src
-The catkin workspace lives on the local machine building the packages only - this wouldn't be committed to source control - the packages would be. Often, when there are multiple interdependent packages, rather than placing each package in its own repository they are grouped in a single repo. In this case, all packages can be cloned directly into the catkin_ws/src folder. To create a workspace:
+
+The /catkin/ workspace lives on the local machine building the packages only. Workspaces are not committed to source control, but the contained packages are. Often, when there are multiple interdependent packages, rather than placing each package in its own repository they are grouped in a single repo. In this case, all packages can be cloned directly into the catkin_ws/src folder. To create a workspace:
+
 #+begin_src bash
   $ mkdir -p ~/catkin_ws/src && cd ~/catkin_ws
   $ catkin_make
 #+end_src
+
 where catkin_ws can be called anything.
 
-Though nodes can individually be started, often multiple nodes need to be started simultaneously and work together as a group. ROS provides another command line tool, roslaunch, which takes a package name and launch file as parameters. Launch files are special config files which can be added to packages by placing the file/s in a launch subfolder:
+Though nodes can individually be started, often multiple nodes need to be started simultaneously and work together as a group. ROS provides another command line tool, /roslaunch/, which takes a package name and launch file as parameters. Launch files are special config files which can be added to packages by placing the file/s in a launch subfolder:
+
 #+begin_src bash
   package1/
       CMakeLists.txt
@@ -147,16 +152,19 @@ Though nodes can individually be started, often multiple nodes need to be starte
       launch/
           your_launch_file.launch
 #+end_src
+
 A launch file allows specifying nodes that should be started when the launch file is called with roslaunch. In the above example, the launch file would be loaded by calling:
+
 #+begin_src bash
   $ roslaunch package1 your_launch_file.launch
 #+end_src
-As long as the launch file is in the launch subfolder of package1 it will be found.
+
+As long as the launch file is in the launch subfolder of /package1/ it will be found.
 
 *** Packages From Source
 Most ROS packages are installed using the package manager (apt install ros-noetic-package-name), however some must be built from source. This could be a custom coded package, or a package that was never added to the apt repository.
 
-To build an ROS package with catkin, the package must first be added to the catkin workspace. Without catkin, packages can be built directly with cmake but building with catkin provides setup bash files in the devel (and install if wanted) workspace subfolders. Just as sourcing the main ROS setup script adds ROS commands to the path, sourcing the setup script adds all built targets to the path so they are callable from ROS tools. Assuming a catkin workspace is setup as previously shown and the package is added to the workspace, to build simply use:
+To build an ROS package with /catkin/, the package must first be added to the /catkin/ workspace. Without /catkin/, packages can be built directly with CMake but building with /catkin/ provides setup bash files in the devel (and install if wanted) workspace subfolders. Just as sourcing the main ROS setup script adds ROS commands to the path, sourcing the setup script adds all built targets to the path so they are callable from ROS tools. Assuming a /catkin/ workspace is setup as previously shown and the package is added to the workspace, to build simply use:
 #+begin_src bash
   $ catkin_make
   $ catkin_make install # optional
@@ -164,7 +172,7 @@ To build an ROS package with catkin, the package must first be added to the catk
 Once the setup.bash script in the devel (or install) subfolder of the workspace is sourced, all ROS commands will work with any of the built packages as if they were installed with the package manager. It makes sense, then, to also add lines to .bashrc file to source any workspaces used for ROS package development.
 
 ** Topics, Messages, and Parameters
-ROS nodes communicate with eachother through topics and messages. Messages are data schemas - similar to a struct in C or a table in SQL. The basic building block data types can be found in the package std_msgs - but custom messages can be composed by using any other message as members. For example, a couple of important messages in this project:
+ROS nodes communicate with eachother through topics and messages. Messages are data schemas - similar to a struct in C or a table in SQL. The basic building block data types can be found in the package /std_msgs/ - but custom messages can be composed by using any other message as members. For example, a couple of important messages in this project:
 
 #+begin_src python
   ## geometry_msgs/Twist
@@ -179,24 +187,24 @@ ROS nodes communicate with eachother through topics and messages. Messages are d
 
 The Twist message is used to convey driving velocity commands - the linear describes velocity along each axis while the angular describes velocity about each axis. The values don't have any direct relation to units - each robot chooses min/max values and correlates them to driving motor speeds.
 
-Topics are named destinations for certain message types. By sending and receiving messages to/from topics rather than to/from nodes directly, nodes require no direct information about other nodes - they only require the string names and message types of topic of interest. As mentioned earlier, the rosmaster process is in charge of establishing connections between nodes who publish/subscribe to the same topic.
+Topics are named destinations for certain message types. By sending and receiving messages to/from topics rather than to/from nodes directly, nodes require no direct information about other nodes - only the string names and message types of topic of interest. As mentioned earlier, the ROS master process is in charge of establishing connections between nodes who publish/subscribe to the same topic.
 
-A topic is created by publishing a message to the topic - this can be done in c++ or python code within a node, or using the rostopic pub command. Once a message is published to a topic for the first time, the topic is linked to that message type and ROS logs errors if other message types are published to that topic. The rostopic list command can be used to get a complete list of the current topics:
+A topic is created by publishing a message to the topic which can be done in c++ or python code within node source code, or by using the rostopic pub command. Once a message is published to a topic for the first time, the topic is linked to that message type and ROS logs errors if other message types are published to that topic. The /rostopic list/ command can be used to get a complete list of the current topics:
 
 #+begin_src bash
-    $ rostopic list
-  /rosout
-  /rosout_agg
+  $ rostopic list
+/rosout
+/rosout_agg
 #+end_src
 
 This message/topic system is the most fundemental thing that makes ROS useful. For example, a vendor can build a LIDAR device any way they want; to make it ROS compatible the vendor would write a node which publishes /LaserScan/ messages to the scan topic. Usually there is a way to configure which topic the message would publish to, in case there are multiple LIDARs or scan is being used for something else. One way to provide a customization point is through parameters.
 
-As part of roscore, ROS starts a parameter server. The server provides an API for nodes to register variables that are customizable and stores these variables and their values as a dictionary. Parameters can be set and retreived via c++ and python API, as well as through the command line tool rosparam. What paremeters do exactly is node dependent, but usually they provide a way to alter the node's behaviour at runtime. The navigation stack, for example, makes use of parameters to configure things like which navigation algorithm should be used, or how often should the pathfinding loop execute. Parameters can also be set for nodes using launch files, but only on node startup.
+As part of /roscore/, ROS starts a parameter server. The server provides an API for nodes to register variables that are customizable and stores these variables and their values as a dictionary. Parameters can be set and retrieved via c++ and python API, as well as through the command line tool /rosparam/. What parameters do exactly is node dependent, but usually they provide a way to alter the node's behavior at runtime. The navigation stack, for example, makes use of parameters to configure things like which navigation algorithm should be used, or how often should the pathfinding loop execute. Parameters can also be set for nodes using launch files, but only on node startup.
 
 While nodes can use messages to communicate with eachother, messages tend to be used for active dynamic data while parameters are used for more static node configuration.
 
 ** Driving
-Both the Jackal and Husky include wireless controllers which directly drive the robots. In each robot there is an ROS node called bluetooth_teleop/joy_node which reads the joystick device file at /dev/js and converts this to a Joy message:
+Both the Jackal and Husky include wireless controllers which directly drive the robots. In each robot there is an ROS node called /bluetooth_teleop/joy_node/ which reads the joystick device file at /dev/js/ and converts this to a Joy message:
 
 #+begin_src python
     Header header   # timestamp in the header is the time the data is received from the joystick
@@ -204,9 +212,9 @@ Both the Jackal and Husky include wireless controllers which directly drive the 
     int32[] buttons # the buttons measurements from a joystick
 #+end_src
 
-The message is posted to the topic bluetooth_teleop/joy, which another node called bluetooth_teleop/teleop_twist_joy subscribes to. This node translates the buttons and axis from the controller message to velocity drive commands and posts Twist messages containing these commands to the bluetooth_teleop/cmd_vel topic.
+The message is posted to the topic /bluetooth_teleop/joy/, which another node called /bluetooth_teleop/teleop_twist_joy/ subscribes to. This node translates the buttons and axis from the controller message to velocity drive commands and posts Twist messages containing these commands to the /bluetooth_teleop/cmd_vel/ topic.
 
-There is a node called /twist_mux which is responsible for multiplexing the velocity command messages from the controller nodes with velocity commands from other sources. For example, using an ROS tool called rviz \autocite{rviz}, it is possible to drive the Jackal/Husky by dragging drive arrows shown in *Figure [[fig:jackal_rviz]]* with the mouse.
+There is a node called /twist_mux/ which is responsible for multiplexing the velocity command messages from the controller nodes with velocity commands from other sources. For example, using an ROS tool called RVIZ \autocite{rviz}, it is possible to drive the Jackal/Husky by dragging drive arrows shown in *Figure [[fig:jackal_rviz]]* with the mouse.
 
 #+caption: Jackal in rviz with driving controls
 #+name:   fig:jackal_rviz
@@ -215,7 +223,7 @@ There is a node called /twist_mux which is responsible for multiplexing the velo
 [[./images/jackal_rviz.png]]
 \FloatBarrier
 
-On dragging, RViz sends forward/back/left/right/rotate commands to the node twist_marker_server which translates these commands to Twist messages and publishes these messages to the twist_marker_server/cmd_vel topic. The twist_mux node subscribes to all cmd_vel topics and produces a single Twist message which is published to jackal_velocity_controller/cmd_vel. The motor control board (or gazebo if simulating) then directly controls the jackals drive motors based on this message.
+On dragging, RViz sends forward/back/left/right/rotate commands to the node /twist_marker_server/ which translates these commands to Twist messages and publishes these messages to the /twist_marker_server/cmd_vel/ topic. The /twist_mux/ node subscribes to all /cmd_vel/ topics and produces a single Twist message which is published to /jackal_velocity_controller/cmd_vel/. The motor control board (or gazebo if simulating) then directly controls the jackals drive motors based on this message.
 
 #+caption: Node/topic layout - nodes in ovals topics and namespaces in rectangles
 #+name:   fig:drive-topics
@@ -224,18 +232,18 @@ On dragging, RViz sends forward/back/left/right/rotate commands to the node twis
 [[./images/rqt_graph.png]]
 \FloatBarrier
 
-The link from /twist_mux to /jackal_velocity_controller/cmd_vel is removed for clarity. The easiest way to drive the Jackal and Husky programatically is to publish Twist messages to one of the /cmd_vel topics. This can be done directly using rostopic pub:
+The link from /twist_mux/ to /jackal_velocity_controller/cmd_vel/ is removed for clarity. The easiest way to drive the Jackal and Husky programmatically is to publish Twist messages to one of the /cmd_vel/ topics. This can be done directly using rostopic pub:
 
 #+begin_src bash
 $ rostopic pub -r 10 /cmd_vel geometry_msgs/Twist  '{linear:  {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0,y: 0.0,z: 0.3}}'
 #+end_src
 
-This spins the Husky or Jackal around at 0.3 rads per second. Since the jackal can only drive forward/backward and rotate, y and z do nothing in linear portion of the message and x and y do nothing in the angular portion of the message. Linear x (+/-) is used to drive forward and backward, and to turn left/right angular x (+/-) is used.
+This spins the Husky or Jackal around at 0.3 rads per second. Since the jackal can only drive forward/backward and rotate, y and z do nothing in the linear portion of the message and x and y do nothing in the angular portion of the message. Linear x (+/-) is used to drive forward and backward, and to turn left/right angular x (+/-) is used.
 
-** Transform Heirarchy
-ROS represents 6 DOF geometric items' positions and orientations as transforms from parent to child coordinate frames. The parent/child relationship of transformations forms a heirarchy where each frame is a node in the world graph - this is identical to a scene graph in rendering libraries. A frame's position and orientation is always releative to it's parent frame, with the root frame having no parent.
+** Transform Hierarchy
+ROS represents 6 DOF geometric items' positions and orientations as transforms from parent to child coordinate frames. The parent/child relationship of transformations forms a hierarchy where each frame is a node in the world graph - this is identical to a scene graph in rendering libraries. A frame's position and orientation is always relative to it's parent frame, with the root frame having no parent.
 
-Frames can be added to the heirarchy by publishing TFMessage to the /tf or /tf_static topic. The /tf_static topic can be used to publish transforms that don't change - all tf_static transforms are broadcast to subscribers only once when the nodes first subscribe. The format for the message is (all different message types shown in block for convenience):
+Frames can be added to the hierarchy by publishing TFMessage to the /tf/ or /tf_static/ topic. The /tf_static/ topic can be used to publish transforms that don't change - all /tf_static/ transforms are broadcast to subscribers only once when the nodes first subscribe. The format for the message is (all different message types shown in block for convenience):
 
 #+begin_src python
   ## tf2_msgs/TFMessage
@@ -262,7 +270,7 @@ Frames can be added to the heirarchy by publishing TFMessage to the /tf or /tf_s
   float64 w
 #+end_src
 
-The frame_id in the header is the parent frame; the transform is giving the translation and rotation of child_frame_id in relation to frame_id. To work out the orientation and position of child frames in the root coordinate frame (or what some libraries would call "world coordinates"), we start at the root coordinate frame and build a four by four transformation matrix from the root frame orientation and position, which for the root frame is equal to the translation and rotation.
+The /frame_id/ in the header is the parent frame; the transform is giving the translation and rotation of /child_frame_id/ in relation to /frame_id/. To work out the orientation and position of child frames in the root coordinate frame (or what some libraries would call "world coordinates"), we start at the root coordinate frame and build a four by four transformation matrix from the root frame orientation and position, which for the root frame is equal to the translation and rotation.
 
 Using row major matrix layout, the transform matrix is created by first creating a rotation matrix from the quaternion orientation as shown in equation (1) \autocite{quatrot} (with x y z and w from the quaternion message above), and using the rotation matrix as the basis for the 4x4 matrix. The 3D position is then set as the last column in the 4x4 matrix, with 1 left as the last element in the column.
 
@@ -281,26 +289,26 @@ We iterate over all child frames and multiply the parent frame by the child fram
   Transform_{world} = Transform_{parent} \times Transform_{child}
 \end{gather}
 
-The transform heirarchy is crucial for mapping, localization, and navigation. Even without any simultaneous localization and mapping (SLAM) nodes enabled, the Jackal and Husky use odometry and the IMU information along with the transform heirarchy to produce an estimate as to where it is in the world. The root level frame in this case is called odom. The ekf localization node calculates the base_link rotation/translation (as relative to odom) and publishes the odom frame with the base_link as the child frame as shown in *Figure [[fig:ekf-localization]]*.
+The transform hierarchy is crucial for mapping, localization, and navigation. Even without any simultaneous localization and mapping (SLAM) nodes enabled, the Jackal and Husky use odometry and the IMU information along with the transform hierarchy to produce an estimate as to where it is in the world. The root level frame in this case is called odom. The /ekf_localization/ node calculates the /base_link/ frame rotation/translation (as relative to odom) and publishes the odom frame with the /base_link/ as the child frame as shown in *Figure [[fig:ekf-localization]]*.
 
-#+caption: ekf_localization node publishing to /tf based on multiple inputs
+#+caption: ekf_localization node publishing to /tf/ based on multiple inputs
 #+name:   fig:ekf-localization
-#+attr_latex: :width 3in
-#+ATTR_HTML:  :width 43% :height auto
+#+attr_latex: :width 5in
+#+ATTR_HTML:  :width 71% :height auto
 [[./images/ekf_localization_node.png]]
 \FloatBarrier
 
-The complete jackal heirarchy without any SLAM nodes running is shown in *Figure [[fig:transform-heirarchy]]*. The husky is nearly identical - but has a few different leaf nodes for its sensors and geometry. Most of the transform frames are published by the /robot_state_publisher node. This node reads in a URDF file from the parameter server and publishes transforms to /tf based on the contents of the URDF file. URDF is a file format that lists robot joints and links; links correspond to frames, and joints list the parent/child relationships between frames - there are several tutorials here \autocite{urdf}.
+The complete Jackal hierarchy without any SLAM nodes running is shown in *Figure [[fig:transform-hierarchy]]*. The Husky is nearly identical - but has a few different leaf nodes for its sensors and geometry. Most of the transform frames are published by the /robot_state_publisher/ node. This node reads in a URDF file from the parameter server and publishes transforms to /tf/ based on the contents of the URDF file. URDF is a file format that lists robot joints and links; links correspond to frames and joints list the parent/child relationships between frames. There are several URDF tutorials available \autocite{urdf}.
 
-#+caption: Transform heirarchy for the jackal
-#+name:   fig:transform-heirarchy
+#+caption: Transform hierarchy for the Jackal
+#+name:   fig:transform-hierarchy
 #+attr_latex: :width 7in
 #+ATTR_HTML:  :width 100% :height auto
 [[./images/transform.png]]
 \FloatBarrier
 
 ** SLAM GMapping
-Simultaneous Localization and Mapping, or SLAM, refers to the process of reading in sensor data over time, using the changing sensor data to find landmarks and build a map, and then using the landmarks and map to localize the robot. One of the most widely used algorithms to do SLAM with two-dimensional planar LIDAR data is gmapping. The gmapping SLAM algorithm, as proposed in \autocite{gmapping}, is implemented on OpenSLAM \autocite{open_slam_gmapping}, and ported to ROS as a package \autocite{gmapping_package}. The package launches a node called slam_gmapping which subscribes to /front/scan and /tf, performs SLAM using the data on those topics, and publishes the resulting map as an OccupancyGrid to the /map topic as shown in *Figure [[fig:gmapping_graph]]*.
+Simultaneous Localization and Mapping, or SLAM, refers to the process of reading in sensor data over time, using the changing sensor data to find landmarks and build a map, and then using the landmarks and map to localize the robot. One of the most widely used algorithms to do SLAM with two-dimensional planar LIDAR data is gmapping. The gmapping SLAM algorithm, as proposed in \autocite{gmapping}, is implemented on OpenSLAM \autocite{open_slam_gmapping}, and ported to ROS as a package \autocite{gmapping_package}. The package launches a node called slam_gmapping which subscribes to /front/scan/ and /tf/, performs SLAM using the data on those topics, and publishes the resulting map as an /OccupancyGrid/ to the /map/ topic as shown in *Figure [[fig:gmapping_graph]]*.
 
 #+caption: GMapping package node and updated transform tree
 #+name:   fig:gmapping_graph
@@ -309,9 +317,9 @@ Simultaneous Localization and Mapping, or SLAM, refers to the process of reading
 [[./images/gmapping_graph.png]]
 \FloatBarrier
 
-A new transform frame called map is also published to the /tf topic as shown in *Figure [[fig:gmapping_graph]]*. The slam_gmapping node performs localization by calculating the odom translation/rotation (as relative to the map using gmapping SLAM algorithm) and publishing the map frame to /tf with the odom frame as its child. In the complete picture, ekf_localization updates the relative transform of base_link to odom by using the IMU/odometry, and slam_gmapping updates the relative transform of odom to map by using SLAM based on the LIDAR scan data.
+A new transform frame called map is also published to the /tf/ topic as shown in *Figure [[fig:gmapping_graph]]*. The slam_gmapping node performs localization by calculating the odom translation/rotation (as relative to the map using gmapping SLAM algorithm) and publishing the map frame to /tf/ with the odom frame as its child. In the complete picture, /ekf_localization/ updates the relative transform of /base_link/ to odom by using the IMU/odometry, and slam_gmapping updates the relative transform of odom to map by using SLAM based on the LIDAR scan data.
 
-The OccupancyGrid message format is:
+The /OccupancyGrid/ message format is:
 #+begin_src python
   ## nav_msgs/OccupancyGrid
   std_msgs/Header header
@@ -345,7 +353,7 @@ The OccupancyGrid message format is:
 This message type is used for costmaps in addition to maps. For maps, the values in data are either 0, 100, or -1; not the full range of [0-100]. With a map available, the navigation stack can run and create costmaps and use those costmaps to create drive paths.
 
 ** Navigation Stack
-The navigation stack on ROS refers to the move_base node, the plugins the move_base node uses, and all the topics published by /move_base/. *Figure [[fig:nav_stack]]* shows an overview of the node/topic relationship \autocite{nav_stack}. The /move_base/ node is configurable; the ovals inside of the /move_base/ rectangle indicate parts of the node which run using plugins. This means the user can create a shared library and, with some configuration, /move_base/ will use the shared library in place of the default behaviour.
+The navigation stack on ROS refers to the move_base node, the plugins the move_base node uses, and all the topics published by /move_base/. *Figure [[fig:nav_stack]]* shows an overview of the node/topic relationship \autocite{nav_stack}. The /move_base/ node is configurable; the ovals inside of the /move_base/ rectangle indicate parts of the node which run using plugins. This means the user can create a shared library and, with some configuration, /move_base/ will use the shared library in place of the default behavior.
 
 #+caption: Navigation stack overview
 #+name:   fig:nav_stack
@@ -379,7 +387,7 @@ The /move_base/ node only issues velocity commands to the robot if there is an a
   # 7 (RECALLING) The goal received a cancel request before it started executing,
   #   but the action server has not yet confirmed that the goal is canceled
   # 8 (RECALLED) The goal received a cancel request before it started executing
-  #   and was successfully cancelled (Terminal State)
+  #   and was successfully canceled (Terminal State)
   # 9 (LOST) An action client can determine that a goal is LOST. This should not be
   #   sent over the wire by an action server
   uint8 status
@@ -389,7 +397,7 @@ The /move_base/ node only issues velocity commands to the robot if there is an a
   string id
 #+end_src
 
-The /move_base/ node works on a single goal at a time, but if a goal is cancelled and another goal issued quickly, multiple goals can appear in the status array. To get the correct goal in all cases we need the goal id which can be obtained from the /MoveBaseGoalAction/ message posted to /move_base/goal/.
+The /move_base/ node works on a single goal at a time, but if a goal is canceled and another goal issued quickly, multiple goals can appear in the status array. To get the correct goal in all cases we need the goal id which can be obtained from the /MoveBaseGoalAction/ message posted to /move_base/goal/.
 
 #+begin_src python
   ## move_base_msgs/MoveBaseActionGoal
@@ -407,7 +415,7 @@ The /move_base/ node works on a single goal at a time, but if a goal is cancelle
 
 The /move_base/ node builds two costmaps, local and global, to aid in building a navigation path. The global costmap feeds the global planner, and the local costmap and global path as determined by the global planner feed the local planner. The local and global planners are specified as plugins which allow custom planner packages to be used. The default local planner package for the Jackal and Husky is /base_local_planner/, and the default global planner package is /navfn/.
 
-All planner nodes are put in a namespace within the package. For example, the node provided by /base_local_planner/ is /base_local_planner/TrajectoryPlannerROS/, the node provided by navfn is /navfn/NavfnROS/, and the node provided by /global_planner/ is /global_planner/GlobalPlanner/.
+All planner nodes are put in a namespace within the package. For example, the node provided by /base_local_planner/ is /base_local_planner/TrajectoryPlannerROS/, the node provided by /navfn/ is /navfn/NavfnROS/, and the node provided by /global_planner/ is /global_planner/GlobalPlanner/.
 
 *** Costmaps
 Both the local and the global costmaps contain data about nearby obstacles - the difference between the costmaps is in the configuration. The global costmap is usually configured to use map as its global frame, be the same size as the /OccupancyGrid/ published to the /map/ topic, and not move along with the robot. The local costmap uses odom as its global frame, is much smaller than the global costmap, and stays centered over the robot as the robot moves.
@@ -487,10 +495,10 @@ The default jackal_world.launch and husky_playground.launch files create the wor
 [[./images/jackal_husky_sim.png]]
 \FloatBarrier
 
-It is worth mentioning, before launching Gazebo, the machine running the simulation must be configured as the ROS master with roscore running.
+It is worth mentioning, before launching Gazebo, the machine running the simulation must be configured as the ROS master with /roscore/ running.
 
 * Wifi Network
-The WiFi network consists of the Jackal, the Husky, and two base stations. A base station is a weather sealed pelican junction box on a collapsable tripod stand. In and on the junction box there is a Ubiquity Bullet M2 router powered over ethernet, a 24V battery, an adaptor connecting the battery to the router, a button to switch the power, and a dipole antenna. On the bottom of the junction box there is an ethernet port connected through the battery adaptor to the router. The base station is shown in *Figure [[fig:base_station]]*.
+The WiFi network consists of the Jackal, the Husky, and two base stations. A base station is a weather sealed pelican junction box on a collapsible tripod stand. In and on the junction box there is a Ubiquiti Bullet M2 router powered over ethernet, a 24V battery, an adapter connecting the battery to the router, a button to switch the power, and a dipole antenna. On the bottom of the junction box there is an ethernet port connected through the battery adapter to the router. The base station is shown in *Figure [[fig:base_station]]*.
 
 #+caption: Base station
 #+name:   fig:base_station
@@ -499,7 +507,7 @@ The WiFi network consists of the Jackal, the Husky, and two base stations. A bas
 [[./images/base_station.png]]
 \FloatBarrier
 
-The network is setup with base station 1 configured as the router and base station two, the Jackal, and the Husky configured as access point repeaters. Only base station 1 is setup to connect to another router for internet; its LAN port is set to obtain an IP through DHCP with a fallback address set for management. The LAN port on base station 1 is not bridged to the WLAN port like it is on base station 2, the Jackal, and the Husky. Each host device on the network is configured with a static IP address on the subnet 192.168.10.0/24. This is used because it is within the class C network private address range, and is different than the commmon home router subnet 192.168.1.0/24. *Table [[table:ip_addresses]]* shows the device IP and DHCP server settings for the routers.
+The network is set up with base station 1 configured as the router and base station two, the Jackal, and the Husky configured as access point repeaters. Only base station 1 is set up to connect to another router for internet; its LAN port is set to obtain an IP through DHCP with a fallback address set for management. The LAN port on base station 1 is not bridged to the WLAN port like it is on base station 2, the Jackal, and the Husky. Each host device on the network is configured with a static IP address on the subnet 192.168.10.0/24. This is used because it is within the class C network private address range, and is different from the common home router subnet 192.168.1.0/24. *Table [[table:ip_addresses]]* shows the device IP and DHCP server settings for the routers.
 
 #+caption: Device IP addresses - netmask for all devices is 255.255.255.0
 #+name:   table:ip_addresses
@@ -532,13 +540,13 @@ The username and password for all routers is the same and shown in *Table [[tabl
 #+attr_latex: :width 7in :font \scriptsize
 | *Username* | *Password* |
 |------------+------------|
-| admin      | clearpath  |
+| admin      | Clearpath  |
 
 ** Ubiquiti Bullet M2 Router
 The Bullet M2 router is used in both base stations and the Jackal. It is powered over ethernet and provides an N-type female connector for an antenna. Each unit is connected to a dipole antenna. 
 
 *** Firmware Upgrade
-When starting this project, only base station 1 did not have working Ubiquiti firmware - it had a non functional version of dd-wrt. As dd-wrt web interface does not provide any option to install the original firmware, to return from dd-wrt to Ubiquiti firmware we had to use a tftp client from a host connected to the unit's ethernet port through a switch. First we put the unit in firmware flash mode by powering on the unit while holding down the small reset button for about 12 seconds. The unit's connection LEDs start flashing in an alternating pattern, and the ethernet port can be pinged at 192.168.1.20. To upload this firmware to the device using tftp:
+When starting this project, only base station 1 did not have working Ubiquiti firmware - it had a non functional version of dd-wrt. As the dd-wrt web interface does not provide any option to install the original firmware, to return from dd-wrt to Ubiquiti firmware we had to use a /tftp/ client from a host connected to the unit's ethernet port through a switch. First we put the unit in firmware flash mode by powering on the unit while holding down the small reset button for about 12 seconds. The unit's connection LEDs start flashing in an alternating pattern, and the ethernet port can be pinged at 192.168.1.20. To upload this firmware to the device using /tftp/:
 
 #+begin_src bash
   $ mkdir tmp && cd tmp
@@ -552,7 +560,7 @@ When starting this project, only base station 1 did not have working Ubiquiti fi
 
 Then wait for a few minutes until the unit resets and the LEDs are no longer blinking. The router configure page is available at the default IP address 192.168.1.20.
 
-We applied the latest firmware uprgade to all Ubiquity Bullet M2 routers. The router has long been discontinued so finding the latest firmware revision is tricky. The firmware update section of the system tab in the router configuration application is shown in *Figure [[fig:router_fw_update]]*.
+We applied the latest firmware upgrade to all Ubiquiti Bullet M2 routers. The router has long been discontinued so finding the latest firmware revision is tricky. The firmware update section of the system tab in the router configuration application is shown in *Figure [[fig:router_fw_update]]*.
 
 #+caption: Firware update section of router configuration system page
 #+name:   fig:router_fw_update
@@ -561,7 +569,7 @@ We applied the latest firmware uprgade to all Ubiquity Bullet M2 routers. The ro
 [[./images/router_fw_update.png]]
 \FloatBarrier
 
-Clicking "Check Now" does not work, but it does provide a link to the Ubiquity downloads page. Searching for the XM portion of the firmware finds /XM.v6.3.6/, the last (and only) revision of the firmware available on the site. Once downloaded the firmware is installed with "Choose File", selecting the downloaded file, and then clicking "Upload". After uploading a notice appears above the firmware update section. Clicking "update" will start performing the update as shown in *Figure [[fig:fw_update_progress]]*.
+Clicking "Check Now" does not work, but it does provide a link to the Ubiquiti downloads page. Searching for the XM portion of the firmware finds /XM.v6.3.6/, the last (and only) revision of the firmware available on the site. Once downloaded the firmware is installed with "Choose File", selecting the downloaded file, and then clicking "Upload". After uploading a notice appears above the firmware update section. Clicking "update" will start performing the update as shown in *Figure [[fig:fw_update_progress]]*.
 
 #+caption: Firware update progress page
 #+name:   fig:fw_update_progress
@@ -570,7 +578,7 @@ Clicking "Check Now" does not work, but it does provide a link to the Ubiquity d
 [[./images/fw_update_progress.png]]
 \FloatBarrier
 
-The Ubiquity Bullet M2 v.6.3.6 firmware file is saved as part of the project github repo \autocite{client_repo} in /doc/bullet_m2_router/firmware/ folder. 
+The Ubiquiti Bullet M2 v.6.3.6 firmware file is saved as part of the project github repo \autocite{client_repo} in /doc/bullet_m2_router/firmware/ folder. 
 
 *** Configuration
 In order for the routers to work with non Ubiquiti devices at all (even clients), airMAX must be turned off as shown in *Figure [[fig:air_max]]*.
@@ -582,7 +590,7 @@ In order for the routers to work with non Ubiquiti devices at all (even clients)
 [[./images/air_max.png]]
 \FloatBarrier
 
-All Bullet M2 routers are configured as access point repeaters. The MAC addresses for other AP repeaters (including the Microhard VIP2) is given as WDS peers so the device can directly communicate with the other devices over the wireless link. If no other devices are found, the device still provides an access point to the network. The wireless link is secured using WEP 128 bit ASCII key set to uafclearpath1. WEP is the most secure option for this router when operating in access point repeater mode. The routers are configured to use 20 MHz channel width - they will not work together otherwise. *Figure [[fig:bullet_wireless_settings]]* shows the wireless configuration page for base station 1. These settings are the same for all routers except for the WDS peers.
+All Bullet M2 routers are configured as access point repeaters. The MAC addresses for other AP repeaters (including the Microhard VIP2) are given as WDS peers so the device can directly communicate with the other devices over the wireless link. If no other devices are found, the device still provides an access point to the network. The wireless link is secured using WEP 128 bit ASCII key set to uafclearpath1. WEP is the most secure option for this router when operating in access point repeater mode. The routers are configured to use 20 MHz channel width - they will not work together otherwise. *Figure [[fig:bullet_wireless_settings]]* shows the wireless configuration page for base station 1. These settings are the same for all routers except for the WDS peers.
 
 #+caption: Ubiquiti Bullet M2 device wireless settings for base station 1. The other devices share these settings except for the WDS peers.
 #+name:   fig:bullet_wireless_settings
@@ -591,9 +599,9 @@ All Bullet M2 routers are configured as access point repeaters. The MAC addresse
 [[./images/bullet_wireless_settings.png]]
 \FloatBarrier
 
-Base station 1 router network mode is set to SOHO Router. In this mode, network address translation and all firewall rules are applied such that the wireless adaptor is the LAN and the wired adaptor connects to the WAN. The wired adaptor is configured to use DHCP to obtain an IP, with a backup IP in case no DHCP server is found. The WLAN adaptor is configured with the IP address 192.168.10.1, and other network devices use this IP address as their gateway. Connecting the ethernet port to another router with internet access will provide the wireless network with internet access, and the network is hidden behind NAT.
+Base station 1 router network mode is set to SOHO Router. In this mode, network address translation and all firewall rules are applied such that the wireless adapter is the LAN and the wired adapter connects to the WAN. The wired adapter is configured to use DHCP to obtain an IP, with a backup IP in case no DHCP server is found. The WLAN adapter is configured with the IP address 192.168.10.1, and other network devices use this IP address as their gateway. Connecting the ethernet port to another router with internet access will provide the wireless network with internet access, and the network is hidden behind NAT.
 
-Base station 2 and the Jackal router network modes are set to Bridge. In bridge mode the device acts like a layer 2 switch; all network traffic is transparently routed between the WLAN and LAN. The device only has an IP address for management purposes. Base station 2 ethernet port can be used as a network switch port, much like the ethernet ports provided on the Husky top plate. The SOHO Router (base station 1) and the Bridge (Jackal router) network settins are shown in *Figure [[fig:bullet_network_settings]]*. The Jackal router network settings and base station 2 network settings are the same except for the IP address - all IP addresses are given in *Table [[table:ip_addresses]]*. 
+Base station 2 and the Jackal router network modes are set to Bridge. In bridge mode the device acts like a layer 2 switch; all network traffic is transparently routed between the WLAN and LAN. The device only has an IP address for management purposes. Base station 2 ethernet port can be used as a network switch port, much like the ethernet ports provided on the Husky top plate. The SOHO Router (base station 1) and the Bridge (Jackal router) network settings are shown in *Figure [[fig:bullet_network_settings]]*. The Jackal router network settings and base station 2 network settings are the same except for the IP address - all IP addresses are given in *Table [[table:ip_addresses]]*. 
 
 #+caption: Ubiquiti Bullet M2 device network settings for base station 1 (left) and Jackal (right). Base station 2 shares the Jackal settings except for IP address.
 #+name:   fig:bullet_network_settings
@@ -605,7 +613,7 @@ Base station 2 and the Jackal router network modes are set to Bridge. In bridge 
 ** Microhard VIP2-2400
 The VIP2 router is used in the Husky. It is powered from the internal Husky user power and has an RP-TNC RF connector which is connected to a dipole antenna mounted on the Husky. The manufacturer had no new firmware available for the device as it has been discontinued since 2014.
 
-The VIP2 is set as a bridged repeater. When turned on it searches for another access point with the same SSID and attempts to connect using the configured security settings (WEP with uafclearpath1 encoded from ASCII to hexidecimal as the key). As with the Bullet M2 routers, the wireless channel bandwidth is set to 20 MHz. The IP address of the LAN port is static (refer to *Table [[table:ip_addresses]]*) though a DHCP server is running to serve a subgroup of IP addresses as mentioned earlier. All of the relavant VIP2 router settins are shown in *Figure [[fig:vip_settings]]* - any settings not shown are configured as default.
+The VIP2 is set as a bridged repeater. When turned on it searches for another access point with the same SSID and attempts to connect using the configured security settings (WEP with uafclearpath1 encoded from ASCII to hexadecimal as the key). As with the Bullet M2 routers, the wireless channel bandwidth is set to 20 MHz. The IP address of the LAN port is static (refer to *Table [[table:ip_addresses]]*) though a DHCP server is running to serve a subgroup of IP addresses as mentioned earlier. All of the relevant VIP2 router settings are shown in *Figure [[fig:vip_settings]]* - any settings not shown are configured as default.
 
 #+caption: Microhard VIP2-2400 router settings. In repeater mode the LAN is bridged to the WAN with an IP address for management.
 #+name:   fig:vip_settings
@@ -615,7 +623,7 @@ The VIP2 is set as a bridged repeater. When turned on it searches for another ac
 \FloatBarrier
 
 ** Custom DNS Servers
-Both the Jackal and the Husky use dnsmasq to create DNS servers. This is to allow hosts to be entered directly in client browser address bars without needing to know the IP address. The host to ip address mapping is configured in the Jackal and Husky /etc/hosts/ file and looks like this:
+Both the Jackal and the Husky use /dnsmasq/ to create DNS servers. This is to allow hosts to be entered directly in client browser address bars without needing to know the IP address. The host to ip address mapping is configured in the Jackal and Husky /etc/hosts/ file and looks like this:
 
 #+begin_src bash
 192.168.10.1    base-station-1
@@ -626,7 +634,7 @@ Both the Jackal and the Husky use dnsmasq to create DNS servers. This is to allo
 192.168.10.6    husky  
 #+end_src
 
-To connect to any of the above, type them in the web browser prefixed by http. For example, to open the jackal app type http://jackal for the observer app and http://jackal/control for the control app.
+To connect to any of the above, type them in the web browser prefixed by http. For example, to open the Jackal app type http://jackal for the observer app and http://jackal/control for the control app.
 
 To set up dnsmasq DNS server to run on robot startup:
 
@@ -654,24 +662,24 @@ The following needs to be added and/or uncommented in the /etc/dnsmasq.conf file
   cache-size=1000
 #+end_src
 
-Once this is complete, reboot the robot. The DNS servers should now be operational. If the routers are configured using the DNS configuration settings outline in [[Ubiquiti Bullet M2 Router]] and [[Microhard VIP2-2400]], network clients will use the mapping in /etc/hosts/ on either robot.
+Once this is complete, reboot the robot. The DNS servers should now be operational. If the routers are configured using the DNS configuration settings outlined in [[Ubiquiti Bullet M2 Router]] and [[Microhard VIP2-2400]], network clients will use the mapping in /etc/hosts/ on either robot.
 
 * Clearpath Robot Configuration
-The Clearpath Jackal and Husky UGVs have various sensors attached the their internal computers. The computers run Clearpath specific distrobutions of linux which are very near to Ubuntu server with some minor modifications for communicating with the motor control board. As part of this project, we update the Jackal and Husky to the latest Clearpath Ubunutu image. This requires configuring the robots for their specific sensor packages, configuring the network adaptors using netplan, and re-syncing the wireless controllers. The wireless controller for the Jackal is upgraded to Playstation 4 controller and the Husky Logitech F710 controller is re-paired to the Husky. The Jackal and Husky and associated components are labeled in *Figure [[fig:jackal_husky_comps]]*.
+The Clearpath Jackal and Husky UGVs have various sensors attached the their internal computers. The computers run Clearpath specific distributions of linux which are very near to Ubuntu server with some minor modifications for communicating with the motor control board. As part of this project, we update the Jackal and Husky to the latest Clearpath Ubuntu image. This requires configuring the robots for their specific sensor packages, configuring the network adapters using netplan, and re-syncing the wireless controllers. The wireless controller for the Jackal is upgraded to Playstation 4 controller and the Husky Logitech F710 controller is re-paired to the Husky. The Jackal and Husky and associated components are labeled in *Figure [[fig:jackal_husky_comps]]*.
 
-#+caption: The Jackal and Husky UGVs with relavant components labeled
+#+caption: The Jackal and Husky UGVs with relevant components labeled
 #+name:   fig:jackal_husky_comps
 #+attr_latex: :width 6in
 #+ATTR_HTML:  :width 87% :height auto
 [[./images/jackal_husky_comps.png]]
 \FloatBarrier
 
-The Clearpath UAF specific notes and the user manuals for both robots are avialable in the project repository \autocite{client_repo} under the /doc/ subfolder.
+The Clearpath UAF specific notes and the user manuals for both robots are available in the project repository \autocite{client_repo} under the /doc/ subfolder.
 
 ** Fixing
-At project start, the Husky would not drive. The Jackal would intermittently startup to a state where it was unable to communicate with the motor control board. The Jackal also would shutoff inexplicably after approximately 20 minutes of runtime. Starting the Jackal's camera node would cause the master ROS process to stall.
+At project start, the Husky would not drive. The Jackal would intermittently startup to a state where it was unable to communicate with the motor control board. The Jackal also would shut off inexplicably after approximately 20 minutes of runtime. Starting the Jackal's camera node would cause the master ROS process to stall.
 
-The Husky issue was caused by a loose connector on the MCU board. When the battery enable adaptor is plugged to the robot, it shorts a pin to ground indicating that the robot is powered on batteries and is able to drive. *Figure [[fig:mcu_board]]* shows the MCU board with the connector for this pin circled. In the weatherized package, both the battery enable and sure power plugs short this pin to ground. The connector was too loose causing the "Charge" indicator light to illumninate and disabling power to the motors. Since the weatherized package shorts this pin to ground on either plug, the fix was to solder a jumper to ground on the back of the MCU board. Replacing the connector was not an option as it was super-glued/apoxied to the MCU board.
+The Husky issue was caused by a loose connector on the MCU board. When the battery enable adapter is plugged to the robot, it shorts a pin to ground indicating that the robot is powered on batteries and is able to drive. *Figure [[fig:mcu_board]]* shows the MCU board with the connector for this pin circled. In the weatherized package, both the battery enable and sure power plugs short this pin to ground. The connector was too loose causing the "Charge" indicator light to illuminate and disabling power to the motors. Since the weatherized package shorts this pin to ground on either plug, the fix was to solder a jumper to ground on the back of the MCU board. Replacing the connector was not an option as it was super-glued/epoxied to the MCU board.
 
 #+caption: Husky MCU board with the battery connected indicator pin circled
 #+name:   fig:mcu_board
@@ -682,12 +690,12 @@ The Husky issue was caused by a loose connector on the MCU board. When the batte
 
 The Jackal issue of intermittently starting with no communications to the MCU was caused by a depleted CMOS battery. Connecting a display to the Jackal during startup revealed that sometimes a BIOS message indicating low CMOS battery would pop up, and the booting procedure would not continue without the user choosing "Yes" on the popup dialog. Replacing the battery fixed this issue; easy fix but difficult to figure out.
 
-The Jackal shutting down after approximately 20 minutes and the camera node stalling ROS were both caused by the same issue; the camera card was halfway seated in the PCI-e slot. To try and fix the issue we re-installed the operating system, and during install some kernal logging messages hinted to pci express issues. Seating the card properly fixed both issues.
+The Jackal shutting down after approximately 20 minutes and the camera node stalling ROS were both caused by the same issue; the camera card was halfway seated in the PCI-e slot. To try and fix the issue we re-installed the operating system, and during install some kernel logging messages hinted to pci express issues. Seating the card properly fixed both issues.
 
 ** Upgrade ROS from ROS Indigo to ROS Noetic
 The Jackal and Husky were upgraded to Clearpath's latest Ubuntu 20.04 image along with ROS noetic. This allows using the latest Clearpath ROS packages along with LIDAR and camera drivers. This also allows a development machine with Ubuntu 20.04 installed to communicate directly with the robots over ROS. Ubuntu 14.04 and ROS Indigo were previously installed. As mentioned in [[Robot Operating System (ROS)]], to make use of ROS with the Jackal/Husky operating as ROS master machines, connecting devices must be running the same version of ROS which implies the same Linux version. Ubuntu 14.04 would not correctly install on any of our machines due to unsupported hardware (in particular the network cards wouldn't work), and so a virtual machine had to be used. This would be fine for short lived robot access, but for app development and long term robot access this is impractical.
 
-Installing the uprgrade is outlined on the Clearpath website \autocite{clearpath_os_install}. Just download the ISO file, create a bootable USB disk from the ISO file, and then install as with any other OS. The installation procedure doesn't require internet access, but it's recommended as it will get the latest ROS package updates. The process isn't automatic; there are several questions about which sensors the robot is using, serial number, etc. But the process is straight forward.
+Installing the upgrade is outlined on the Clearpath website \autocite{clearpath_os_install}. Just download the ISO file, create a bootable USB disk from the ISO file, and then install as with any other OS. The installation procedure doesn't require internet access, but it's recommended as it will get the latest ROS package updates. The process isn't automatic; there are several questions about which sensors the robot is using, serial number, etc. But the process is straightforward.
 
 The username and password for both robots is set as the same initial Clearpath configuration outlined in the Robotsmith notes pdf, and is shown in *Table [[table:robot_login]]*.
 
@@ -708,7 +716,7 @@ After fresh OS install the following command is required to setup the base ROS s
 This will setup most things. Some attached sensors require running specific configuration.
 
 ** Robot Startup
-As outlined in [[Robot Operating System (ROS)]], the setup script /etc/ros/noetic/setup.bash/ is sourced to enable ROS commands and tools in a given shell. The Jackal and Husky use a systemd service to run ROS on startup, and this service sources a Clearpath authored script located at /etc/ros/setup.bash/ which in turn sources the main ROS setup script. The purpose of the Clearpath script is to allow user configuration before running the ROS setup script. The modified script used in the Jackal and Husky is:
+As outlined in [[Robot Operating System (ROS)]], the setup script /etc/ros/noetic/setup.bash/ is sourced to enable ROS commands and tools in a given shell. The Jackal and Husky use a /systemd/ service to run ROS on startup, and this service sources a Clearpath authored script located at /etc/ros/setup.bash/ which in turn sources the main ROS setup script. The purpose of the Clearpath script is to allow user configuration before running the ROS setup script. The modified script used in the Jackal and Husky is:
 
 #+begin_src bash
   # Mark location of self so that robot_upstart knows where to find the setup file.
@@ -759,35 +767,38 @@ This script requires admin to edit, so rather than placing the sensor configurat
   export HUSKY_NAVSAT_BAUD=19200
 #+end_src
 
-These environment variables are documented on the Clearpath website \autocite{jackal_config} \autocite{husky_config}. The settings above enable the Navatel GPS ROS nodes, LIDAR nodes, and the Jackal bumblebee stereo camera node on startup. Some of these values, such as the Husky 3d laser mount offset, were obtained experimentally by editing the value and viewing the results in RVIZ.
+These environment variables are documented on the Clearpath website \autocite{jackal_config} \autocite{husky_config}. The settings above enable the Novatel GPS ROS nodes, LIDAR nodes, and the Jackal bumblebee stereo camera node on startup. Some of these values, such as the Husky 3d laser mount offset, were obtained experimentally by editing the value and viewing the results in RVIZ.
 
-In the modified Clearpath setup script, after sourcing the main ROS setup script we also source the setup script for our custom packages workspace located in the home directory. This allows us to include any custom packages in the /~/custom_packages_ws/ workspace folder, build the workspace with catkin, and the packages will be available with all ROS commands as if they were installed.
+In the modified Clearpath setup script, after sourcing the main ROS setup script we also source the setup script for our custom packages workspace located in the home directory. This allows us to include any custom packages in the /~/custom_packages_ws/ workspace folder, build the workspace with /catkin/, and the packages will be available with all ROS commands as if they were installed.
 
 Launch files can be added to /etc/ros/noetic/ros.d/ to start nodes on ROS startup. On the Jackal we added a launch file called /jackal_startup_nodes.launch/ which launches the /image_proc/ node. This node subscribes to the /camera/left/image_color/ topic, processes the image, and publishes several processed image topics. We make use of the compressed image topic (published to /camera/left/image_color/compressed/) in the server application to send the compressed image to clients.
 
 To provide the ROS environment to ssh clients, we source the customized Clearpath setup script in ~/.bashrc for both the Husky and the Jackal.
 
 *** Server Application Service
-The server application is started as a systemd service so that it restarts on failure and starts on bootup. For this to work it has to start after the ROS service. The service file is called uaf_clearpath_ctrl_server.service and is located in the home directory:
+The server application is started as a /systemd/ service so that it restarts on failure and starts on bootup. For this to work it has to start after the ROS service. The service file is called uaf_clearpath_ctrl_server.service and is located in the home directory:
 
 #+begin_src text
-[Unit]
-Description=Run the UAF clearpath control server Node application
-After=network-online.target ros.service
+  [Unit]
+  Description=Run the UAF clearpath control server Node application
+  After=network-online.target ros.service
 
-[Service]
-Type=simple
-ExecStart=/usr/bin/node /home/administrator/uaf_clearpath_ctrl_server/src/index.js
-RestartSec=5
-Restart=on-failure
+  [Service]
+  Type=simple
+  ExecStart=/bin/bash -c '. /opt/ros/noetic/setup.bash ;/usr/bin/node /home/administrator/uaf_clearpath_ctrl_server/src/index.js'
+  RestartSec=20
+  Restart=on-failure
+  StandardOutput=syslog
+  StandardError=syslog
+  SyslogIdentifier=uaf_clearpath_ctrl_server
 
-[Install]
-WantedBy=multi-user.target          
+  [Install]
+  WantedBy=multi-user.target          
 #+end_src
 
 This service file sets the server as a dependency of multi-user.target so that it is started when that target is started, but the startup will be delayed until after the ROS service startup is complete. This is required since the server application creates an ROS node on startup. If the server crashes it will be automatically restarted with a delay of 5 seconds.
 
-To use the service file, copy it as admin from the home directory to the systemd service directory. On first install, the service must be enabled after copy, but once enabled it can be updated by re-copying/restarting the service and reloading the systemctl daemon:
+To use the service file, copy it as admin from the home directory to the /systemd/ service directory. On first install, the service must be enabled after copy, but once enabled it can be updated by re-copying/restarting the service and reloading the /systemctl/ daemon:
 
 #+begin_src bash
   # Copy any edits to the service file in the home directory to the systemd service directory
@@ -810,15 +821,15 @@ We can then check the status of our service at any time. It should be running on
   $ sudo systemctl status uaf_clearpath_ctrl_server
 #+end_src
 
-Updating the application doesn't require editing the service - just replace the index.js file or the emscripten generated files as outlined in [[Client Application]].
+Updating the application doesn't require editing the service - just replace the index.js file or the Emscripten generated files as outlined in [[Client Application]].
 
 ** Navigation Package
-Clearpath provides navigation packages for both the Jackal and Husky. The navigation packages start /move_base/ and initialize the local/global costmaps, /slam_gmapping/ nodes, and pathfinding plugins with Jackal/Husky specific settings. These settings almost work without modification, but the default costmap sizes are too large. Its also preferrable to be able to modify the slam_gmapping and pathfinding default settings without modifying the Clearpath source packages (which would require admin and could be overwritten on updates) so that we can commit the changes to source control.
+Clearpath provides navigation packages for both the Jackal and Husky. The navigation packages start /move_base/ and initialize the local/global costmaps, /slam_gmapping/ nodes, and pathfinding plugins with Jackal/Husky specific settings. These settings almost work without modification, but the default costmap sizes are too large. Its also preferable to be able to modify the slam_gmapping and pathfinding default settings without modifying the Clearpath source packages (which would require admin and could be overwritten on updates) so that we can commit the changes to source control.
 
 To accomplish this we copied the navigation package source to our custom package workspace and applied modifications. The Husky customized navigation package is called uaf_husky_navigation \autocite{uaf_husky_nav} and the Jackal customized navigation package is called uaf_jackal_navigation \autocite{uaf_jackal_nav}. The server application launches 
 
 ** Network
-The network for both UGVs is configured using netplan \autocite {netplan}. The Husky and Jackal adaptor IP addresses are set as shown in *Table [[table:ip_addresses]]*. The Jackal has two ethernet ports; eno1 connected to the network and enp4s0 connected to the LIDAR. The Husky also has two ethernet ports eno1 for network and enp4s0 for LIDAR. The port connected to the Velodyne VLP16 LIDAR initially caused problems. If the ROS velodyne driver node fails or doesn't start, the Velodyne blasts the network with data. If connected by wireless, for example, pings fail intermittently and the network is extremely slow. By default Clearpath bridges the adaptors in a fresh OS install, so this made for fun troubleshooting.
+The network for both UGVs is configured using netplan \autocite {netplan}. The Husky and Jackal adapter IP addresses are set as shown in *Table [[table:ip_addresses]]*. The Jackal has two ethernet ports; eno1 connected to the network and enp4s0 connected to the LIDAR. The Husky also has two ethernet ports eno1 for network and enp4s0 for LIDAR. The port connected to the Velodyne VLP16 LIDAR initially caused problems. If the ROS velodyne driver node fails or doesn't start, the Velodyne blasts the network with data. If connected by wireless, for example, pings fail intermittently and the network is extremely slow. By default Clearpath bridges the adapters in a fresh OS install, so this made for fun troubleshooting.
 
 The netplan file is called 50-clearpath-bridge.yaml (as named by Clearpath due to the default bridge setting) and is located in /etc/netplan/ on both UGVs. The file is almost identical for the Jackal and the Husky except for the IP addresses:
 
@@ -845,11 +856,11 @@ network:
 #+end_src
 
 ** Wireless Controller
-The Jackal originally used a PlayStation 3 controller and the Husky uses the Logitech 710 controller. The Jackal is now paired to two PlaysStation 4 controllers. Whichever controller is turned on first pairs and blocks out the other one - but with a backup controller battery life is not a concern. The Jackal was paired with Playstation 4 controllers because the PlayStation 3 controller is difficult to configure with the updated OS; The Clearpath Ubuntu image has udev rules setup to automatically link the PlayStation 4 controller to the /joy_teleop/ node which must be edited to make the PlayStation 3 controller work. PlayStation 4 controllers only require pairing using bluetoothctl, and then they just work.
+The Jackal originally used a PlayStation 3 controller and the Husky uses the Logitech 710 controller. The Jackal is now paired to two PlaysStation 4 controllers. Whichever controller is turned on first pairs and blocks out the other one - but with a backup controller battery life is not a concern. The Jackal was paired with Playstation 4 controllers because the PlayStation 3 controller is difficult to configure with the updated OS; The Clearpath Ubuntu image has /udev/ rules setup to automatically link the PlayStation 4 controller to the /joy_teleop/ node which must be edited to make the PlayStation 3 controller work. PlayStation 4 controllers only require pairing using /bluetoothctl/, and then they just work.
 
-The Logitech 710 is easily configured, it pairs with a wireless USB reciever. In case the receiver is lost it can be paired to a new logitech USB receiver using tools provided on their website. The correct environment variables need to be set to tell ROS to use the Logitech controller, as outlined in [[Robot Startup]].
+The Logitech 710 is easily configured, it pairs with a wireless USB receiver. In case the receiver is lost it can be paired to a new logitech USB receiver using tools provided on their website. The correct environment variables need to be set to tell ROS to use the Logitech controller, as outlined in [[Robot Startup]].
 
-To pair the PS4 controller, first put the controller in pairing mode by holding the /Share/ and /PS/ buttons until the main LED flashes white rapidly, then turn on bluetooth scanning with bluetoothctl and find the PS4's MAC address (sample output from pairing the controller to the Jackal shown):
+To pair the PS4 controller, first put the controller in pairing mode by holding the /Share/ and /PS/ buttons until the main LED flashes white rapidly, then turn on bluetooth scanning with /bluetoothctl/ and find the PS4's MAC address (sample output from pairing the controller to the Jackal shown):
 
 #+begin_src bash
   $ sudo bluetoothctl
@@ -891,7 +902,7 @@ Emscripten version 2.0.8 is used for this project, as that is the latest support
   $ ./emsdk install 2.0.8
 #+end_src
 
-The easiest way to use the Emscripten compiler is to use the provided toolchain file with CMake. A toolchain file is a special file which sets up CMake for cross compiling. After issuing the install command, the Emscripten toolchain file is located at emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake. To use it with CMake, pass it in when invoking CMake:
+The easiest way to use the Emscripten compiler is to use the provided toolchain file with CMake. A toolchain file is a special file which sets up CMake for cross compiling. After issuing the install command, the Emscripten toolchain file is located at /emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake. To use it with CMake, pass it in when invoking CMake:
 #+begin_src bash
   $ cmake -DCMAKE_TOOLCHAIN_FILE=<path_to_emsdk>/emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake
 #+end_src
@@ -904,7 +915,7 @@ We use a forked copy of Urho3D based on tag 1.9.0. It is forked because the repo
   $ cd urho3d && git checkout UI_Fix
 #+end_src
 
-We use two different build configurations; linux (aka desktop) and emscripten. The linux desktop build has debug symbols enabled, but the emscripten build does not as the target runs in a web browser. For both builds the samples are turned off as they signigicantly increase the build time. We export compile commands for the linux build (since it uses g++) for easy browsing of the urho source code in editors such as vscode or emacs which make use of clangd. The options are listed in *Table [[table:build_config]]*. The directory where Emscripten was cloned is shown as <ems_dir>.
+We use two different build configurations; linux (aka desktop) and Emscripten. The linux desktop build has debug symbols enabled, but the Emscripten build does not as the target runs in a web browser. For both builds the samples are turned off as they significantly increase the build time. We export compile commands for the linux build (since it uses g++) for easy browsing of the urho source code in editors such as vscode or emacs which make use of clangd. The options are listed in *Table [[table:build_config]]*. The directory where Emscripten was cloned is shown as <ems_dir>.
 
 #+caption: Build configuration options for Urho3D - blank means the value is not passed to CMake
 #+name:   table:build_config
@@ -921,17 +932,17 @@ We use two different build configurations; linux (aka desktop) and emscripten. T
 | EMSCRIPTEN_SYSROOT            |               | <ems_dir>/upstream/emscripten/system |
 | EMSCRIPTEN_ALLOW_MEMRY_GROWTH |               | TRUE                                 |
 
-The build_urho3d.sh script located in the client app source root configures and builds Urho3D for both configuration. The location of the Urho3D root source directory must be passed in as the -u arguement, and the Emscripten root source directory as the -e arguement. If -u isn't present, the script will try to use ../urho3d as the Urho3D directory, and if -e isn't passed in it will try to use ../emsdk as the Emscripten directory:
+The build_urho3d.sh script located in the client app source root configures and builds Urho3D for both configuration. The location of the Urho3D root source directory must be passed in as the -u argument, and the Emscripten root source directory as the -e argument. If -u isn't present, the script will try to use ../urho3d as the Urho3D directory, and if -e isn't passed in it will try to use ../emsdk as the Emscripten directory:
 #+begin_src bash
   $ ./build_urho3d -u <path/to/urho3d> -e <path/to/emscripten> # Build using paths specified
   $ ./build_urho3d -u <path/to/urho3d> # Build with path specified for Urho and ../emsdk for Emscripten
   $ ./build_urho3d -e <path/to/emscripten> # Build with path specified for Emscripten and ../urho3d for Urho  
 #+end_src
 
-The configure and build process can take a while - grab a coffee. The urho build artifacts are created in <urho_dir>/build/linux for the linux build, and in <urho_dir>/build/emscripten for the emscripten build.
+The configure and build process can take a while - grab a coffee. The urho build artifacts are created in <urho_dir>/build/linux for the linux build, and in <urho_dir>/build/emscripten for the Emscripten build.
 
 *** Client Application
-With Emscripten and Urho3D setup, the client app is ready to build. The CMakeLists.txt files (one in the root folder, one in the src folder) make use of cmake functions defined by Urho3D, and so they need to know, for each build configuration, where the build artifacts for Urho3D are located. As with Urho3D, the linux build includes debug symbols and exports compile commands while the emscripten build does not.
+With Emscripten and Urho3D setup, the client app is ready to build. The CMakeLists.txt files (one in the root folder, one in the src folder) make use of CMake functions defined by Urho3D, and so they need to know, for each build configuration, where the build artifacts for Urho3D are located. As with Urho3D, the linux build includes debug symbols and exports compile commands while the Emscripten build does not.
 
 The build options are shown in *Table [[table:client_build_config]]*. The Urho3D root directory is shown as <urho_dir> and the Emscripten root directory is shown as <ems_dir>. The value for URHO3D_HOME is shown assuming the build script was used to configure/build Urho3D. If it wasn't, the values should be replaced with the build location for each configuration.
 
@@ -950,7 +961,7 @@ The build options are shown in *Table [[table:client_build_config]]*. The Urho3D
 | EMSCRIPTEN                     |                        | TRUE                                 |
 | EMSCRIPTEN_ALLOW_MEMORY_GROWTH |                        | TRUE                                 |
 
-The build_app.sh script located in the client app source root configures and builds the client application. As with the build_urho3d.sh script, the Urho3D root directory is passed in as the -u arguement, and the Emscripten root directory with -e arguement (with the same defaults). Leaving out -e completely for this script will build for linux desktop, while including it at all will build using emscripten:
+The build_app.sh script located in the client app source root configures and builds the client application. As with the build_urho3d.sh script, the Urho3D root directory is passed in as the -u argument, and the Emscripten root directory with -e argument (with the same defaults). Leaving out -e completely for this script will build for linux desktop, while including it at all will build using Emscripten:
 
 #+begin_src bash
   $ ./build_app.sh -u <path/to/urho3d> -e <path/to/emscripten> # Build with Emscripten using paths specified
@@ -963,10 +974,10 @@ The build_app.sh script located in the client app source root configures and bui
 Building the client app for linux produces a normal linux binary. Building the client app with Emscripten produces four files:
  - uaf_clearpath_ctrl.wasm: WebAssembly - our c/c++ code gets compiled in to this binary blob which is runnable within the browser sandbox
  - uaf_clearpath_ctrl.data: Contains all resources which are read from files (images, shaders, config files, models, etc)
- - uaf_clearpath_ctrl.js: Contains javascript functions generated by emscripten which call in to our WebAssembly
+ - uaf_clearpath_ctrl.js: Contains javascript functions generated by Emscripten which call in to our WebAssembly
  - uaf_clearpath_ctrl.html: This is a shell html file which serves as the entry point - it imports and calls functions in uaf_clearpath_ctrl.js to load uaf_clearpath_ctrl.data and uaf_clearpath_ctrl.wasm
 
-It's possible to setup a local server to serve the html file directly from the build path, but we are setup to deploy these files to the uaf_clearpath_ctrl_server folder located locally (for development and debugging) or on the Jackal/Husky. The deploy_app.sh script can be used to deploy the files. Pass in the local folder path with -l, -j to try and deploy to Jackal, and -h to try and deploy to th Husky. The -l, if no arguement is used, defaults to ../uaf_clearpath_ctrl_server, the -j defaults to the Jackal hostname cpr-uaf01, and the -h defaults to the Husky hostname cpr-uaf02-husky.
+It's possible to setup a local server to serve the html file directly from the build path, but we are setup to deploy these files to the uaf_clearpath_ctrl_server folder located locally (for development and debugging) or on the Jackal/Husky. The deploy_app.sh script can be used to deploy the files. Pass in the local folder path with -l, -j to try and deploy to Jackal, and -h to try and deploy to the Husky. The -l, if no argument is used, defaults to ../uaf_clearpath_ctrl_server, the -j defaults to the Jackal hostname cpr-uaf01, and the -h defaults to the Husky hostname cpr-uaf02-husky.
 
 #+begin_src bash
   $ ./deploy_app.sh -l -j -h # attempt to deploy the resulting build files to ../uaf_clearpath_ctrl_server, administrator@cpr-uaf01:~/uaf_clearpath_ctrl_server, and administrator@cpr-uaf02-husky:~/uaf_clearpath_ctrl_server
@@ -986,7 +997,7 @@ NodeJS and NPM are needed to install the server. To install all required package
   $ npm start
 #+end_src
 
-The client side app, as previously mentioned, is located in src/emscripten. The javascript run by nodejs, which starts the servers, is located in src/index.js. All code for the server is in this one file, which npm is configured to run on npm start. Since the Jackal and Husky run the server as a service using systemctrl, deploying new versions of index.js either requires either rebooting or restarting the systemctrl service.
+The client side app, as previously mentioned, is located in src/emscripten. The javascript run by nodejs, which starts the servers, is located in src/index.js. All code for the server is in this one file, which npm is configured to run on npm start. Since the Jackal and Husky run the server as a service using /systemctl/, deploying new versions of index.js either requires rebooting or restarting the /systemctl/ service.
 
 ** Feature/Interface Overview
 There are two different interfaces depending on which URL is used to load the app. The control interface includes everything, while the observer interface is a subset which doesn't provide any mechanism for driving or setting ROS parameters. *Figure [[fig:control_observer_phone]]* shows the control and observer interface.
@@ -998,7 +1009,7 @@ There are two different interfaces depending on which URL is used to load the ap
 [[./images/control_observer_phone.png]]
 \FloatBarrier
 
-An overview of the control interface is shown in *Figure [[fig:control_interface_overview]]*. This is viewing the simulated jackal in Google Chrome on Linux desktop.
+An overview of the control interface is shown in *Figure [[fig:control_interface_overview]]*. This is viewing the simulated Jackal in Google Chrome on Linux desktop.
 
 #+caption: Desktop web browser view of full interface
 #+name: fig:control_interface_overview
@@ -1015,8 +1026,8 @@ The following is a list of implemented features:
 - Show the robot model rendered using the ROS transform tree
 
 **** Joystick
-- Allow driving the robot in any direction at speeds in proportion to the joystick offset from centerghh    hwr
-
+- Allow driving the robot in any direction at speeds in proportion to the joystick offset from center
+  
 **** View Panel
 - Show/hide the live laser scan
 - Show/hide map as it's generated
@@ -1063,7 +1074,7 @@ int main(int argc, char **argv)
 }
 #+end_src
 
-First we parse the command line arguements - this is for desktop builds. On the desktop build, the arguement -ip can be used to specify the ip address and -port for the port of the robot to connect to. If left out, these default to local host (127.0.0.1) and port 4000. For desktops with lower DPI/resolution, the -ui_scale option can be specified to scale all UI elements. The robot_control_ctxt structure contains top level data structures required to run the app.
+First we parse the command line arguments - this is for desktop builds. On the desktop build, the argument -ip can be used to specify the ip address and -port for the port of the robot to connect to. If left out, these default to local host (127.0.0.1) and port 4000. For desktops with lower DPI/resolution, the -ui_scale option can be specified to scale all UI elements. The robot_control_ctxt structure contains top level data structures required to run the app.
 
 #+begin_src cpp
   struct robot_control_ctxt
@@ -1083,7 +1094,7 @@ First we parse the command line arguements - this is for desktop builds. On the 
   };
 #+end_src
 
-The app is entirely setup and initialized in the jctrl_init function, which takes the command line arguements and the robot_control_ctxt structure as parameters. Each module is initialized within this initialization function:
+The app is entirely setup and initialized in the jctrl_init function, which takes the command line arguments and the robot_control_ctxt structure as parameters. Each module is initialized within this initialization function:
 
 #+begin_src cpp
   bool robot_ctrl_init(robot_control_ctxt *ctxt, const urho::StringVector &args)
@@ -1123,7 +1134,7 @@ The app is entirely setup and initialized in the jctrl_init function, which take
   }
 #+end_src
 
-The init_urho_engine function sets up the Urho3D window parameters, log file for desktop (no logging for web builds), and calls the Urho3D engine initialization function. This sets up all of the default Urho3D "sub-systems" which are obtained by calling GetSubsystem<SystemType> method of the Urho3D context.
+The init_urho_engine function sets up the Urho3D window parameters, log file for desktop (no logging for web builds), and calls the Urho3D engine initialization function. This sets up all of the default Urho3D "sub-systems" which are obtained by calling the GetSubsystem<SystemType> method of the Urho3D context.
 
 The function robot_ctrl_exec runs the main application loop which differs for Desktop vs web builds:
 
@@ -1154,9 +1165,9 @@ The function robot_ctrl_exec runs the main application loop which differs for De
   }
 #+end_src
 
-The =__EMSCRIPTEN__= preprocessor symbol is defined in web builds using Emscripten. The function emscripten_set_main_loop_arg is an Emscripten library function which takes a callback function pointer and a user void pointer as the first two parameters; the user pointer is passed as the arguement to the callback function. The web browser controls the application loop, the passed in callback function is called every frame. In either desktop or web builds, robot_ctrl_run_frame is called every frame which reads in any incoming network data with net_rx and calls RunFrame on the urho::Engine which gathers all input, updates all objects in urho scene, updates all user interface items, and renders the results.
+The =__EMSCRIPTEN__= preprocessor symbol is defined in web builds using Emscripten. The function emscripten_set_main_loop_arg is an Emscripten library function which takes a callback function pointer and a user void pointer as the first two parameters; the user pointer is passed as the argument to the callback function. The web browser controls the application loop, the passed in callback function is called every frame. In either desktop or web builds, robot_ctrl_run_frame is called every frame which reads in any incoming network data with net_rx and calls RunFrame on the urho::Engine which gathers all input, updates all objects in urho scene, updates all user interface items, and renders the results.
 
-The user interface is setup differently depending on whether or not the app is started as a controller or observer.
+The user interface is set up differently depending on whether or not the app is started as a controller or observer.
 
 ** Observer and Controller
 The web build differentiates between a controller and observer by parsing the url from the web browser address bar - the desktop build always runs as a controller. Javascript is required to get the full browser url path. Emscripten provides a way to write javascript functions within c source code by using the EM_JS(...) construct. The EM_JS macro takes the C function return type as the first parameter, the C function name as the second parameter, the C function parameters as the third parameter, and the javascript function definition as the fourth parameter:
@@ -1186,7 +1197,7 @@ This code checks for the presence of /control within the url_path and sets conn-
 This is not meant to be a secure mechanism. This is purely to avoid chaos when giving demonstrations at public events while still allowing spectators to view mapping data in real time on their phones.
 
 ** Scene
-The urho::Scene object is the Urho3D interface used to add items to the transform heirarchy \autocite{urho_scene}. Each item in the scene is represented as an urho::Node which can have a single parent node and multiple child nodes. All items in the scene are children of the scene node; the urho::Scene class inherits from urho::Node and serves as the root node for the transform heirarchy. The scene also provides an interface for retreiving nodes by name, id, and tag.
+The urho::Scene object is the Urho3D interface used to add items to the transform hierarchy \autocite{urho_scene}. Each item in the scene is represented as an urho::Node which can have a single parent node and multiple child nodes. All items in the scene are children of the scene node; the urho::Scene class inherits from urho::Node and serves as the root node for the transform hierarchy. The scene also provides an interface for retrieving nodes by name, id, and tag.
 
 Urho3D uses a flavor of Entity-Component-System (ECS) \autocite{ecs} to organize node data and behavior. Rather than using inheritance and subclassing urho::Node to implement different behaviors per node type, behaviors are implemented by creating urho::Component types and attaching components to nodes to give that node a certain behavior. Rather than placing the behavior implementation code within the nodes or components, the behavior code is placed in a "sub-system" which operates on all nodes containing the component type of interest; the component is basically plain old data. What ECS calls "entities", Urho3D calls "nodes"; both act as meta-data for objects within the library. Unlike with ECS, in Urho3D every node has a transform - the transform is not outsourced to a transform component. Also, in general, Urho3D wraps all components in classes with accessor functions, some of which alter the component state on calling.
 
@@ -1238,7 +1249,7 @@ intern void create_3dview(map_panel *mp, urho::ResourceCache *cache, urho::UIEle
 }
 #+end_src
 
-We setup the renderer by creating a View3D, creating and attaching a scene and camera, creating a light and zone in the scene, and setting the viewport render path. As mentioned, the renderer creates a list of things to draw by looking at the nodes in the scene with drawable components attached. The renderer also requires a camera to create the proper projection matrix to transform the scene item positions/orientations to screen space. Without a light in the scene, everything will be black (since our render path uses lighting), and the zone creates a background grey color for the area speficied.
+We setup the renderer by creating a View3D, creating and attaching a scene and camera, creating a light and zone in the scene, and setting the viewport render path. As mentioned, the renderer creates a list of things to draw by looking at the nodes in the scene with drawable components attached. The renderer also requires a camera to create the proper projection matrix to transform the scene item positions/orientations to screen space. Without a light in the scene, everything will be black (since our render path uses lighting), and the zone creates a background gray color for the area specified.
 
 A render path is an object which declares a number of rendering commands, where each command describes some operation to apply to a render target \autocite{urho_render_path}. For example, a scenepass command specifies rendering all nodes in the scene that reference a technique (through a referenced material, which is referenced by a static model component) that contains the specified "pass" to the render target specified by "output". A clear command clears the render target specified by "output" to the specified "color". If a render target is not specified in a command the output is the viewport, the default render target is used. All commands are executed in the order listed in the XML file. The render path used for the app is simple:
 
@@ -1255,10 +1266,10 @@ This clears the render target, renders all opaque items, renders all lights, and
 
 Static models and billboard sets (and other drawables as well) reference a material which tells the renderer how to draw the item; the material specifies textures, shader parameters, and references one or more techniques. The textures, if present, are sampled in shaders using model UV coordinates; this app doesn't use any material textures. If no textures are present, the material specifies a color which will be used. Each attached technique specifies a "pass" the object should be rendered with (see render paths above), additional shader state parameters such as blending/depth/etc., and which shaders to use to render the object in the specified pass.
 
-All materials used for this app specifiy one of the Urho default techniques and, at most, a color or texture. The maps, which are billboard sets with a single billboard, use a material with the diffuse texture slot set to a dynamic texture. This texture is updated from an urho::Image as map data comes in. The robot model materials are hard coded to colors.
+All materials used for this app specify one of the Urho default techniques and, at most, a color or texture. The maps, which are billboard sets with a single billboard, use a material with the diffuse texture slot set to a dynamic texture. This texture is updated from an urho::Image as map data comes in. The robot model materials are hard coded to colors.
 
 *** Transform Tree
-The ROS robot transform heirarchy is replicated on the client app. The replication is slightly different for the Jackal than for the Husky. On the server we use rosnodejs to subscribe to the transform topic:
+The ROS robot transform hierarchy is replicated on the client app. The replication is slightly different for the Jackal than for the Husky. On the server we use rosnodejs to subscribe to the transform topic:
 
 #+begin_src js
   let frame_tforms = {};
@@ -1284,7 +1295,7 @@ The ROS robot transform heirarchy is replicated on the client app. The replicati
   }
 #+end_src
 
-ROS generates the transforms at a much higher frequency than needed, so we replace each transform in frame_tforms with the latest and send the complete tranform bundle once every 16 ms (about 30 fps). All of the transform frames except for odom, the wheel frames, and base_link are static (for example the laser doesn't move relative to the base link). The static tranforms are sent out only once on first connecting:
+ROS generates the transforms at a much higher frequency than needed, so we replace each transform in frame_tforms with the latest and send the complete transform bundle once every 16 ms (about 30 fps). All of the transform frames except for odom, the wheel frames, and base_link are static (for example the laser doesn't move relative to the base link). The static transforms are sent out only once on first connecting:
 
 #+begin_src js
   let static_tforms = {};
@@ -1310,9 +1321,9 @@ ROS generates the transforms at a much higher frequency than needed, so we repla
   }
 #+end_src
 
-When a new client connects send_static_tforms_to_new_client is called passing static_tforms as the tforms parameter. We store the transforms, rather than sending on receiving from ROS, because ROS only sends the static transforms once an subscribing. Since multiple clients can connect/disconnect, these must be stored.
+When a new client connects /send_static_tforms_to_new_client/ is called passing /static_tforms/ as the /tforms/ parameter. We store the transforms, rather than sending on receiving from ROS, because ROS only sends the static transforms once on subscribing. Since multiple clients can connect/disconnect, these must be stored.
 
-On the client side, we build the scene to mimick the ROS transform structure naming the nodes associated with each transform frame:
+On the client side, we build the scene to mimic the ROS transform structure naming the nodes associated with each transform frame:
 
 #+begin_src cpp
   const std::string MAP{"map"};
@@ -1334,7 +1345,7 @@ On the client side, we build the scene to mimick the ROS transform structure nam
   const std::string FRONT_LASER{"front_laser"};
 #+end_src
 
-We also create a hashmap to quickly look up the nodes by name, rather than recursively searching scene for each update. The code creating the transform heirarchy is:
+We also create a hashmap to quickly look up the nodes by name, rather than recursively searching scene for each update. The code creating the transform hierarchy is:
 
 #+begin_src cpp
   struct map_panel
@@ -1391,7 +1402,7 @@ We also create a hashmap to quickly look up the nodes by name, rather than recur
   }
 #+end_src
 
-The offset link shown (which is not in ROS heirarchy) is required to correct the wheels for the robot - they are slightly off without the offset. The LUT is used every time a transform frame comes in to grab the node and set the associated position/orientation "silently". Silently as we don't update the entire transform tree yet; If a node with children is updated, the children will need their transform recomputed. To avoid updating the entire transform tree multiple times per frame, we silently update each node and then update the root node once every 16 ms.
+The offset link shown (which is not in ROS hierarchy) is required to correct the wheels for the robot - they are slightly off without the offset. The LUT is used every time a transform frame comes in to grab the node and set the associated position/orientation "silently". Silently as we don't update the entire transform tree yet; If a node with children is updated, the children will need their transform recomputed. To avoid updating the entire transform tree multiple times per frame, we silently update each node and then update the root node once every 16 ms.
 
 #+begin_src cpp
   intern void update_node_transform(map_panel *mp, const node_transform &tform)
@@ -1421,7 +1432,7 @@ The offset link shown (which is not in ROS heirarchy) is required to correct the
 #+end_src
 
 *** Jackal/Husky Models
-The Jackal and Husky models are converted to from STL files to Urho3D mdl files using a tool called AssetImporter \autocite{asset_importer}. AssetImporter builds with Urho3D and is located in the build/linux/bin/tool subdirectory if the build_urho3d script is used. The resulting mdl files are placed in the deploy/Data/Models subfolder and loaded using urho::ResourceCache. An example showing loading the jackal front left wheel is listed below:
+The Jackal and Husky models are converted from STL files to Urho3D mdl files using a tool called AssetImporter \autocite{asset_importer}. AssetImporter builds with Urho3D and is located in the build/linux/bin/tool subdirectory if the build_urho3d script is used. The resulting mdl files are placed in the deploy/Data/Models subfolder and loaded using urho::ResourceCache. An example showing loading the Jackal front left wheel is listed below:
 
 #+begin_src cpp
   auto jackal_base_mat = cache->GetResource<urho::Material>("Materials/jackal_base.xml");
@@ -1437,11 +1448,11 @@ The Jackal and Husky models are converted to from STL files to Urho3D mdl files 
 It's possible to correct model offsets and orientations by creating a node as a child of the associated ROS transform frame node rather than using it directly. When converting models from one format to another, sometimes things get flipped or rotated.
 
 *** Camera
-By default the camera node is set as a child node of a node called "robot_follow_cam", which is the child of base_link frame. As the robot moves, the base_link transform is updated which, through the transform heirarchy, causes the camera's transform to update as well following the robot. The extra node is so that the camera can be rotated about the base_frame by rotating the robot_follow_cam node, which will leave base_link unmodified. The top toolbar button disables this behavior by setting the parent node of the camera to the root scene node.
+By default the camera node is set as a child node of a node called "robot_follow_cam", which is the child of /base_link/. As the robot moves, the /base_link/ transform is updated which, through the transform hierarchy, causes the camera's transform to update as well following the robot. The extra node is so that the camera can be rotated about the /base_link/ by rotating the /robot_follow_cam/ node, which will leave /base_link/ unmodified. The top toolbar button disables this behavior by setting the parent node of the camera to the root scene node.
 
 The camera controls are shown in *Figure [[fig:control_interface_overview]]*. To enable camera movement on holding the arrows/zoom buttons, a direction vector is set based on which button is pressed and the current camera orientation. When the button is released, the vector is cleared.
 
-For the up/down buttons, we check the angle between the camera up vector (the camera's local y axis) and the global z axis and differ the movement accordingly: If the camera is looking mostly down then the camera up vector is projected on the global xy plane for movement; if the camera is looking mostly straight in to the horizon, the global z axis is used for movement. Without this, looking straight makes the up vector projection on to the xy plane too small for movement.
+For the up/down buttons, we check the angle between the camera up vector (the camera's local y axis) and the global z axis and differ the movement accordingly: If the camera is looking mostly down then the camera up vector is projected on the global xy plane for movement; if the camera is looking mostly straight into the horizon, the global z axis is used for movement. Without this, looking straight makes the up vector projection onto the xy plane too small for movement.
 
 #+begin_src cpp
   //...
@@ -1481,9 +1492,9 @@ The camera rotates when holding the mouse down and dragging on desktop, or with 
 #+end_src
 
 ** UI
-The user interface elements are created using Urho3D's user interface system \autocite{ui}, while the icons are created using Inkscape \autocite{inkscape}. The UI system in Urho3D is a heirarchy similar to the scene, except in two dimensions rather than three. Rather than urho::Node, each UI object is an urho::UIElement and the root item in the UI system is just an urho::UIElement (unlike with nodes how the root item is a scene which inherits from a node). UI elements can have their settings loaded directly from XML files which allows editing UI sizes/positions without recompiling the app.
+The user interface elements are created using Urho3D's user interface system \autocite{ui}, while the icons are created using Inkscape \autocite{inkscape}. The UI system in Urho3D is a hierarchy similar to the scene, except in two dimensions rather than three. Rather than urho::Node, each UI object is an urho::UIElement and the root item in the UI system is just an urho::UIElement (unlike with nodes how the root item is a scene which inherits from a node). UI elements can have their settings loaded directly from XML files which allows editing UI sizes/positions without recompiling the app.
 
-Inkscape allows pixel level manipulation of element sizes and positioning which is great for icons. The icons are exported on a single texture with the icon positions, offsets, and sizes coded in to the Urho3D UI XML file.
+Inkscape allows pixel level manipulation of element sizes and positioning which is great for icons. The icons are exported on a single texture with the icon positions, offsets, and sizes coded in tothe Urho3D UI XML file.
 
 *** Creating Icons/Sprites with Inkscape
 The icon texture is shown in *Figure [[fig:icon_texture]]*.
@@ -1507,9 +1518,9 @@ The texture is 1024 by 1024 (the figure is cropped as the bottom half of the tex
 *** UI File and Anchoring
 UI elements in Urho3D can use either anchor or normal positioning; in this app most UI elements use anchor positioning. In normal positioning mode, the position and size of the UI element are expressed in pixels and the position is the element's top left corner position relative to the parent UI element. If the parent is the root element, therefor, the position is relative to the top level application canvas (or window in desktop).
 
-In anchor positioning, the element size and position are ignored and minimum and maximum anchors are used instead. The element size and position are calculated each frame based on the minimum/maximum anchors and pivot, which are all two dimensional floating point vectors normalized from zero to one. Both anchors are multiplied by the parent element's pixel size yeilding a rectangle with the top left corner giving the child element position relative to the parent and the rectangle dimensions the size. The child element size is then multiplied by the pivot, and this value is subtracted from the position to determine the final element position.
+In anchor positioning, the element size and position are ignored and minimum and maximum anchors are used instead. The element size and position are calculated each frame based on the minimum/maximum anchors and pivot, which are all two dimensional floating point vectors normalized from zero to one. Both anchors are multiplied by the parent element's pixel size yielding a rectangle with the top left corner giving the child element position relative to the parent and the rectangle dimensions the size. The child element size is then multiplied by the pivot, and this value is subtracted from the position to determine the final element position.
 
-The anchor is further customizable using minimum/maximum offsets; these are two dimensional integer vectors which get applied to the final element size/position afer the above operations. Equations 3 and 4 show are used calculate the window/canvas space position and size of the anchored element.
+The anchor is further customizable using minimum/maximum offsets; these are two dimensional integer vectors which get applied to the final element size/position after the above operations. Equations 3 and 4 show are used calculate the window/canvas space position and size of the anchored element.
 
 \scriptsize
 \begin{align}
@@ -1582,7 +1593,7 @@ Urho3D and Emscripten use Simple DirectMedia Layer (SDL) \autocite{sdl} to handl
   });
 #+end_src
 
-The event data is passed in the ev_data variant map, which includes a pointer to the element that was clicked. In the above code we handle all E_CLICKEND events, which are sent when a UI element is pressed and released with the pointer over the element, by sending the element to each system to system. We do the same for E_TOGGLED events which occur when buttons are configured as toggle buttons, and the button is pressed. Below shows the toolbar snippet which handles changing the camera settings for follow mode as described in the camera section.
+The event data is passed in the ev_data variant map, which includes a pointer to the element that was clicked. In the above code we handle all E_CLICKEND events, which are sent when a UI element is pressed and released with the mouse over the element, by sending the element to each system. We do the same for E_TOGGLED events which occur when buttons are configured as toggle buttons, and the button is pressed. Below shows the toolbar snippet which handles changing the camera settings for follow mode as described in the camera section.
 
 #+begin_src cpp
   //...
@@ -1623,7 +1634,7 @@ Mobile device web browsers, desktop web browsers, and desktop windowing systems 
   }
 #+end_src
 
-We store the inverse since thats the needed value when multiplying by UI pixel sizes and movements (we are manually converting device pixels to logical pixels so we need logical pixels/device pixels instead of device pixels/logical pixels). If we don't do this conversion, the UI on mobile web browsers is much smaller than on desktop. All UI elements have their max offsets multiplied by this ratio so that their fixed size is in logical pixels rather than device pixels.
+We store the inverse since that's the needed value when multiplying by UI pixel sizes and movements (we are manually converting device pixels to logical pixels so we need logical pixels/device pixels instead of device pixels/logical pixels). If we don't do this conversion, the UI on mobile web browsers is much smaller than on desktop. All UI elements have their max offsets multiplied by this ratio so that their fixed size is in logical pixels rather than device pixels.
 
 #+begin_src cpp
   //...
@@ -1643,7 +1654,7 @@ The toolbar with descriptions of each button is shown in *Figure [[fig:toolbar]]
 [[./images/toolbar.png]]
 \FloatBarrier
 
-The toolbar background is a UI element which parents each toolbar button. The parent UI element for the toolbar is unique in that it's max offset and child element y anchor components are set dynamically to exactly fit all child element buttons. It also uses anchoring so that the top left corner is always located at 1% of the screen width offset from the left, and 22% of the screen height offset from the top. The code snippet below accomplishes this:
+The toolbar background is a UI element which parents each toolbar button. The parent UI element for the toolbar is unique in that its max offset and child element y anchor components are set dynamically to exactly fit all child element buttons. It also uses anchoring so that the top left corner is always located at 1% of the screen width offset from the left, and 22% of the screen height offset from the top. The code snippet below accomplishes this:
 
 #+begin_src cpp
     ivec2 tb_offset = {mp->toolbar.enable_follow->GetMaxOffset().x_, 0};
@@ -1737,9 +1748,9 @@ The networking system is responsible for all communication between the client ap
 *** Packing and Unpacking Data
 It's possible to directly send C structs over the network, but not portable as compilers are free to add padding to structs. On the server, all data must be explicitly unpacked and packed from/to a javascript buffer object. On the client, we use a method called PUP'ing to fill structs from byte arrays and byte arrays from structs unaffected by struct padding.
 
-The idea of PUPing is to create overloaded functions for each built in basic type that accept a pupping context object reference as the first parameter and a reference to the basic type value as the second parameter. The function determines the packing direction from the context object and does whatever is required to pack/unpack the basic type value to/from the context object. The pupping context object contains the specifics needed to pack/unpack the basic values. For example, a binary context object might contain an array of bytes, a file a file pointer, a network a socket, and so on. We write functions for each basic type for each type of pupping context object.
+The idea of PUPing is to create overloaded functions for each built in basic type that accept a pupping context object reference as the first parameter and a reference to the basic type value as the second parameter. The function determines the packing direction from the context object and does whatever is required to pack/unpack the basic type value to/from the context object. The pupping context object contains the specifics needed to pack/unpack the basic values. For example, a binary context object might contain an array of bytes, a file pointer, a network socket, and so on. We write functions for each basic type for each type of pupping context object.
 
-For structs and classes to be pack/unpackable, we write a single overloaded function (with the same name as the pupping basic type functions) templated on the pupping context object type. Within the function we call the overloaded pupping function for each object member. If an object contains a member which is an object of another type, a pupping function must also be written for the other object. In effect, each member is recursively packed/unpacked to/from the pupping context object until we reach the fundemental type functions. Since the object pup functions are templated they must only be written once and will work for any new type of pupping context object.
+For structs and classes to be pack/unpackable, we write a single overloaded function (with the same name as the pupping basic type functions) templated on the pupping context object type. Within the function we call the overloaded pupping function for each object member. If an object contains a member which is an object of another type, a pupping function must also be written for the other object. In effect, each member is recursively packed/unpacked to/from the pupping context object until we reach the fundamental type functions. Since the object pup functions are templated they must only be written once and will work for any new type of pupping context object.
 
 We use the term "archive" in place of pupping context object. For this app only a single archive type is used;
 
@@ -1810,7 +1821,7 @@ Each type can now be easily made pack/unpackable by using the macros:
   }
 #+end_src
 
-Data from the network is read directly in to the data member of the archive. It is then unpacked in to the correct struct based on a fixed size header.
+Data from the network is read directly into the data member of the archive. It is then unpacked into the correct struct based on a fixed size header.
 
 *** Packet Structure and Header
 Each message type has a unique fixed size header and struct. The header always precedes the data and is used to determine how to unpack the data following. When a packet is received on the server we route the packet to different routines based on the header value:
@@ -1859,7 +1870,7 @@ On the client, the headers are declared with the same string value:
   }; 
 #+end_src
 
-Some packets, such as the Jackal camera message, the occupancy grid message, or the laser scan message, have variable size data fields. For these messages the data payload is split from the meta data which describes the payload data size:
+Some packets, such as the Jackal camera message, the occupancy grid message, or the laser scan message, have variable size data fields. For these messages the data payload is split from the metadata which describes the payload data size:
 
 #+begin_src cpp
   struct occ_grid_meta
@@ -1881,7 +1892,7 @@ Some packets, such as the Jackal camera message, the occupancy grid message, or 
   };  
 #+end_src
 
-This allows packing the network data directly in to the meta data struct, and using that to determine the required byte count for the payload. All C message structs are defined in the client source src/network.h.
+This allows packing the network data directly into the metadata struct, and using that to determine the required byte count for the payload. All C message structs are defined in the client source src/network.h.
 
 *** Sending/Receiving Data
 On the server the data is received as a javascript buffer which is parsed and routed to the correct routine as shown above. On the client side data is sent to the server by packing the message struct to a binary archive and sending the archive using the open socket or web socket.
@@ -1941,7 +1952,7 @@ The associated C struct is:
   };  
 #+end_src
 
-Receiving data on the client is similiar to recieving on the server, except more complicated because some messages from the server are variable size. On the desktop build we read data from the socket with /read/, and with the web build we register a callback thatd called when a web socket message is received. In either case, the raw data is copied in to the read_buf member of net_rx_buffer, which is a member of the net_connection struct:
+Receiving data on the client is similar to receiving on the server, except more complicated because some messages from the server are variable size. On the desktop build we read data from the socket with /read/, and with the web build we register a callback thats called when a web socket message is received. In either case, the raw data is copied into the read_buf member of net_rx_buffer, which is a member of the net_connection struct:
 
 #+begin_src cpp
   struct net_rx_buffer
@@ -1956,7 +1967,7 @@ The available count is increased by the number of bytes read in. While there are
 
 Once a message is found and the current packet size set we do the following:
 
-*If enough bytes are avialable:*
+*If enough bytes are available:*
 - Try to read the packet in to the message
   - If the message is meta data containing a variable length payload
     - If there is enough remaining available data to read in the payload
@@ -1968,7 +1979,7 @@ Once a message is found and the current packet size set we do the following:
     - Read in to the message and dispatch to the correct system
     - Return the total number of bytes read
 - If the byte count returned is > 0
-  - Subtract the number of bytes from the avialable count
+  - Subtract the number of bytes from the available count
   - Reset the current packet size to 0
 - Otherwise
   - Indicate more data is needed for the packet and break from the loop
@@ -2023,14 +2034,14 @@ If there are not enough bytes available to read in the message, we break from th
   }  
 #+end_src
 
-The function net_rx is called on every update frame, and so it seems an if statement would work in place of the while loop. This is true for desktop builds, however on web builds the web socket message receive callback function is called more frequently than the frame update callback function. Without the while loop, the available bytes fill up faster than they are processed and grows unbounded. After a few minutes the client app becomes unusable as all time is spent looking at the bytes received buffer.
+The function net_rx is called on every update frame, and so it seems an if statement would work in place of the while loop. This is true for desktop builds, however on web builds the web socket message receive callback function is called more frequently than the frame update callback function. Without the while loop, the available bytes fill up faster than they are processed and grow unbounded. After a few minutes the client app becomes unusable as all time is spent looking at the bytes received buffer.
 
 *** Client/Server Routing with Sockets and WebSockets
 On the client a POSIX socket connection is established for the desktop build and a web socket connection for the web build. Emscripten provides a simple web socket API. The web socket connection is created by calling /emscripten_websocket_new/ and passing a filled in struct with the URL. A connection handle is returned and used to register callback functions on close events, on error events, on received message events, and on successful connection events. The handle can also be used to send data by calling /emscripten_websocket_send_binary/ passing in the handle, data, and data size.
 
 The client uses the URL from the browser address bar with http::// replaced with ws:// to ask the server to establish a new web socket connection. Web socket connections are established using HTTP, and once the connection is upgraded by the server, WebSocket takes the place of HTTP as the application layer protocol \autocite{rfc6455}.
 
-The server app uses express \autocite{express} to create the http server, net to create the desktop server, and ws \autocite{wslib} to establish a web socket connections. On each connection, the desktop or web socket is added to a global list, and removed when the connection is closed. Both arrays are used when sending data to send it to all connected clients. The code to create the http, web socket, and POSIX socket servers is shown below:
+The server app uses express \autocite{express} to create the http server, net to create the desktop server, and ws \autocite{wslib} to establish web socket connections. On each connection, the desktop or web socket is added to a global list, and removed when the connection is closed. Both arrays are used when sending data to send it to all connected clients. The code to create the http, web socket, and POSIX socket servers is shown below:
 
 #+begin_src js
   const http = require('http');
@@ -2191,7 +2202,7 @@ Both Jackal and Husky have LIDAR's attached to their base frames as part of thei
   };
 #+end_src
 
-The scan is packed on the server in to the /lidar_scan/ schema. On receiving the scan packet header the client waits for the remaining byte count necessary to recieve the scan meta (20 bytes). The element count is obtained by subtracting the minimum angle from the maximum angle, dividing by the angle increment, and adding one. The ranges are then copied from the socket (or web socket) stream to the ranged array using the obtained element account. The /MAX_SCAN_POINTS/ constant was chosen experimentally as larger than any scan element count received from the Jackal or Husky.
+The scan is packed on the server in to the /lidar_scan/ schema. On receiving the scan packet header the client waits for the remaining byte count necessary to receive the scan meta (20 bytes). The element count is obtained by subtracting the minimum angle from the maximum angle, dividing by the angle increment, and adding one. The ranges are then copied from the socket (or web socket) stream to the ranged array using the obtained element account. The /MAX_SCAN_POINTS/ constant was chosen experimentally as larger than any scan element count received from the Jackal or Husky.
 
 An urho::BillboardSet component attached to a scene node is used to render the scan to small screen facing billboards. The billboards are in screen space; their size is specified in pixels and does not change as the camera moves closer/further away. The billboard set contains an array of billboards each with a color and position. The position of each billboard is relative to the node and specified in Cartesian coordinates. The ranges array in the received scan contains floating point distances in meters where the first element is at the minimum angle and the last element is at the maximum angle and the distance is from the LIDAR to the reflection point.
 
@@ -2255,7 +2266,7 @@ Even with the global costmap configured to only send costmap updates, /move_base
 
 Rather than send the full map, we only send the changed cell values with the map index for each cell, and never include values indicating undiscovered (255). We pack the map index and cell value in a four byte integer. The least significant byte stores the cell value and the most significant bytes stores the map index. This limits the maximum map size to 2^{24} (16,777,216) cells, or 204.8 x 204.8 meters using 0.05 meters per cell resolution. The resolution can be lessened if larger maps are needed as discussed in [[Navigation Package]]; lesser resolution comes at the cost of less precise maps and worse path planning.
 
-To send only the changes, the map, global costmap, and local costmaps are stored locally. For every map message received, we compare the occupancy grid to the stored global grid, create an array of changed map index to cell value objects, and update the global grid.
+To send only the changes, the map, global costmap, and local costmaps are stored locally. For every map message received, we compare the occupancy grid to the stored global grid, create an array of changed map index-to-cell value objects, and update the global grid.
 
 #+begin_src js
   function get_occ_grid_delta(cur_occ_grid, prev_occ_grid) {
@@ -2301,7 +2312,7 @@ For the global costmap updates we loop over the subrectangle grid data in the /O
   }  
 #+end_src
 
-The tradeoff for sending only the changes is that if every cell in the map changed, the changes would be 4x the map data size as each cell requires 4 bytes instead of 1 due to the map index. For example, the entire map must be sent when clients initially connect. Most of the time the majority of the map data is unknown (255 or -1) so this is mitigated by never sending that value and implying all unsent values are unknown. However, in the case where there is a very large explored map, new connecting clients is expensive.
+The tradeoff for sending only the changes is that if every cell in the map changed, the changes would be 4x the map data size as each cell requires 4 bytes instead of 1 due to the map index. For example, the entire map must be sent when clients initially connect. Most of the time the majority of the map data is unknown (255 or -1) so this is mitigated by never sending that value and implying all unsent values are unknown. However, in the case where there is a very large explored map, new clients are expensive.
 
 *Figure [[fig:map_change_data]]* shows the same simulation as *Figure [[fig:map_raw_data]]* but with sending only the changed map data instead of the raw map data as received from ROS.
 
@@ -2312,7 +2323,7 @@ The tradeoff for sending only the changes is that if every cell in the map chang
 [[./images/map_change_data.png]]
 \FloatBarrier
 
-The total average bandwidth for the simulated data over 200 secods is improved to *0.31 Mbps per client*. As clients connect, this average takes a large hit but this tradeoff is acceptable. The entire simulation area was mapped after about 135 seconds - after this the map and global costmap changes flatten out. The occupancy grid message meta data is still sent as the client needs to know the overall map size in case it has changed.
+The total average bandwidth for the simulated data over 200 seconds is improved to *0.31 Mbps per client*. As clients connect, this average takes a large hit but this tradeoff is acceptable. The entire simulation area was mapped after about 135 seconds - after this the map and global costmap changes flatten out. The occupancy grid message metadata is still sent as the client needs to know the overall map size in case it has changed.
 
 #+begin_src cpp
   // The client side messages include the occupancy grid meta data
@@ -2335,11 +2346,11 @@ The total average bandwidth for the simulated data over 200 secods is improved t
   };  
 #+end_src
 
-On the client the occupancy grid is stored as an urho::Image where each cell is an image pixel. On receiving an occupancy grid update the incoming grid size is compared to the image size; while the grid is larger the image is reallocated to the next power of two texture and all pixels set to the undiscovered cell color. The scene billboard (which the map texture is rendered to) is resized to match the grid size so that one world space unit equals one grid cell equals one meter. We then loop through the 32 bit change elements and do the following for each element:
+On the client the occupancy grid is stored as an urho::Image where each cell is an image pixel. On receiving an occupancy grid update the incoming grid size is compared to the image size; while the grid is larger the image is reallocated to the next power-of-two texture and all pixels set to the undiscovered cell color. The scene billboard (which the map texture is rendered to) is resized to match the grid size so that one world space unit equals one grid cell equals one meter. We then loop through the 32 bit change elements and do the following for each element:
 - Set the grid index to the element shifted 1 byte to the right
 - Set the grid cell value to the element LSB
 - Convert the grid index to texture coordinates
-- If the grid is a map use the cell value to set the image pixel to a greyscale color (black means obstacle)
+- If the grid is a map use the cell value to set the image pixel to a grayscale color (black means obstacle)
 - If the grid is a costmap use the cell value to set the image color according to the different obstacle probability regions listed in *Figure [[fig:costmap_spec]]*
 - Upload the image data to the video device texture attached to the billboard
 
@@ -2360,7 +2371,7 @@ Once an active goal is set the local and global navigation paths are computed by
 
 The client local waypoints in the waypoint queue don't have calculated navigation paths. The connecting lines are drawn to show the order of the waypoint queue. Clicking the clear waypoints toolbar button will remove all waypoints from the waypoint queue and send a stop command to the server.
 
-The /PoseStamped/ message expects an orientation. We want the orientation be set based on the calculated path (the robot should stay oriented with the final path segment) but the path isn't available until the goal is provided. The robot will turn once it reaches the goal position to align with the orientation specified in /PoseStamped/, which is annoying behavior. Setting the orientation to an identity quaternion still indicates a final orientation that is usually different than the path aligned orientation. We could dynamically update the goal orientation by calculating it based on the path, but our approach is simpler: Once the robot has arrived within 0.25 meters of the goal, a stop command is sent to the server.
+The /PoseStamped/ message expects an orientation. We want the orientation be set based on the calculated path (the robot should stay oriented with the final path segment) but the path isn't available until the goal is provided. The robot will turn once it reaches the goal position to align with the orientation specified in /PoseStamped/, which is annoying behavior. Setting the orientation to an identity quaternion still indicates a final orientation that is usually different from the path aligned orientation. We could dynamically update the goal orientation by calculating it based on the path, but our approach is simpler: Once the robot has arrived within 0.25 meters of the goal, a stop command is sent to the server.
 
 #+begin_src cpp
   intern void update_and_draw_nav_goals(map_panel *mp, float dt, urho::DebugRenderer *dbg, net_connection *conn)
@@ -2406,14 +2417,14 @@ The /PoseStamped/ message expects an orientation. We want the orientation be set
   }
 #+end_src
 
-The server subscribes to the /move_base/goal/ topic and stores the goal id of the most recent goal when published by /move_base/ (see [[Navigation Stack]] for more details). It also subscribes to the /move_base/status/ topic and uses the goal id to reference the correct goal in the goal status array. If the goal is found, it is sent to client. This is required because the goal id is only published once on goal creation. If a client created a navigation goal, and subsequently another client connected, the new client would only see the navigation path but no goal if the goal status wasn't relayed to clients.
+The server subscribes to the /move_base/goal/ topic and stores the goal id of the most recent goal when published by /move_base/ (see [[Navigation Stack]] for more details). It also subscribes to the /move_base/status/ topic and uses the goal id to reference the correct goal in the goal status array. If the goal is found, it is sent to the client. This is required because the goal id is only published once on goal creation. If a client created a navigation goal, and subsequently another client connected, the new client would only see the navigation path but no goal if the goal status wasn't forwarded to clients.
 
 The server also uses the most recent goal id to cancel goals. When a controlling client sends a stop command to the server, the server sends a /GoalID/ message filled with the most recent goal id to the ROS topic /move_base/cancel/.
 
 *** Getting and Setting Parameters
 To view the parameter text editor press the parameter toolbar button as shown in *Figure [[fig:toolbar]]*. Pressing "Get Params" will get all available ROS parameters on the robot. Pressing "Set Params" will attempt to set all parameters to the specified values on the robot. The easiest way to use this tool is to get the parameters, delete all items except the parameters of interest, and set the values for the remaining parameters as desired.
 
-The paremeter text is formatted as a json object where each node is a subobject with the node name as the key and the available parameters as values. *Figure [[fig:params]]* shows an example of using the tool to change the global planner from /navfn/NavfnROS/ to /global_planner/GlobalPlanner/.
+The parameter text is formatted as a json object where each node is a subobject with the node name as the key and the available parameters as values. *Figure [[fig:params]]* shows an example of using the tool to change the global planner from /navfn/NavfnROS/ to /global_planner/GlobalPlanner/.
 
 #+caption: Setting a different global planner; First get parameters, then delete everything besides the global planner and set it to the new value, and finally set parameters and verify it worked with the returned messages from the server
 #+name: fig:params
@@ -2443,10 +2454,10 @@ To set node parameters the server parses the text from the client and for each n
   }         
 #+end_src
 
-The /proc_timeout/ function is called if the child process doesn't complete within twenty seconds. This function sends a /SIGINT/ to the proces and sets a flag in the /cur_param_proc/ object to indicate timeout failure to the on close message handler. Our on close message handler uses this flag to send a timeout error message to connected clients. On success the on close message handler also sends a message to clients indicating the node, parameter, and value that was successfully set.
+The /proc_timeout/ function is called if the child process doesn't complete within twenty seconds. This function sends a /SIGINT/ to the process and sets a flag in the /cur_param_proc/ object to indicate timeout failure to the /on_close/ message handler. Our /on_close/ message handler uses this flag to send a timeout error message to connected clients. On success the /on_close/ message handler also sends a message to clients indicating the node, parameter, and value that was successfully set.
 
 *** Live Camera Feed (Jackal Only)
-A live camera feed is avialable if connecting to the Jackal. Toggle the Live Cam checkbox as shown in *Figure [[fig:control_interface_overview]]* to show the feed. The camera view window is shown in *Figure [[fig:cam_view]]* - it is movable and resizable.
+A live camera feed is available if connecting to the Jackal. Toggle the Live Cam checkbox as shown in *Figure [[fig:control_interface_overview]]* to show the feed. The camera view window is shown in *Figure [[fig:cam_view]]* - it is movable and resizable.
 
 #+caption: Jackal camera feed window
 #+name: fig:cam_view
@@ -2455,7 +2466,7 @@ A live camera feed is avialable if connecting to the Jackal. Toggle the Live Cam
 [[./images/cam_view.png]]
 \FloatBarrier
 
-The uncompressed camera data is published to /image_color/ but its too much data to even consider. Subscribing to this topic with any standard ROS tool, such as rviz, stalls out the connection. Instead, we use /image_proc/ \autocite{image_proc} to compress the image and send that to the clients. However, even with compression, if more than two clients connect the app becomes unusable.
+The uncompressed camera data is published to /image_color/ but it's too much data to even consider. Subscribing to this topic with any standard ROS tool, such as RVIZ, stalls out the connection. Instead, we use /image_proc/ \autocite{image_proc} to compress the image and send that to the clients. However, even with compression, if more than two clients connect the app becomes unusable.
 
 To mitigate this we throttle the /CompressedImage/ message from ROS based on the number of connected clients and the number of clients viewing the camera. The equation was developed experimentally and tuned to allow full frame rate for a single client viewing the camera while keeping the overall bandwidth usage under 10 Mbps.
 
@@ -2498,7 +2509,7 @@ The measurement tool is enabled by pressing the yellow ruler toolbar button as s
 [[./images/measure_path.png]]
 \FloatBarrier
 
-The length is found by using the map resolution included in the /occ_grid_meta/ message which is in meters per cell. When clicking a point on the map, a ray is cast from the mouse postion screen coordinates in to the scene and checked against the map plane for collision. If the ray collides the point is added to the measurement stack. Every frame we loop over the measurement stack and draw a circle and connecting lines for each point. Add the line lengths to a running sum, and convert the total to feet and inches for displaying the path length:
+The length is found by using the map resolution included in the /occ_grid_meta/ message which is in meters per cell. When clicking a point on the map, a ray is cast from the mouse position screen coordinates into the scene and checked against the map plane for collision. If the ray collides the point is added to the measurement stack. Every frame we loop over the measurement stack and draw a circle and connect lines for each point. Add the line lengths to a running sum, and convert the total to feet and inches for displaying the path length:
 
 #+begin_src cpp
   intern void draw_measure_path(const measure_points &mp, urho::DebugRenderer *dbg)
@@ -2532,7 +2543,7 @@ The length is found by using the map resolution included in the /occ_grid_meta/ 
 The paths and marker colors are easily changeable, but only through the source code. Measurement points can be removed from the stack in the opposite order they were added by pressing the pop measurement toolbar button.
 
 *** Broadcast messages
-If the first character of the parameters interface is not an open curly bracket to indicate the beginning of a json object, the contents of the parameter text edit box is sent to all connected clients as a message. Observer clients cannot send messages as they don't have access to the paremeter window, but they do receive messages. *Figure [[fig:message]]* shows an example of a controlling client sending a message to several observing clients.
+If the first character of the parameters interface is not an open curly bracket to indicate the beginning of a json object, the contents of the parameter text edit box is sent to all connected clients as a message. Observer clients cannot send messages as they don't have access to the parameter window, but they do receive messages. *Figure [[fig:message]]* shows an example of a controlling client sending a message to several observing clients.
 
 #+caption: Controlling client sending message to other clients using the parameter window
 #+name: fig:message
@@ -2552,11 +2563,11 @@ Throughout the project there were several learning moments. These moments helped
 - Always structure code that commands a robot so that if communication is lost, the robot stops
 - Don't issue drive commands to the robot when it's connected to sure power
 - The real behavior is always different than simulated
-- If something is wrong or buggy with your robot or your software, the issue is almost always with YOUR code (not the OS, not third pary libraries, not the web browser)
+- If something is wrong or buggy with your robot or your software, the issue is almost always with YOUR code (not the OS, not third party libraries, not the web browser)
 - Don't upgrade dependencies unless required; things will break
 
 ** Future Work
-The clearpath platforms have further potential. With this project serving as the foundation, there are endless future project possibilities. Some possible features or enhancements to the client/server might include:
+The Clearpath platforms have further potential. With this project serving as the foundation, there are endless future project possibilities. Some possible features or enhancements to the client/server might include:
 - Add ability to save generated maps
 - Add GPS feed
 - Add camera for Husky
@@ -2564,10 +2575,10 @@ The clearpath platforms have further potential. With this project serving as the
 - Allow a single client application instance to simultaneously communicate with both UGVs
 - Convert camera communication to WebRTC
 
-With this platform it is easy to develop new navigation algorithms by creating ROS planner nodes and plugging them in to /move_base/. It's also well documented and easy to extend if other user interface features are needed. The client application could be extended, for example, to provide a macro level goal interface for the Clearpath UGVs such as drawing a rectangle on the map for exploration. Another possibility is a system for UGV to UGV coordination. A past project by Logan Graves explored automated UAV landing on the Husky - the app could be extended to provide a control interface for the system. With everything documented, any project invloving the Clearpath platforms would greatly benefit.
+With this platform it is easy to develop new navigation algorithms by creating ROS planner nodes and plugging them in to /move_base/. It's also well documented and easy to extend if other user interface features are needed. The client application could be extended, for example, to provide a macro level goal interface for the Clearpath UGVs such as drawing a rectangle on the map for exploration. Another possibility is a system for UGV to UGV coordination. A past project by Logan Graves explored automated UAV landing on the Husky - the app could be extended to provide a control interface for the system. With everything documented, any project involving the Clearpath platforms would greatly benefit.
 
 ** Final Remarks
-We hope this project is useful to the UAF CEM department as a supplement to the Clearpath assets, if only as an in depth reference on how the platforms work. All source code and documents, this writeup included, will remain available as long as GitHub is available at \autocite{client_repo} for the client application and \autocite{server_repo} for the server application. We recommend forking the repositories to ensure their avialability moving in to the future.
+We hope this project is useful to the UAF CEM department as a supplement to the Clearpath assets, if only as an in depth reference on how the platforms work. All source code and documents, this writeup included, will remain available as long as GitHub is available at \autocite{client_repo} for the client application and \autocite{server_repo} for the server application. We recommend forking the repositories to ensure their availability moving into the future.
 
 \newpage
 
