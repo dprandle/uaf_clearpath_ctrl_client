@@ -156,8 +156,9 @@ intern void create_husky(map_panel *mp, urho::ResourceCache *cache)
     auto husky_base_link = cache->GetResource<urho::Model>("Models/husky_base_link.mdl");
     auto husky_wheel_model = cache->GetResource<urho::Model>("Models/husky_wheel.mdl");
     auto novatel_smart6 = cache->GetResource<urho::Model>("Models/novatel-smart6.mdl");
-    auto husky_lidar_mount = cache->GetResource<urho::Model>("Models/husky_lidar_mount.mdl");
     auto husky_sensor_arch = cache->GetResource<urho::Model>("Models/husky_sensor_arch.mdl");
+    auto husky_lidar_riser = cache->GetResource<urho::Model>("Models/husky_lidar_riser.mdl");
+    auto husky_lidar_cross = cache->GetResource<urho::Model>("Models/husky_lidar_cross.mdl");
 
     auto velo_top = cache->GetResource<urho::Model>("Models/husky_vlp_top.mdl");
     auto velo_mid = cache->GetResource<urho::Model>("Models/husky_vlp_middle.mdl");
@@ -222,7 +223,10 @@ intern void create_husky(map_panel *mp, urho::ResourceCache *cache)
 
     auto vlp_mount_plate = vlp_mount_base_link->CreateChild(VLP16_MOUNT_PLATE.c_str());
     mp->node_lut[VLP16_MOUNT_PLATE] = vlp_mount_plate;
-
+    smodel = vlp_mount_plate->CreateComponent<urho::StaticModel>();
+    smodel->SetModel(husky_lidar_cross);
+    smodel->SetMaterial(dark);
+    
     auto velodyne_base_link = vlp_mount_plate->CreateChild(VELODYNE_BASE_LINK.c_str());
     mp->node_lut[VELODYNE_BASE_LINK] = velodyne_base_link;
 
@@ -237,13 +241,22 @@ intern void create_husky(map_panel *mp, urho::ResourceCache *cache)
     smodel->SetMaterial(gray);
     smodel = offset_lidar_node->CreateComponent<urho::StaticModel>();
     smodel->SetModel(velo_mid);
-    smodel->SetMaterial(gray);
+    smodel->SetMaterial(dark);
     smodel = offset_lidar_node->CreateComponent<urho::StaticModel>();
     smodel->SetModel(velo_bottom);
     smodel->SetMaterial(gray);
 
-    mp->node_lut[VLP16_MOUNT_LEFT_SUPPORT] = vlp_mount_base_link->CreateChild(VLP16_MOUNT_LEFT_SUPPORT.c_str());
-    mp->node_lut[VLP16_MOUNT_RIGHT_SUPPORT] = vlp_mount_base_link->CreateChild(VLP16_MOUNT_RIGHT_SUPPORT.c_str());
+    auto vlp_left = vlp_mount_base_link->CreateChild(VLP16_MOUNT_LEFT_SUPPORT.c_str());
+    mp->node_lut[VLP16_MOUNT_LEFT_SUPPORT] = vlp_left;
+    smodel = vlp_left->CreateComponent<urho::StaticModel>();
+    smodel->SetModel(husky_lidar_riser);
+    smodel->SetMaterial(dark);
+
+    auto vlp_right = vlp_mount_base_link->CreateChild(VLP16_MOUNT_RIGHT_SUPPORT.c_str());
+    mp->node_lut[VLP16_MOUNT_RIGHT_SUPPORT] = vlp_right;
+    smodel = vlp_right->CreateComponent<urho::StaticModel>();
+    smodel->SetModel(husky_lidar_riser);
+    smodel->SetMaterial(dark);
 
     mp->node_lut[TOP_PLATE_FRONT_LINK] = top_plate_link->CreateChild(TOP_PLATE_FRONT_LINK.c_str());
     mp->node_lut[TOP_PLATE_REAR_LINK] = top_plate_link->CreateChild(TOP_PLATE_REAR_LINK.c_str());
@@ -409,8 +422,7 @@ intern void create_jackal(map_panel *mp, urho::ResourceCache *cache)
     mp->node_lut[FRONT_LASER_MOUNT] = front_laser_mount;
     smodel = front_laser_mount->CreateComponent<urho::StaticModel>();
     smodel->SetModel(jackal_sicklms_bracket);
-    smodel->SetMaterial(0, jackal_base_mat);
-    smodel->SetMaterial(1, jackal_base_mat);
+    smodel->SetMaterial(jackal_base_mat);
 
     // Child of front_laser_mount - This also has our billboard set for the scan
     mp->lidar_node = front_laser_mount->CreateChild(FRONT_LASER.c_str());
@@ -504,20 +516,23 @@ intern void setup_occ_grid_map(occ_grid_map *map,
 intern void setup_scene(map_panel *mp, urho::ResourceCache *cache, urho::Scene *scene, urho::Context *uctxt, bool is_husky)
 {
     // Grab all resources needed
+    float additional = 0.0;
+    if (is_husky)
+        additional = 0.06;
     mp->map.cols = map_colors;
     setup_occ_grid_map(&mp->map, MAP.c_str(), cache, scene, uctxt);
-    mp->map.offset_z = 0.05;
+    mp->map.offset_z = 0.1 + additional;
     mp->node_lut[MAP] = mp->map.node;
 
     mp->glob_cmap.cols = glob_cmc_colors;
     mp->glob_cmap.map_type = OCC_GRID_TYPE_GCOSTMAP;
-    mp->glob_cmap.offset_z = 0.04;
+    mp->glob_cmap.offset_z = 0.09 + additional;
     setup_occ_grid_map(&mp->glob_cmap, "global_costmap", cache, scene, uctxt);
     mp->glob_cmap.node->Translate({0, 0, -0.01});
 
     mp->loc_cmap.cols = loc_cmc_colors;
     mp->loc_cmap.map_type = OCC_GRID_TYPE_LCOSTMAP;
-    mp->loc_cmap.offset_z = 0.03;
+    mp->loc_cmap.offset_z = 0.08 + additional;
     setup_occ_grid_map(&mp->loc_cmap, "local_costmap", cache, scene, uctxt);
     mp->loc_cmap.node->Translate({0, 0, -0.02});
 

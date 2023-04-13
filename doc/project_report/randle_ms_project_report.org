@@ -1823,7 +1823,17 @@ Each type can now be easily made pack/unpackable by using the macros:
   }
 #+end_src
 
-Data from the network is read directly into the data member of the archive. It is then unpacked into the correct struct based on a fixed size header.
+Data from the network is read directly into the data member of the archive. It is then unpacked into the correct struct based on a fixed size header. An example using a pack unpack function to pack a structure into a fixed size byte buffer:
+
+#+begin_src cpp
+  //...
+  command_velocity packet{};
+  binary_fixed_buffer_archive<sizeof(command_velocity)> buf{PACK_DIR_OUT};
+  packet.vinfo.angular = jsp->velocity.x_;
+  packet.vinfo.linear = jsp->velocity.y_;
+  pack_unpack(buf, packet, {});
+  write(conn.socket_handle, buf.data, buf.cur_offset);
+#+end_src
 
 *** Packet Structure and Header
 Each message type has a unique fixed size header and struct. The header always precedes the data and is used to determine how to unpack the data following. When a packet is received on the server we route the packet to different routines based on the header value:

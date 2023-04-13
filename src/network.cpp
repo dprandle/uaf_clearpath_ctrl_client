@@ -161,6 +161,8 @@ intern void em_net_connect(net_connection *conn)
 
     char *url = get_browser_url();
     strncat(SERVER_URL, url, 64);
+    bool contains_ip = strncmp(url, "192.168.10.6", 12) == 0;
+    bool contains_host = strncmp(url, "husky", 5) == 0;
     free(url);
 
     char *url_path = get_browser_url_path();
@@ -169,7 +171,7 @@ intern void em_net_connect(net_connection *conn)
     free(url_path);
 
     char *search_str = get_browser_search_string();
-    conn->is_husky = strncmp(search_str, "?husky", 6) == 0;
+    conn->is_husky = (strncmp(search_str, "?husky", 6) == 0) || contains_ip || contains_host;
     ilog("URL QUERY: %s", search_str);
     free(search_str);
 
@@ -518,7 +520,6 @@ intern sizet dispatch_received_packet(binary_fixed_buffer_archive<net_rx_buffer:
         handle_occ_grid_pckt(read_buf, available, cached_offset, conn->pckts.gu, conn->glob_cm_update_received);
     }
     else if (matches_packet_id(MAP_PCKT_ID, read_buf.data + read_buf.cur_offset)) {
-        ilog("Got map");
         handle_occ_grid_pckt(read_buf, available, cached_offset, conn->pckts.gu, conn->map_update_received);
     }
     else if (matches_packet_id(LOC_NAVP_PCKT_ID, read_buf.data + read_buf.cur_offset)) {
