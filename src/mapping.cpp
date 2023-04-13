@@ -1,3 +1,4 @@
+
 #include <Urho3D/Core/CoreEvents.h>
 #include <Urho3D/GraphicsAPI/Texture2D.h>
 #include "Urho3D/Graphics/Model.h"
@@ -29,23 +30,57 @@
 #include "robot_control.h"
 #include "joystick.h"
 
+// Common to jackal and husky
 const std::string MAP{"map"};
 const std::string ODOM{"odom"};
 const std::string BASE_LINK{"base_link"};
-const std::string CHASSIS_LINK{"chassis_link"};
-const std::string FRONT_FENDER_LINK{"front_fender_link"};
 const std::string FRONT_LEFT_WHEEL_LINK{"front_left_wheel_link"};
 const std::string FRONT_RIGHT_WHEEL_LINK{"front_right_wheel_link"};
-const std::string IMU_LINK{"imu_link"};
-const std::string MID_MOUNT{"mid_mount"};
-const std::string NAVSAT_LINK{"navsat_link"};
-const std::string REAR_FENDER_LINK{"rear_fender_link"};
 const std::string REAR_LEFT_WHEEL_LINK{"rear_left_wheel_link"};
 const std::string REAR_RIGHT_WHEEL_LINK{"rear_right_wheel_link"};
-const std::string REAR_MOUNT{"rear_mount"};
+const std::string IMU_LINK{"imu_link"};
+
+// Jackal only
+const std::string CHASSIS_LINK{"chassis_link"};
+const std::string FRONT_FENDER_LINK{"front_fender_link"};
+const std::string NAVSAT_LINK{"navsat_link"};
+const std::string REAR_FENDER_LINK{"rear_fender_link"};
+const std::string MID_MOUNT{"mid_mount"};
 const std::string FRONT_MOUNT{"front_mount"};
+const std::string FRONT_CAMERA_MOUNT{"front_camera_mount"};
+const std::string FRONT_CAMERA_BEAM{"front_camera_beam"};
+const std::string FRONT_CAMERA{"front_camera"};
+const std::string FRONT_CAMERA_OPTICAL{"front_camera_optical"};
 const std::string FRONT_LASER_MOUNT{"front_laser_mount"};
 const std::string FRONT_LASER{"front_laser"};
+const std::string REAR_MOUNT{"rear_mount"};
+const std::string REAR_BRIDGE_BASE{"rear_bridge_base"};
+const std::string REAR_BRIDGE{"rear_bridge"};
+const std::string REAR_NAVSAT{"rear_navsat"};
+const std::string REAR_STANDOFF0{"rear_standoff0"};
+const std::string REAR_STANDOFF1{"rear_standoff1"};
+const std::string REAR_STANDOFF2{"rear_standoff2"};
+const std::string REAR_STANDOFF3{"rear_standoff3"};
+
+// Husky only
+const std::string BASE_FOOTPRINT{"base_footprint"};
+const std::string FRONT_BUMPER_LINK{"front_bumper_link"};
+const std::string INERTIAL_LINK{"inertial_link"};
+const std::string REAR_BUMPER_LINK{"rear_bumper_link"};
+const std::string TOP_PLATE_LINK{"top_plate_link"};
+const std::string SENSOR_ARCH_BASE_LINK{"sensor_arch_base_link"};
+const std::string SENSOR_ARCH_MOUNT_LINK{"sensor_arch_mount_link"};
+const std::string VLP16_MOUNT_BASE_LINK{"vlp16_mount_base_link"};
+const std::string VLP16_MOUNT_PLATE{"vlp16_mount_plate"};
+const std::string VELODYNE_BASE_LINK{"velodyne_base_link"};
+const std::string VELODYNE{"velodyne"};
+const std::string VLP16_MOUNT_LEFT_SUPPORT{"vlp16_mount_left_support"};
+const std::string VLP16_MOUNT_RIGHT_SUPPORT{"vlp16_mount_right_support"};
+const std::string TOP_PLATE_FRONT_LINK{"top_plate_front_link"};
+const std::string TOP_PLATE_REAR_LINK{"top_plate_rear_link"};
+
+const std::string TOP_CHASSIS_LINK{"top_chassis_link"};
+const std::string USER_RAIL_LINK{"user_rail_link"};
 
 intern const ogmap_colors map_colors{.undiscovered{0, 0.7, 0.7, 1}};
 
@@ -99,52 +134,339 @@ intern void create_3dview(map_panel *mp, urho::ResourceCache *cache, urho::UIEle
     light->SetBrightness(0.7f);
 }
 
+intern void setup_scan_bb_from_node(map_panel *mp, urho::ResourceCache *cache)
+{
+    auto scan_mat = cache->GetResource<urho::Material>("Materials/scan_billboard.xml");
+    mp->scan_bb = mp->lidar_node->CreateComponent<urho::BillboardSet>();
+    mp->scan_bb->SetMaterial(scan_mat);
+    mp->scan_bb->SetFixedScreenSize(true);
+}
+
+intern void create_husky(map_panel *mp, urho::ResourceCache *cache)
+{
+    auto yellow_mat = cache->GetResource<urho::Material>("Materials/Yellow.xml");
+    auto dark = cache->GetResource<urho::Material>("Materials/Dark.xml");
+    auto gray = cache->GetResource<urho::Material>("Materials/Grey.xml");
+
+    auto husky_bumper = cache->GetResource<urho::Model>("Models/husky_bumper.mdl");
+    auto husky_top_chassis = cache->GetResource<urho::Model>("Models/husky_top_chassis.mdl");
+    auto husky_top_plate = cache->GetResource<urho::Model>("Models/husky_top_plate.mdl");
+    auto husky_top_plate_cover = cache->GetResource<urho::Model>("Models/husky_top_plate_cover.mdl");
+    auto husky_user_rail = cache->GetResource<urho::Model>("Models/husky_user_rail.mdl");
+    auto husky_base_link = cache->GetResource<urho::Model>("Models/husky_base_link.mdl");
+    auto husky_wheel_model = cache->GetResource<urho::Model>("Models/husky_wheel.mdl");
+    auto novatel_smart6 = cache->GetResource<urho::Model>("Models/novatel-smart6.mdl");
+    auto husky_lidar_mount = cache->GetResource<urho::Model>("Models/husky_lidar_mount.mdl");
+    auto husky_sensor_arch = cache->GetResource<urho::Model>("Models/husky_sensor_arch.mdl");
+
+    auto velo_top = cache->GetResource<urho::Model>("Models/husky_vlp_top.mdl");
+    auto velo_mid = cache->GetResource<urho::Model>("Models/husky_vlp_middle.mdl");
+    auto velo_bottom = cache->GetResource<urho::Model>("Models/husky_vlp_bottom.mdl");
+
+    auto husky_base_model_node = mp->base_link->CreateChild("husky_base_link_model");
+    auto smodel = husky_base_model_node->CreateComponent<urho::StaticModel>();
+    smodel->SetModel(husky_base_link);
+    smodel->SetMaterial(dark);
+    husky_base_model_node->Rotate({90, {-1, 0, 0}});
+
+    // Children of chassis link
+    mp->node_lut[BASE_FOOTPRINT] = mp->base_link->CreateChild(BASE_FOOTPRINT.c_str());
+
+    auto front_bumper_link = mp->base_link->CreateChild(FRONT_BUMPER_LINK.c_str());
+    mp->node_lut[FRONT_BUMPER_LINK] = front_bumper_link;
+    auto front_bumper_offset = front_bumper_link->CreateChild("front_bumper_offset");
+    smodel = front_bumper_offset->CreateComponent<urho::StaticModel>();
+    smodel->SetModel(husky_bumper);
+    smodel->SetMaterial(dark);
+    front_bumper_offset->Rotate({90, {-1, 0, 0}});
+
+    mp->node_lut[IMU_LINK] = mp->base_link->CreateChild(IMU_LINK.c_str());
+    mp->node_lut[INERTIAL_LINK] = mp->base_link->CreateChild(INERTIAL_LINK.c_str());
+
+    auto rear_bumper_link = mp->base_link->CreateChild(REAR_BUMPER_LINK.c_str());
+    mp->node_lut[REAR_BUMPER_LINK] = rear_bumper_link;
+    auto rear_bumper_offset = rear_bumper_link->CreateChild("rear_bumper_offset");
+    smodel = rear_bumper_offset->CreateComponent<urho::StaticModel>();
+    smodel->SetModel(husky_bumper);
+    smodel->SetMaterial(dark);
+    rear_bumper_offset->Rotate({90, {-1, 0, 0}});
+
+    auto top_plate_link = mp->base_link->CreateChild(TOP_PLATE_LINK.c_str());
+    mp->node_lut[TOP_PLATE_LINK] = top_plate_link;
+    auto top_plate_offset = top_plate_link->CreateChild("top_plate_offset");
+    smodel = top_plate_offset->CreateComponent<urho::StaticModel>();
+    smodel->SetModel(husky_top_plate);
+    smodel->SetMaterial(dark);
+    top_plate_offset->Rotate({90, {-1, 0, 0}});
+
+    auto top_plate_cover_offset = top_plate_link->CreateChild("top_plate_cover_offset");
+    smodel = top_plate_cover_offset->CreateComponent<urho::StaticModel>();
+    smodel->SetModel(husky_top_plate_cover);
+    smodel->SetMaterial(dark);
+    top_plate_cover_offset->Rotate({90, {-1, 0, 0}});
+    top_plate_cover_offset->Translate({0, -0.005, 0});
+
+    auto sensor_arch_base_link = top_plate_link->CreateChild(SENSOR_ARCH_BASE_LINK.c_str());
+    mp->node_lut[SENSOR_ARCH_BASE_LINK] = sensor_arch_base_link;
+
+    auto sensor_arch_mount_link = sensor_arch_base_link->CreateChild(SENSOR_ARCH_MOUNT_LINK.c_str());
+    mp->node_lut[SENSOR_ARCH_MOUNT_LINK] = sensor_arch_mount_link;
+    auto sensor_arch_offset = sensor_arch_mount_link->CreateChild("sensor_arch_offset");
+    smodel = sensor_arch_offset->CreateComponent<urho::StaticModel>();
+    smodel->SetModel(husky_sensor_arch);
+    smodel->SetMaterial(dark);
+    sensor_arch_offset->Rotate({90, {-1, 0, 0}});
+
+    auto vlp_mount_base_link = sensor_arch_mount_link->CreateChild(VLP16_MOUNT_BASE_LINK.c_str());
+    mp->node_lut[VLP16_MOUNT_BASE_LINK] = vlp_mount_base_link;
+
+    auto vlp_mount_plate = vlp_mount_base_link->CreateChild(VLP16_MOUNT_PLATE.c_str());
+    mp->node_lut[VLP16_MOUNT_PLATE] = vlp_mount_plate;
+
+    auto velodyne_base_link = vlp_mount_plate->CreateChild(VELODYNE_BASE_LINK.c_str());
+    mp->node_lut[VELODYNE_BASE_LINK] = velodyne_base_link;
+
+    // Child of front_laser_mount - This also has our billboard set for the scan
+    mp->lidar_node = velodyne_base_link->CreateChild(VELODYNE.c_str());
+    setup_scan_bb_from_node(mp, cache);
+    mp->node_lut[VELODYNE] = mp->lidar_node;
+    mp->node_lut[FRONT_LASER] = mp->lidar_node;
+    auto offset_lidar_node = mp->lidar_node->CreateChild("offset_lidar_node");
+    smodel = offset_lidar_node->CreateComponent<urho::StaticModel>();
+    smodel->SetModel(velo_top);
+    smodel->SetMaterial(gray);
+    smodel = offset_lidar_node->CreateComponent<urho::StaticModel>();
+    smodel->SetModel(velo_mid);
+    smodel->SetMaterial(gray);
+    smodel = offset_lidar_node->CreateComponent<urho::StaticModel>();
+    smodel->SetModel(velo_bottom);
+    smodel->SetMaterial(gray);
+
+    mp->node_lut[VLP16_MOUNT_LEFT_SUPPORT] = vlp_mount_base_link->CreateChild(VLP16_MOUNT_LEFT_SUPPORT.c_str());
+    mp->node_lut[VLP16_MOUNT_RIGHT_SUPPORT] = vlp_mount_base_link->CreateChild(VLP16_MOUNT_RIGHT_SUPPORT.c_str());
+
+    mp->node_lut[TOP_PLATE_FRONT_LINK] = top_plate_link->CreateChild(TOP_PLATE_FRONT_LINK.c_str());
+    mp->node_lut[TOP_PLATE_REAR_LINK] = top_plate_link->CreateChild(TOP_PLATE_REAR_LINK.c_str());
+
+    auto top_chassis_link = mp->base_link->CreateChild(TOP_CHASSIS_LINK.c_str());
+    mp->node_lut[TOP_CHASSIS_LINK] = top_chassis_link;
+    auto top_chassis_offset = top_chassis_link->CreateChild("top_chassis_offset");
+    smodel = top_chassis_offset->CreateComponent<urho::StaticModel>();
+    smodel->SetModel(husky_top_chassis);
+    smodel->SetMaterial(yellow_mat);
+    top_chassis_offset->Rotate({90, {-1, 0, 0}});
+
+    auto user_rail_link = mp->base_link->CreateChild(USER_RAIL_LINK.c_str());
+    mp->node_lut[USER_RAIL_LINK] = user_rail_link;
+    auto user_rail_offset = user_rail_link->CreateChild("user_rail_offset");
+    smodel = user_rail_offset->CreateComponent<urho::StaticModel>();
+    smodel->SetModel(husky_user_rail);
+    smodel->SetMaterial(dark);
+    user_rail_offset->Rotate({90, {-1, 0, 0}});
+
+    auto fl_wheel_node_parent = mp->base_link->CreateChild(FRONT_LEFT_WHEEL_LINK.c_str());
+    mp->node_lut[FRONT_LEFT_WHEEL_LINK] = fl_wheel_node_parent;
+    auto fl_wheel_node = fl_wheel_node_parent->CreateChild("fl_wheel_model");
+    smodel = fl_wheel_node->CreateComponent<urho::StaticModel>();
+    smodel->SetModel(husky_wheel_model);
+    smodel->SetMaterial(dark);
+    fl_wheel_node->Rotate({90, {-1, 0, 0}});
+
+    auto fr_wheel_node_parent = mp->base_link->CreateChild(FRONT_RIGHT_WHEEL_LINK.c_str());
+    mp->node_lut[FRONT_RIGHT_WHEEL_LINK] = fr_wheel_node_parent;
+    auto fr_wheel_node = fr_wheel_node_parent->CreateChild("fr_wheel_model");
+    smodel = fr_wheel_node->CreateComponent<urho::StaticModel>();
+    smodel->SetModel(husky_wheel_model);
+    smodel->SetMaterial(dark);
+    fr_wheel_node->Rotate({90, {-1, 0, 0}});
+
+    auto rl_wheel_node_parent = mp->base_link->CreateChild(REAR_LEFT_WHEEL_LINK.c_str());
+    mp->node_lut[REAR_LEFT_WHEEL_LINK] = rl_wheel_node_parent;
+    auto rl_wheel_node = rl_wheel_node_parent->CreateChild("rl_wheel_model");
+    smodel = rl_wheel_node->CreateComponent<urho::StaticModel>();
+    smodel->SetModel(husky_wheel_model);
+    smodel->SetMaterial(dark);
+    rl_wheel_node->Rotate({90, {-1, 0, 0}});
+
+    auto rr_wheel_node_parent = mp->base_link->CreateChild(REAR_RIGHT_WHEEL_LINK.c_str());
+    mp->node_lut[REAR_RIGHT_WHEEL_LINK] = rr_wheel_node_parent;
+    auto rr_wheel_node = rr_wheel_node_parent->CreateChild("rr_wheel_model");
+    smodel = rr_wheel_node->CreateComponent<urho::StaticModel>();
+    smodel->SetModel(husky_wheel_model);
+    smodel->SetMaterial(dark);
+    rr_wheel_node->Rotate({90, {-1, 0, 0}});
+}
+
 intern void create_jackal(map_panel *mp, urho::ResourceCache *cache)
 {
     auto jackal_base_model = cache->GetResource<urho::Model>("Models/jackal-base.mdl");
-    auto jackal_base_mat = cache->GetResource<urho::Material>("Materials/jackal_base.xml");
-
-    auto jackal_fenders_model = cache->GetResource<urho::Model>("Models/jackal-fenders.mdl");
-    auto jackal_fender_mat = cache->GetResource<urho::Material>("Materials/jackal_fender.xml");
-
+    auto jackal_fender_model = cache->GetResource<urho::Model>("Models/jackal-fender.mdl");
     auto jackal_wheel_model = cache->GetResource<urho::Model>("Models/jackal-wheel.mdl");
+    auto jackal_bridge_plate = cache->GetResource<urho::Model>("Models/jackal-bridge-plate.mdl");
+    auto jackal_sicklms = cache->GetResource<urho::Model>("Models/jackal-sicklms-2.mdl");
+    auto jackal_sicklms_bracket = cache->GetResource<urho::Model>("Models/jackal-sicklms-bracket.mdl");
+    auto jackal_bumblebee2 = cache->GetResource<urho::Model>("Models/jackal-bumblebee2.mdl");
+    auto novatel_smart6 = cache->GetResource<urho::Model>("Models/novatel-smart6.mdl");
+    auto standoff = cache->GetResource<urho::Model>("Models/jackal-standoff.mdl");
+    
+    auto jackal_fender_mat = cache->GetResource<urho::Material>("Materials/Yellow.xml");
+    auto jackal_base_mat = cache->GetResource<urho::Material>("Materials/Dark.xml");
+    auto jackal_bb2_mat0 = cache->GetResource<urho::Material>("Materials/jackal_bb2_01.xml");
+    auto jackal_bb2_mat1 = cache->GetResource<urho::Material>("Materials/jackal_bb2_02.xml");
+    auto gray_mat = cache->GetResource<urho::Material>("Materials/Grey.xml");
 
-    // Create node for jackel model stuff
-    auto jackal_base_model_node = mp->base_link->CreateChild("jackal_base_model");
+    // Child of base link
+    auto chassis_link = mp->base_link->CreateChild(CHASSIS_LINK.c_str());
+    mp->node_lut[CHASSIS_LINK] = chassis_link;
+
+    auto jackal_base_model_node = chassis_link->CreateChild("jackal_base_model");
     auto smodel = jackal_base_model_node->CreateComponent<urho::StaticModel>();
     smodel->SetModel(jackal_base_model);
     smodel->SetMaterial(jackal_base_mat);
     jackal_base_model_node->Rotate({90, {0, 0, -1}});
     jackal_base_model_node->Rotate({90, {-1, 0, 0}});
+    jackal_base_model_node->Translate({0,0,0.065}, urho::TransformSpace::World);
 
-    auto jackal_fender_node = jackal_base_model_node->CreateChild("jackal_fender");
-    smodel = jackal_fender_node->CreateComponent<urho::StaticModel>();
-    smodel->SetModel(jackal_fenders_model);
-    smodel->SetMaterial(jackal_fender_mat);
-
-    auto fl_wheel_node = mp->node_lut[FRONT_LEFT_WHEEL_LINK]->CreateChild("fl_wheel_model");
+    auto fl_wheel_node_parent = chassis_link->CreateChild(FRONT_LEFT_WHEEL_LINK.c_str());
+    mp->node_lut[FRONT_LEFT_WHEEL_LINK] = fl_wheel_node_parent;
+    auto fl_wheel_node = fl_wheel_node_parent->CreateChild("fl_wheel_model");
     smodel = fl_wheel_node->CreateComponent<urho::StaticModel>();
     smodel->SetModel(jackal_wheel_model);
     smodel->SetMaterial(jackal_base_mat);
     fl_wheel_node->Rotate({90, {-1, 0, 0}});
 
-    auto fr_wheel_node = mp->node_lut[FRONT_RIGHT_WHEEL_LINK]->CreateChild("fr_wheel_model");
+    auto fr_wheel_node_parent = chassis_link->CreateChild(FRONT_RIGHT_WHEEL_LINK.c_str());
+    mp->node_lut[FRONT_RIGHT_WHEEL_LINK] = fr_wheel_node_parent;
+    auto fr_wheel_node = fr_wheel_node_parent->CreateChild("fr_wheel_model");
     smodel = fr_wheel_node->CreateComponent<urho::StaticModel>();
     smodel->SetModel(jackal_wheel_model);
     smodel->SetMaterial(jackal_base_mat);
     fr_wheel_node->Rotate({90, {-1, 0, 0}});
 
-    auto rl_wheel_node = mp->node_lut[REAR_LEFT_WHEEL_LINK]->CreateChild("rl_wheel_model");
+    auto rl_wheel_node_parent = chassis_link->CreateChild(REAR_LEFT_WHEEL_LINK.c_str());
+    mp->node_lut[REAR_LEFT_WHEEL_LINK] = rl_wheel_node_parent;
+    auto rl_wheel_node = rl_wheel_node_parent->CreateChild("rl_wheel_model");
     smodel = rl_wheel_node->CreateComponent<urho::StaticModel>();
     smodel->SetModel(jackal_wheel_model);
     smodel->SetMaterial(jackal_base_mat);
     rl_wheel_node->Rotate({90, {-1, 0, 0}});
 
-    auto rr_wheel_node = mp->node_lut[REAR_RIGHT_WHEEL_LINK]->CreateChild("rr_wheel_model");
+    auto rr_wheel_node_parent = chassis_link->CreateChild(REAR_RIGHT_WHEEL_LINK.c_str());
+    mp->node_lut[REAR_RIGHT_WHEEL_LINK] = rr_wheel_node_parent;
+    auto rr_wheel_node = rr_wheel_node_parent->CreateChild("rr_wheel_model");
     smodel = rr_wheel_node->CreateComponent<urho::StaticModel>();
     smodel->SetModel(jackal_wheel_model);
     smodel->SetMaterial(jackal_base_mat);
     rr_wheel_node->Rotate({90, {-1, 0, 0}});
+
+    // Children of chassis link
+    auto front_fender_link = chassis_link->CreateChild(FRONT_FENDER_LINK.c_str());
+    mp->node_lut[FRONT_FENDER_LINK] = front_fender_link;
+    auto jackal_fender_node = front_fender_link->CreateChild("jackal_front_fender");
+    smodel = jackal_fender_node->CreateComponent<urho::StaticModel>();
+    smodel->SetModel(jackal_fender_model);
+    smodel->SetMaterial(jackal_fender_mat);
+
+    auto rear_fender_link = chassis_link->CreateChild(REAR_FENDER_LINK.c_str());
+    mp->node_lut[REAR_FENDER_LINK] = rear_fender_link;
+    auto jackal_rear_fender_node = rear_fender_link->CreateChild("jackal_rear_fender");
+    smodel = jackal_rear_fender_node->CreateComponent<urho::StaticModel>();
+    smodel->SetModel(jackal_fender_model);
+    smodel->SetMaterial(jackal_fender_mat);
+
+    mp->node_lut[IMU_LINK] = chassis_link->CreateChild(IMU_LINK.c_str());
+    mp->node_lut[NAVSAT_LINK] = chassis_link->CreateChild(NAVSAT_LINK.c_str());
+
+    auto mid_mount = chassis_link->CreateChild(MID_MOUNT.c_str());
+    mp->node_lut[MID_MOUNT] = mid_mount;
+    // Create node for jackel model stuff
+
+    // Children of mid mount
+    auto front_mount = mid_mount->CreateChild(FRONT_MOUNT.c_str());
+    mp->node_lut[FRONT_MOUNT] = front_mount;
+
+    auto front_camera_mount = front_mount->CreateChild(FRONT_CAMERA_MOUNT.c_str());
+    mp->node_lut[FRONT_CAMERA_MOUNT] = front_camera_mount;
+
+    auto front_camera_beam = front_camera_mount->CreateChild(FRONT_CAMERA_BEAM.c_str());
+    mp->node_lut[FRONT_CAMERA_BEAM] = front_camera_beam;
+
+    auto front_camera = front_camera_beam->CreateChild(FRONT_CAMERA.c_str());
+    mp->node_lut[FRONT_CAMERA] = front_camera;
+
+    auto front_camera_optical = front_camera->CreateChild(FRONT_CAMERA_OPTICAL.c_str());
+    mp->node_lut[FRONT_CAMERA_OPTICAL] = front_camera_optical;
+    auto cam_offset = front_camera_optical->CreateChild("cam_offset");
+    smodel = cam_offset->CreateComponent<urho::StaticModel>();
+    smodel->SetModel(jackal_bumblebee2);
+    smodel->SetMaterial(0, jackal_bb2_mat0);
+    smodel->SetMaterial(1, jackal_bb2_mat1);
+    smodel->SetMaterial(2, jackal_bb2_mat1);
+    cam_offset->Rotate({90, {0, 1, 0}});
+
+    // Child of front mount
+    auto front_laser_mount = front_mount->CreateChild(FRONT_LASER_MOUNT.c_str());
+    mp->node_lut[FRONT_LASER_MOUNT] = front_laser_mount;
+    smodel = front_laser_mount->CreateComponent<urho::StaticModel>();
+    smodel->SetModel(jackal_sicklms_bracket);
+    smodel->SetMaterial(0, jackal_base_mat);
+    smodel->SetMaterial(1, jackal_base_mat);
+
+    // Child of front_laser_mount - This also has our billboard set for the scan
+    mp->lidar_node = front_laser_mount->CreateChild(FRONT_LASER.c_str());
+    setup_scan_bb_from_node(mp, cache);
+    mp->node_lut[FRONT_LASER] = mp->lidar_node;
+
+    auto lidar_offset = mp->lidar_node->CreateChild("lidar_offset");
+    smodel = lidar_offset->CreateComponent<urho::StaticModel>();
+    smodel->SetModel(jackal_sicklms);
+    smodel->SetMaterial(gray_mat);
+    lidar_offset->Rotate({90, {-1, 0, 0}});
+
+    auto rear_mnt = mid_mount->CreateChild(REAR_MOUNT.c_str());
+    mp->node_lut[REAR_MOUNT] = rear_mnt;
+
+    auto rear_bridge_base = rear_mnt->CreateChild(REAR_BRIDGE_BASE.c_str());
+    mp->node_lut[REAR_BRIDGE_BASE] = rear_bridge_base;
+
+    auto rear_bridge = rear_bridge_base->CreateChild(REAR_BRIDGE.c_str());
+    mp->node_lut[REAR_BRIDGE] = rear_bridge;
+    auto rear_bridge_offset = rear_bridge->CreateChild("rear_bridge_offset");
+    smodel = rear_bridge_offset->CreateComponent<urho::StaticModel>();
+    smodel->SetModel(jackal_bridge_plate);
+    smodel->SetMaterial(gray_mat);
+    rear_bridge_offset->Rotate({90, {0, 0, -1}});
+    rear_bridge_offset->Rotate({90, {1, 0, 0}});
+
+    auto rear_navsat = rear_bridge->CreateChild(REAR_NAVSAT.c_str());
+    mp->node_lut[REAR_NAVSAT] = rear_navsat;
+    smodel = rear_navsat->CreateComponent<urho::StaticModel>();
+    smodel->SetModel(novatel_smart6);
+    smodel->SetMaterial(gray_mat);
+
+    auto standoff_node = rear_bridge_base->CreateChild(REAR_STANDOFF0.c_str());
+    mp->node_lut[REAR_STANDOFF0] = standoff_node;
+    smodel = standoff_node->CreateComponent<urho::StaticModel>();
+    smodel->SetModel(standoff);
+    smodel->SetMaterial(gray_mat);
+    
+    standoff_node = rear_bridge_base->CreateChild(REAR_STANDOFF1.c_str());
+    mp->node_lut[REAR_STANDOFF1] = standoff_node;
+    smodel = standoff_node->CreateComponent<urho::StaticModel>();
+    smodel->SetModel(standoff);
+    smodel->SetMaterial(gray_mat);
+    
+    standoff_node = rear_bridge_base->CreateChild(REAR_STANDOFF2.c_str());
+    mp->node_lut[REAR_STANDOFF2] = standoff_node;
+    smodel = standoff_node->CreateComponent<urho::StaticModel>();
+    smodel->SetModel(standoff);
+    smodel->SetMaterial(gray_mat);
+    
+    standoff_node = rear_bridge_base->CreateChild(REAR_STANDOFF3.c_str());
+    mp->node_lut[REAR_STANDOFF3] = standoff_node;
+    smodel = standoff_node->CreateComponent<urho::StaticModel>();
+    smodel->SetModel(standoff);
+    smodel->SetMaterial(gray_mat);
 }
 
 intern void setup_occ_grid_map(occ_grid_map *map,
@@ -179,22 +501,23 @@ intern void setup_occ_grid_map(occ_grid_map *map,
     map->bb_set->Commit();
 }
 
-intern void setup_scene(map_panel *mp, urho::ResourceCache *cache, urho::Scene *scene, urho::Context *uctxt)
+intern void setup_scene(map_panel *mp, urho::ResourceCache *cache, urho::Scene *scene, urho::Context *uctxt, bool is_husky)
 {
     // Grab all resources needed
-    auto scan_mat = cache->GetResource<urho::Material>("Materials/scan_billboard.xml");
-
     mp->map.cols = map_colors;
     setup_occ_grid_map(&mp->map, MAP.c_str(), cache, scene, uctxt);
+    mp->map.offset_z = 0.05;
     mp->node_lut[MAP] = mp->map.node;
 
     mp->glob_cmap.cols = glob_cmc_colors;
     mp->glob_cmap.map_type = OCC_GRID_TYPE_GCOSTMAP;
+    mp->glob_cmap.offset_z = 0.04;
     setup_occ_grid_map(&mp->glob_cmap, "global_costmap", cache, scene, uctxt);
     mp->glob_cmap.node->Translate({0, 0, -0.01});
 
     mp->loc_cmap.cols = loc_cmc_colors;
     mp->loc_cmap.map_type = OCC_GRID_TYPE_LCOSTMAP;
+    mp->loc_cmap.offset_z = 0.03;
     setup_occ_grid_map(&mp->loc_cmap, "local_costmap", cache, scene, uctxt);
     mp->loc_cmap.node->Translate({0, 0, -0.02});
 
@@ -213,42 +536,12 @@ intern void setup_scene(map_panel *mp, urho::ResourceCache *cache, urho::Scene *
     mp->view->GetCameraNode()->SetParent(robot_follow_cam);
     robot_follow_cam->SetRotation({90, {0, 0, -1}});
 
-    // Child of base link
-    auto chassis_link = mp->base_link->CreateChild(CHASSIS_LINK.c_str());
-    mp->node_lut[CHASSIS_LINK] = chassis_link;
-
-    auto offset_link = chassis_link->CreateChild("offset_link");
-    offset_link->Translate({0.0f, 0.0f, -0.065f});
-
-    // Children of chassis link
-    mp->node_lut[FRONT_FENDER_LINK] = chassis_link->CreateChild(FRONT_FENDER_LINK.c_str());
-    mp->node_lut[FRONT_LEFT_WHEEL_LINK] = offset_link->CreateChild(FRONT_LEFT_WHEEL_LINK.c_str());
-    mp->node_lut[FRONT_RIGHT_WHEEL_LINK] = offset_link->CreateChild(FRONT_RIGHT_WHEEL_LINK.c_str());
-    mp->node_lut[IMU_LINK] = chassis_link->CreateChild(IMU_LINK.c_str());
-    mp->node_lut[NAVSAT_LINK] = chassis_link->CreateChild(NAVSAT_LINK.c_str());
-    mp->node_lut[REAR_FENDER_LINK] = chassis_link->CreateChild(REAR_FENDER_LINK.c_str());
-    mp->node_lut[REAR_LEFT_WHEEL_LINK] = offset_link->CreateChild(REAR_LEFT_WHEEL_LINK.c_str());
-    mp->node_lut[REAR_RIGHT_WHEEL_LINK] = offset_link->CreateChild(REAR_RIGHT_WHEEL_LINK.c_str());
-    auto mid_mount = chassis_link->CreateChild(MID_MOUNT.c_str());
-    mp->node_lut[MID_MOUNT] = mid_mount;
-
-    // Children of mid mount
-    mp->node_lut[REAR_MOUNT] = mid_mount->CreateChild(REAR_MOUNT.c_str());
-    auto front_mount = mid_mount->CreateChild(FRONT_MOUNT.c_str());
-    mp->node_lut[FRONT_MOUNT] = front_mount;
-
-    // Child of front mount
-    auto front_laser_mount = front_mount->CreateChild(FRONT_LASER_MOUNT.c_str());
-    mp->node_lut[FRONT_LASER_MOUNT] = front_laser_mount;
-
-    // Child of front_laser_mount - This also has our billboard set for the scan
-    mp->front_laser = front_laser_mount->CreateChild(FRONT_LASER.c_str());
-    mp->scan_bb = mp->front_laser->CreateComponent<urho::BillboardSet>();
-    mp->scan_bb->SetMaterial(scan_mat);
-    mp->scan_bb->SetFixedScreenSize(true);
-    mp->node_lut[FRONT_LASER] = mp->front_laser;
-
-    create_jackal(mp, cache);
+    if (is_husky) {
+        create_husky(mp, cache);
+    }
+    else {
+        create_jackal(mp, cache);
+    }
 }
 
 intern void reposition_cam_view(map_panel *mp, const ui_info &ui_inf)
@@ -344,15 +637,9 @@ intern void update_scene_map_from_occ_grid(occ_grid_map *map, const occ_grid_upd
     auto billboard = map->bb_set->GetBillboard(0);
     billboard->size_ = vec2{(float)map->image->GetWidth(), (float)map->image->GetHeight()} * grid.meta.resolution * 0.5;
     float h_diff = billboard->size_.y_ - grid.meta.height * grid.meta.resolution * 0.5;
-    billboard->position_ = pos + vec3{billboard->size_};
+    billboard->position_ = pos + vec3{billboard->size_, map->offset_z};
     billboard->enabled_ = true;
-
-    ilog("Received update for map type %d with %d elements for %dx%d map",
-         map->map_type,
-         grid.meta.change_elem_count,
-         grid.meta.width,
-         grid.meta.height);
-
+    
     for (int i = 0; i < grid.meta.change_elem_count; ++i) {
         u32 map_ind = (grid.change_elems[i] >> 8);
         u8 prob = (u8)grid.change_elems[i];
@@ -405,7 +692,7 @@ intern void update_scene_from_scan(map_panel *mp, const lidar_scan &packet)
     for (int i = 0; i < range_count; ++i) {
         auto bb = mp->scan_bb->GetBillboard(i);
 
-        // Verify the range is within tolerance of the LIDAR - otherwise 
+        // Verify the range is within tolerance of the LIDAR - otherwise
         if (packet.ranges[i] < packet.meta.range_max && packet.ranges[i] > packet.meta.range_min) {
             bb->position_ = {packet.ranges[i] * cos(cur_ang), packet.ranges[i] * sin(cur_ang), 0.0f};
             bb->enabled_ = true;
@@ -587,7 +874,7 @@ intern void setup_input_actions(map_panel *mp, const ui_info &ui_inf, net_connec
     auto cam_node = mp->view->GetCameraNode();
     auto on_click = [cam_node, mp](const itrigger_event &tevent) {
         if (mp->js_enabled ||
-            (mp->view != tevent.vp.element_under_mouse && tevent.vp.element_under_mouse->GetPriority() > 2))
+            (mp->view != tevent.vp.element_under_mouse && tevent.vp.element_under_mouse->GetPriority() > 3))
             return;
 
         if ((mp->toolbar.add_goal && !mp->toolbar.add_goal->IsChecked()) && !mp->toolbar.enable_measure->IsChecked())
@@ -741,7 +1028,7 @@ void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, 
     ilog("Initializing map panel");
 
     create_3dview(mp, cache, ui_inf.ui_sys->GetRoot(), uctxt);
-    setup_scene(mp, cache, mp->view->GetScene(), uctxt);
+    setup_scene(mp, cache, mp->view->GetScene(), uctxt, conn->is_husky);
 
     // These must come before map toggle views as the pointers need to be valid
     toolbar_init(mp, ui_inf, conn->can_control);
@@ -753,8 +1040,7 @@ void map_panel_init(map_panel *mp, const ui_info &ui_inf, net_connection *conn, 
     setup_conn_text(mp, ui_inf);
     setup_path_length_text(mp, ui_inf);
 
-    ss_connect(
-        &mp->router, conn->scan_received, [mp](const lidar_scan &pckt) { update_scene_from_scan(mp, pckt); });
+    ss_connect(&mp->router, conn->scan_received, [mp](const lidar_scan &pckt) { update_scene_from_scan(mp, pckt); });
 
     ss_connect(&mp->router, conn->map_update_received, [mp](const occ_grid_update &pckt) {
         update_scene_map_from_occ_grid(&mp->map, pckt);

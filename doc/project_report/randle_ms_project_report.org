@@ -82,6 +82,7 @@ If using a compatible Linux distribution (currently Ubuntu 20.04 is the latest s
   $ sudo apt install curl
   $ curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | sudo apt-key add -
   $ sudo apt update
+  $ sudo apt install ros-noetic-desktop-full
 #+end_src
 
 Once installed, a bash setup script located at /opt/ros/kinetic/setup.bash/ must be sourced in order for ROS tools to be available on the command line. In the ROS ecosystem it is common to source bash scripts to set environment variables. This allows ROS to alter system settings and provide a convenient shell interface without invading or changing the system - the settings are dropped once the shell is terminated.
@@ -900,6 +901,7 @@ Emscripten version 2.0.8 is used for this project, as that is the latest support
   $ git clone https://github.com/emscripten-core/emsdk.git
   $ cd emsdk
   $ ./emsdk install 2.0.8
+  $ ./emsdk activate 2.0.8
 #+end_src
 
 The easiest way to use the Emscripten compiler is to use the provided toolchain file with CMake. A toolchain file is a special file which sets up CMake for cross compiling. After issuing the install command, the Emscripten toolchain file is located at /emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake. To use it with CMake, pass it in when invoking CMake:

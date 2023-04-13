@@ -67,6 +67,7 @@ struct occ_grid_map
     urho::Image *image{};
     urho::BillboardSet *bb_set{};
     ogmap_colors cols;
+    float offset_z {0.0f};
 
     int map_type{OCC_GRID_TYPE_MAP};
 };
@@ -126,7 +127,7 @@ struct map_panel
     text_notice_widget text_disp{};
     map_toggle_views_panel views_panel{};
 
-    urho::Node *front_laser{};
+    urho::Node *lidar_node{};
     urho::BillboardSet *scan_bb{};
 
     occ_grid_map map{};

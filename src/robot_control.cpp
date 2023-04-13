@@ -51,6 +51,7 @@ intern void setup_ui_info(ui_info *ui_inf, urho::Context *uctxt)
 
 #if defined(__EMSCRIPTEN__)
     ui_inf->dev_pixel_ratio_inv = 1.0 / emscripten_get_device_pixel_ratio();
+    ilog("Inv dev pixel ratio: %f",ui_inf->dev_pixel_ratio_inv);
 #endif
     ui_inf->style = rcache->GetResource<urho::XMLFile>("UI/jackal_style.xml");
     ui_inf->ui_sys = uctxt->GetSubsystem<urho::UI>();
@@ -72,7 +73,7 @@ intern void setup_main_renderer(robot_control_ctxt *ctxt)
     zn->SetFogColor({0.0, 0.0, 0.0, 1.0});
 }
 
-intern void parse_command_line_args(int *port, urho::String *ip, float *ui_scale, const urho::StringVector &args)
+intern void parse_command_line_args(int *port, urho::String *ip, float *ui_scale, bool *is_husky, const urho::StringVector &args)
 {
     for (const auto &arg : args) {
         auto split = arg.Split('=');
@@ -86,6 +87,9 @@ intern void parse_command_line_args(int *port, urho::String *ip, float *ui_scale
             else if (split[0] == "-ui_scale") {
                 *ui_scale = strtof(split[1].CString(), nullptr);
                 ilog("Setting ui scale val to %f", *ui_scale);
+            }
+            else if (split[0] == "-husky") {
+                *is_husky = strtol(split[1].CString(), nullptr, 10);
             }
         }
     }
@@ -103,7 +107,7 @@ bool robot_ctrl_init(robot_control_ctxt *ctxt, const urho::StringVector &args)
 
     int port{4000};
     urho::String ip{"127.0.0.1"};
-    parse_command_line_args(&port, &ip, &ctxt->ui_inf.dev_pixel_ratio_inv, args);
+    parse_command_line_args(&port, &ip, &ctxt->ui_inf.dev_pixel_ratio_inv, &ctxt->conn.is_husky, args);
 
     if (!init_urho_engine(ctxt->urho_engine, ctxt->ui_inf.dev_pixel_ratio_inv))
         return false;
@@ -121,7 +125,8 @@ bool robot_ctrl_init(robot_control_ctxt *ctxt, const urho::StringVector &args)
     ctxt->inp.dispatch.inv_pixel_ratio = ctxt->ui_inf.dev_pixel_ratio_inv;
     ctxt->inp.dispatch.context_stack.push_back(&ctxt->inp.map);
 
-    net_connect(&ctxt->conn, ip.CString(), port);
+    ctxt->conn.port = port;
+    net_connect(&ctxt->conn, ip.CString());
     joystick_panel_init(&ctxt->js_panel, ctxt->ui_inf, &ctxt->conn);
 
     ctxt->mpanel.ctxt = ctxt;

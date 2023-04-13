@@ -20,7 +20,7 @@ intern void setup_camera_controls(map_panel *mp, urho::Node *cam_node, input_dat
     auto on_mouse_tilt = [cam_node, mp](const itrigger_event &tevent) {
         if (mp->toolbar.enable_measure->IsChecked() || (mp->toolbar.add_goal && mp->toolbar.add_goal->IsChecked()) ||
             mp->js_enabled ||
-            (mp->view != tevent.vp.element_under_mouse && tevent.vp.element_under_mouse->GetPriority() > 2))
+            (mp->view != tevent.vp.element_under_mouse && tevent.vp.element_under_mouse->GetPriority() > 3))
             return;
 
         if (tevent.vp.vp_norm_mdelta.x_ > 0.1 || tevent.vp.vp_norm_mdelta.y_ > 0.1)

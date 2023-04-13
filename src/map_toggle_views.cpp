@@ -103,7 +103,7 @@ intern void setup_view_checkboxes(map_panel *mp, const ui_info &ui_inf)
     vp->elems.back().cb->SetChecked(false);
 
     vp->elems.emplace_back(
-        create_cbox_item(vp->apanel.sview, mp->front_laser, nullptr, nullptr, "Laser Scan", uctxt, ui_inf));
+        create_cbox_item(vp->apanel.sview, mp->lidar_node, nullptr, nullptr, "Laser Scan", uctxt, ui_inf));
     vp->elems.emplace_back(
         create_cbox_item(vp->apanel.sview, mp->glob_cmap.node, nullptr, nullptr, "Global Costmap", uctxt, ui_inf));
     vp->elems.emplace_back(

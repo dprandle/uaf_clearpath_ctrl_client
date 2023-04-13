@@ -410,6 +410,8 @@ struct net_rx_buffer
 struct net_connection
 {
     int socket_handle{0};
+    bool is_husky{false};
+    int port;
 
     net_rx_buffer *rx_buf{};
     reusable_packets pckts{};
@@ -429,7 +431,7 @@ struct net_connection
     ss_signal<const misc_stats &> meta_stats_update;
 };
 
-void net_connect(net_connection *conn, const char *ip, int port, int max_timeout_ms = -1);
+void net_connect(net_connection *conn, const char *ip, int max_timeout_ms = -1);
 
 inline bool net_connected(const net_connection &conn)
 {

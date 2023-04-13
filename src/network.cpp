@@ -43,6 +43,16 @@ EM_JS(char *, get_browser_url_path, (), {
     return str;
 });
 
+EM_JS(char *, get_browser_search_string, (), {
+    const path = window.location.search;
+    const length = lengthBytesUTF8(path) + 1;
+    const str = _malloc(length);
+    stringToUTF8(path, str, length);
+    console.log(`Should be returning  ${length} bytes for ${
+        path}`);
+    return str;
+});
+
 /*
 #define EMSCRIPTEN_RESULT_NOT_SUPPORTED       -1
 #define EMSCRIPTEN_RESULT_FAILED_NOT_DEFERRED -2
@@ -156,7 +166,12 @@ intern void em_net_connect(net_connection *conn)
     char *url_path = get_browser_url_path();
     conn->can_control = strncmp(url_path, "/control", 8) == 0;
     ilog("URL PATH: %s", url_path);
-    free(url);
+    free(url_path);
+
+    char *search_str = get_browser_search_string();
+    conn->is_husky = strncmp(search_str, "?husky", 6) == 0;
+    ilog("URL QUERY: %s", search_str);
+    free(search_str);
 
     ilog("URL: %s", SERVER_URL);
 
@@ -218,7 +233,7 @@ intern void free_connection(net_connection *conn)
     free(conn->pckts.ms);
 }
 
-void net_connect(net_connection *conn, const char *ip, int port, int max_timeout_ms)
+void net_connect(net_connection *conn, const char *ip, int max_timeout_ms)
 {
     alloc_connection(conn);
 #if defined(__EMSCRIPTEN__)
@@ -242,18 +257,18 @@ void net_connect(net_connection *conn, const char *ip, int port, int max_timeout
     memset(&server_addr, 0, sizeof(server_addr));
 
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(port);
+    server_addr.sin_port = htons(conn->port);
 
     if (!inet_pton(AF_INET, ip, &server_addr.sin_addr.s_addr)) {
-        elog("Failed PTON for %s and port %d", ip, port);
+        elog("Failed PTON for %s and port %d", ip, conn->port);
         goto cleanup;
     }
 
-    ilog("Connecting to server at %s on port %d", ip, port);
+    ilog("Connecting to server at %s on port %d", ip, conn->port);
     if (connect(sckt_fd[0].fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) != 0 && errno != EINPROGRESS) {
         elog("Failed connecting to server at %s on port %d - resulting fd %d - error %s",
              ip,
-             port,
+             conn->port,
              sckt_fd[0].fd,
              strerror(errno));
         goto cleanup;
@@ -261,33 +276,33 @@ void net_connect(net_connection *conn, const char *ip, int port, int max_timeout
 
     pret = poll(sckt_fd, 1, max_timeout_ms);
     if (pret == 0) {
-        elog("Poll timed out connecting to server %s on port %d for fd %d", ip, port, sckt_fd[0].fd);
+        elog("Poll timed out connecting to server %s on port %d for fd %d", ip, conn->port, sckt_fd[0].fd);
         goto cleanup;
     }
     else if (pret == -1) {
         elog("Failed poll on trying to connect to server at %s on port %d - resulting fd %d - error %s",
              ip,
-             port,
+             conn->port,
              sckt_fd[0].fd,
              strerror(errno));
         goto cleanup;
     }
     else {
         if (test_flags(sckt_fd[0].revents, POLLERR)) {
-            elog("Failed connecting to server at %s on port %d - resulting fd %d - POLLERR", ip, port, sckt_fd[0].fd);
+            elog("Failed connecting to server at %s on port %d - resulting fd %d - POLLERR", ip, conn->port, sckt_fd[0].fd);
             goto cleanup;
         }
         else if (test_flags(sckt_fd[0].revents, POLLHUP)) {
-            elog("Failed connecting to server at %s on port %d - resulting fd %d - POLLHUP", ip, port, sckt_fd[0].fd);
+            elog("Failed connecting to server at %s on port %d - resulting fd %d - POLLHUP", ip, conn->port, sckt_fd[0].fd);
             goto cleanup;
         }
         else if (test_flags(sckt_fd[0].revents, POLLNVAL)) {
-            elog("Failed connecting to server at %s on port %d - resulting fd %d - POLLNVAL", ip, port, sckt_fd[0].fd);
+            elog("Failed connecting to server at %s on port %d - resulting fd %d - POLLNVAL", ip, conn->port, sckt_fd[0].fd);
             goto cleanup;
         }
     }
     conn->socket_handle = sckt_fd[0].fd;
-    ilog("Successfully connected to server at %s on port %d - resulting fd %d", ip, port, sckt_fd[0].fd);
+    ilog("Successfully connected to server at %s on port %d - resulting fd %d", ip, conn->port, sckt_fd[0].fd);
     return;
 
 cleanup:
