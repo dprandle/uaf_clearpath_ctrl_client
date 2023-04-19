@@ -78,7 +78,6 @@ const std::string VLP16_MOUNT_LEFT_SUPPORT{"vlp16_mount_left_support"};
 const std::string VLP16_MOUNT_RIGHT_SUPPORT{"vlp16_mount_right_support"};
 const std::string TOP_PLATE_FRONT_LINK{"top_plate_front_link"};
 const std::string TOP_PLATE_REAR_LINK{"top_plate_rear_link"};
-
 const std::string TOP_CHASSIS_LINK{"top_chassis_link"};
 const std::string USER_RAIL_LINK{"user_rail_link"};
 
